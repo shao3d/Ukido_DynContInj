@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "mermaid": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@peng-shawn/mermaid-mcp-server"],
+      "description": "Mermaid diagram generator MCP server for creating PNG images from Mermaid text descriptions"
+    }
+  }
+}

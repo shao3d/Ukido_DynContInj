@@ -1,0 +1,127 @@
+@startuml Ukido AI Assistant - Data Flow Sequence
+!theme C4_blue
+skinparam backgroundColor #FEFEFE
+skinparam shadowing false
+
+title Поток обработки запроса в Ukido AI Assistant (v0.7.6)
+
+actor "Родитель" as User #LightBlue
+participant "FastAPI\nServer" as API #Orange
+database "History\nManager" as History #LightGreen
+participant "Social\nState" as Social #Pink
+participant "Gemini\nRouter" as Router #Purple
+database "Knowledge\nBase" as KB #Yellow
+participant "Claude\nGenerator" as Generator #Cyan
+
+== Инициализация запроса ==
+User -> API: POST /chat\n{"message": "Привет! Какие курсы есть?"}
+activate API #Orange
+
+API -> History: Получить историю (последние 10)
+activate History #LightGreen
+History --> API: conversation_history[]
+deactivate History
+
+API -> Social: Проверить социальное состояние
+activate Social #Pink
+Social --> API: greeting_count, last_greeting_time
+deactivate Social
+
+== Маршрутизация через Gemini ==
+API -> Router: Классифицировать запрос
+activate Router #Purple
+note right of Router
+  Анализ:
+  • Социальные интенты (порог 0.7)
+  • Бизнес-вопросы
+  • Смешанные запросы
+  • Контекстуальные ("А?")
+end note
+
+Router -> Router: Декомпозиция вопросов
+Router -> Router: Проверка повторных приветствий
+
+alt Чистая социалка (confidence > 0.7)
+    Router --> API: {"type": "router_social",\n"response": "Здравствуйте! 👋"}
+    note over Router: Время: ~0.000s\nСтоимость: $0
+else Offtopic без социалки
+    Router --> API: {"type": "offtopic",\n"standard_response": true}
+else Need simplification (>3 вопросов)
+    Router --> API: {"type": "need_simplification"}
+else Success - бизнес вопрос
+    Router -> KB: Подбор документов
+    activate KB #Yellow
+    note right of KB
+      Алгоритм:
+      • 1 вопрос → 1-2 док
+      • 2 вопроса → 2-4 док
+      • 3+ вопросов → max 4
+      • Fuzzy matching 85%
+    end note
+    KB --> Router: relevant_documents[]
+    deactivate KB
+    
+    Router --> API: {"type": "success",\n"documents": [...],\n"social_context": {...}}
+    note over Router: Время: 1.0-2.2s\nСтоимость: $0.00003
+end
+
+deactivate Router
+
+== Генерация ответа (если success) ==
+alt type == "success"
+    API -> Generator: Генерировать ответ
+    activate Generator #Cyan
+    
+    Generator -> Generator: Проверка истории\nна повторные приветствия
+    Generator -> KB: Использовать документы
+    activate KB #Yellow
+    KB --> Generator: context_data
+    deactivate KB
+    
+    Generator -> Generator: Применить правила:
+    note right of Generator
+      • Первые 2 предложения -
+        ключевая информация
+      • 100-150 слов
+      • Стиль "мы"
+      • Эмпатия для раздраженных
+    end note
+    
+    Generator --> API: final_response
+    note over Generator: Время: 4.7-6.6s\nСтоимость: $0.0003
+    deactivate Generator
+end
+
+== Сохранение и ответ ==
+API -> History: Сохранить обмен
+activate History #LightGreen
+History --> API: saved
+deactivate History
+
+API -> Social: Обновить состояние
+activate Social #Pink
+Social --> API: updated
+deactivate Social
+
+API --> User: 200 OK\n{"response": "..."}
+note over API: Общее время: 5-7 сек\nОбщая стоимость: ~$0.0015
+deactivate API
+
+== Альтернативные сценарии ==
+group Обработка ошибок
+    API ->x Router: Timeout/Error
+    API --> User: Fallback response
+end
+
+group Агрессивный родитель
+    note over Router: Мат игнорируется,\nфокус на вопросе
+    Router -> Generator: with context: "irritated_parent"
+    Generator --> API: Эмпатичный профессиональный ответ
+end
+
+group Контекстуальный вопрос ("А?")
+    Router -> Router: Расширить из контекста истории
+    note over Router: "А?" → "А какая цена на курс Эмоциональный интеллект?"
+end
+
+@enduml

@@ -1,0 +1,51 @@
+@startuml
+!define AWSPUML https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/v18.0/dist
+
+title Ukido AI Assistant - Request Flow (v0.7.6)
+
+actor Parent
+participant "FastAPI" as API
+participant "Gemini Router" as Router
+participant "Claude Generator" as Generator
+database "Knowledge Base" as KB
+database "History" as History
+
+Parent -> API: POST /chat\n"Привет! Какие курсы?"
+activate API
+
+API -> History: Get last 10 messages
+History --> API: history[]
+
+API -> Router: Classify request
+activate Router
+Router -> Router: Check social intent
+Router -> Router: Decompose questions
+
+alt Social greeting (confidence > 0.7)
+    Router --> API: router_social\n"Здравствуйте!"
+    note right: 0.000s, $0
+else Business question
+    Router -> KB: Select documents
+    KB --> Router: documents[1-4]
+    Router --> API: success + docs
+    note right: 1-2.2s, $0.00003
+    
+    API -> Generator: Generate response
+    activate Generator
+    Generator -> KB: Use documents
+    Generator --> API: final_response
+    deactivate Generator
+    note right: 4.7-6.6s, $0.0003
+else Offtopic
+    Router --> API: standard_response
+end
+
+deactivate Router
+
+API -> History: Save exchange
+API --> Parent: Response
+deactivate API
+
+note over API: Total: 5-7s, ~$0.0015
+
+@enduml

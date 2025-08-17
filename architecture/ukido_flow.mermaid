@@ -1,0 +1,59 @@
+sequenceDiagram
+    title Ukido AI Assistant - Request Processing Flow (v0.7.6)
+    
+    participant U as 👤 Родитель
+    participant API as FastAPI Server
+    participant H as History Manager
+    participant S as Social State
+    participant R as Gemini Router
+    participant KB as Knowledge Base
+    participant G as Claude Generator
+    
+    %% Инициализация запроса
+    U->>+API: POST /chat<br/>{"message": "Привет! Какие курсы?"}
+    
+    API->>H: Получить историю (последние 10)
+    H-->>API: conversation_history[]
+    
+    API->>S: Проверить социальное состояние
+    S-->>API: greeting_count, last_greeting_time
+    
+    %% Маршрутизация
+    API->>+R: Классифицировать запрос
+    Note over R: Анализ:<br/>• Социальные интенты (0.7)<br/>• Бизнес-вопросы<br/>• Контекстуальные ("А?")
+    
+    R->>R: Декомпозиция вопросов
+    R->>R: Проверка повторов
+    
+    alt Чистая социалка (confidence > 0.7)
+        R-->>API: router_social<br/>"Здравствуйте! 👋"
+        Note over R: ⏱️ ~0.000s<br/>💰 $0
+    else Бизнес-вопрос (success)
+        R->>KB: Подбор документов
+        Note over KB: Алгоритм:<br/>• 1 вопрос → 1-2 док<br/>• 2 вопроса → 2-4 док<br/>• 3+ → max 4<br/>• Fuzzy 85%
+        KB-->>R: relevant_documents[]
+        R-->>-API: success + documents
+        Note over R: ⏱️ 1.0-2.2s<br/>💰 $0.00003
+        
+        %% Генерация ответа
+        API->>+G: Генерировать ответ
+        G->>G: Проверка истории
+        G->>KB: Использовать документы
+        KB-->>G: context_data
+        G->>G: Применить правила
+        Note over G: Правила:<br/>• Первые 2 предложения<br/>• 100-150 слов<br/>• Стиль "мы"<br/>• Эмпатия
+        G-->>-API: final_response
+        Note over G: ⏱️ 4.7-6.6s<br/>💰 $0.0003
+    else Offtopic
+        R-->>API: standard_response
+    end
+    
+    %% Сохранение и ответ
+    API->>H: Сохранить обмен
+    H-->>API: saved
+    
+    API->>S: Обновить состояние
+    S-->>API: updated
+    
+    API-->>-U: 200 OK<br/>{"response": "..."}
+    Note over API: 📊 Метрики:<br/>⏱️ Общее: 5-7 сек<br/>💰 Стоимость: ~$0.0015

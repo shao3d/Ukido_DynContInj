@@ -1,0 +1,35 @@
+@startuml Mixed Request Processing Flow
+
+title Обработка Mixed запроса "Привет! Какая цена?"
+
+actor "Родитель" as Parent
+participant "FastAPI\n/chat" as API
+participant "Router\n(Gemini)" as Router
+participant "Social\nDetector" as Social
+participant "Response\nGenerator\n(Claude)" as Generator
+database "Knowledge\nBase" as KB
+
+Parent -> API: POST /chat\n{"message": "Привет! Какая цена?"}
+
+API -> Router: route(message, history, user_id)
+
+Router -> Social: detect_social_intent()
+Social --> Router: {intent: "greeting", confidence: 0.9}
+
+Router -> Router: has_business_signals()
+note right: Находит "цена" -\nэто бизнес-сигнал
+
+Router -> KB: Подбор документов
+KB --> Router: ["pricing.md"]
+
+Router --> API: {status: "success",\n documents: ["pricing.md"],\n social_context: "greeting"}
+
+API -> Generator: generate(docs, questions, social_context)
+
+Generator -> Generator: Проверка истории\nна повторные приветствия
+
+Generator --> API: "Здравствуйте! Базовая стоимость\nкурса составляет 4100 грн в месяц.\nЕсть скидки при оплате за 3 месяца..."
+
+API --> Parent: ChatResponse
+
+@enduml

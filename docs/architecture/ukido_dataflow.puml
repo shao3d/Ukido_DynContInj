@@ -1,0 +1,128 @@
+@startuml ukido_dataflow
+!theme blueprint
+title Ukido AI Assistant - Архитектура и поток данных v0.7.6
+
+skinparam backgroundColor #FEFEFE
+skinparam BoxPadding 10
+skinparam ParticipantPadding 20
+skinparam SequenceMessageAlign center
+skinparam defaultFontSize 12
+skinparam ArrowThickness 2
+
+' Определение цветовой схемы
+!define USER_COLOR #FFE4B5
+!define API_COLOR #E6F3FF
+!define ROUTER_COLOR #FFE6E6
+!define GENERATOR_COLOR #E6FFE6
+!define STORAGE_COLOR #F0E6FF
+!define SOCIAL_COLOR #FFFACD
+!define COST_COLOR #D3D3D3
+
+' ===== УЧАСТНИКИ =====
+actor "Родитель\n(User)" as User <<Human>> #USER_COLOR
+participant "FastAPI\nServer\n(main.py)" as API #API_COLOR
+participant "Gemini Router\n$0.30/1M tokens\n(router.py)" as Router #ROUTER_COLOR
+participant "Claude Generator\n$1.25/1M tokens\n(response_generator.py)" as Generator #GENERATOR_COLOR
+database "History\nManager\n(10 messages)" as History #STORAGE_COLOR
+database "Knowledge Base\n(13 documents)" as KB #STORAGE_COLOR
+participant "Social\nComponents" as Social #SOCIAL_COLOR
+
+' ===== ОСНОВНОЙ ПОТОК =====
+autonumber
+
+User -> API: POST /chat\n{user_id, message}
+note right of User #FFFACD
+  Примеры сообщений:
+  • "Привет! Какие курсы есть?"
+  • "А сколько стоит?"
+  • "Дорого! Есть скидки?"
+end note
+
+API -> History: get_history(user_id)
+History --> API: last 10 messages
+
+API -> Router: route(message, history, user_id)
+note over Router #FFE6E6
+  **Gemini 2.5 Flash обрабатывает:**
+  1. Декомпозиция вопросов
+  2. Социальная классификация (порог 0.7)
+  3. Fuzzy matching опечаток (85%)
+  4. Выбор документов (max 4)
+  5. Определение social_context
+end note
+
+alt Социальный интент без бизнеса
+    Router -> Social: generate_social_response()
+    Social --> Router: social_response
+    Router --> API: {status: "router_social",\nmessage: response}
+    note right of Router #COST_COLOR: Cost: $0.00003
+    
+else Offtopic без социального контекста
+    Router --> API: {status: "offtopic",\nmessage: standard_response}
+    note right of Router #COST_COLOR: Cost: $0.00003
+    
+else Need simplification (>3 вопросов)
+    Router --> API: {status: "need_simplification",\nmessage: simplify_request}
+    note right of Router #COST_COLOR: Cost: $0.00003
+    
+else Success - бизнес вопрос
+    Router -> KB: fetch_documents(selected_docs)
+    KB --> Router: document_contents
+    Router --> API: {status: "success",\ndocuments: [...],\ndecomposed_questions: [...],\nsocial_context: {...}}
+    note right of Router #COST_COLOR: Cost: $0.00003
+    
+    API -> Generator: generate(message, documents,\nhistory, social_context)
+    note over Generator #E6FFE6
+      **Claude 3.5 Haiku генерирует:**
+      1. Проверка повторных приветствий
+      2. Ответ 100-150 слов
+      3. Первые 2 предложения - ключевая инфо
+      4. Стиль "от лица школы" ("мы")
+      5. Учёт социального контекста
+    end note
+    
+    Generator --> API: final_response
+    note right of Generator #COST_COLOR: Cost: $0.0012
+end alt
+
+API -> History: add_message(user_id, message, response)
+API --> User: ChatResponse\n{response, documents,\nintent, confidence}
+
+' ===== ДОПОЛНИТЕЛЬНЫЕ ПОТОКИ =====
+note over API, History #E6F3FF
+  **Оптимизации v0.7.6:**
+  • История ограничена 10 сообщениями
+  • Экономия 50% токенов
+  • Сохранение качества диалога
+end note
+
+note over Router, Generator #D3D3D3
+  **Общая стоимость за ответ:**
+  • Router: ~$0.00003
+  • Generator: ~$0.0012
+  • Total: ~$0.0015 за ответ
+  • Время: 5-7 секунд
+end note
+
+' ===== КОМПОНЕНТЫ СОЦИАЛЬНОГО КОНТЕКСТА =====
+note over Social #FFFACD
+  **Социальные компоненты:**
+  • social_state.py - отслеживание приветствий
+  • social_responder.py - генерация ответов
+  • social_intents.py - regex паттерны (50+)
+  • standard_responses.py - заготовки
+end note
+
+' ===== ЛЕГЕНДА =====
+legend bottom
+  |= Цвет |= Компонент |= Роль |
+  |<#FFE4B5> | User | Родитель-клиент |
+  |<#E6F3FF> | API | Оркестратор |
+  |<#FFE6E6> | Router | Классификация (Gemini) |
+  |<#E6FFE6> | Generator | Генерация (Claude) |
+  |<#F0E6FF> | Storage | Хранилища данных |
+  |<#FFFACD> | Social | Социальная обработка |
+  |<#D3D3D3> | Cost | Метрики стоимости |
+endlegend
+
+@enduml

@@ -1,0 +1,124 @@
+@startuml Ukido AI Assistant Data Flow Sequence
+
+title Ukido AI Assistant v0.7.6 - Request Processing Flow
+
+actor Parent as User
+participant "FastAPI\nServer" as API
+database "History\nManager" as History
+participant "Social\nState" as Social
+participant "Gemini\nRouter" as Router
+database "Knowledge\nBase" as KB
+participant "Claude\nGenerator" as Generator
+
+== Request Initialization ==
+User -> API: POST /chat\n{"message": "Hello! What courses?"}
+activate API
+
+API -> History: Get history (last 10)
+activate History
+History --> API: conversation_history[]
+deactivate History
+
+API -> Social: Check social state
+activate Social
+Social --> API: greeting_count, last_greeting_time
+deactivate Social
+
+== Routing via Gemini ==
+API -> Router: Classify request
+activate Router
+note right of Router
+  Analysis:
+  - Social intents (threshold 0.7)
+  - Business questions
+  - Mixed requests
+  - Contextual ("A?")
+end note
+
+Router -> Router: Decompose questions
+Router -> Router: Check repeated greetings
+
+alt Pure social (confidence > 0.7)
+    Router --> API: {"type": "router_social",\n"response": "Hello!"}
+    note over Router: Time: ~0.000s\nCost: $0
+else Offtopic without social
+    Router --> API: {"type": "offtopic",\n"standard_response": true}
+else Need simplification (>3 questions)
+    Router --> API: {"type": "need_simplification"}
+else Success - business question
+    Router -> KB: Select documents
+    activate KB
+    note right of KB
+      Algorithm:
+      - 1 question -> 1-2 docs
+      - 2 questions -> 2-4 docs
+      - 3+ questions -> max 4
+      - Fuzzy matching 85%
+    end note
+    KB --> Router: relevant_documents[]
+    deactivate KB
+    
+    Router --> API: {"type": "success",\n"documents": [...],\n"social_context": {...}}
+    note over Router: Time: 1.0-2.2s\nCost: $0.00003
+end
+
+deactivate Router
+
+== Response Generation (if success) ==
+alt type == "success"
+    API -> Generator: Generate response
+    activate Generator
+    
+    Generator -> Generator: Check history\nfor repeated greetings
+    Generator -> KB: Use documents
+    activate KB
+    KB --> Generator: context_data
+    deactivate KB
+    
+    Generator -> Generator: Apply rules:
+    note right of Generator
+      - First 2 sentences -
+        key information
+      - 100-150 words
+      - Style "we"
+      - Empathy for irritated
+    end note
+    
+    Generator --> API: final_response
+    note over Generator: Time: 4.7-6.6s\nCost: $0.0003
+    deactivate Generator
+end
+
+== Save and respond ==
+API -> History: Save exchange
+activate History
+History --> API: saved
+deactivate History
+
+API -> Social: Update state
+activate Social
+Social --> API: updated
+deactivate Social
+
+API --> User: 200 OK\n{"response": "..."}
+note over API: Total time: 5-7 sec\nTotal cost: ~$0.0015
+deactivate API
+
+== Alternative scenarios ==
+group Error handling
+    API ->x Router: Timeout/Error
+    API --> User: Fallback response
+end
+
+group Aggressive parent
+    note over Router: Profanity ignored,\nfocus on question
+    Router -> Generator: with context: "irritated_parent"
+    Generator --> API: Empathetic professional response
+end
+
+group Contextual question ("A?")
+    Router -> Router: Expand from context history
+    note over Router: "A?" -> "What price for Emotional Intelligence course?"
+end
+
+@enduml

@@ -1,0 +1,30 @@
+@startuml Ukido AI Assistant Components
+
+!define C4_COMPONENT
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Ukido AI Assistant - Компоненты системы
+
+Container_Boundary(api, "FastAPI Application") {
+    Component(main, "main.py", "FastAPI", "Главный оркестратор, /chat endpoint")
+    Component(router, "router.py", "Gemini Router", "Классификация запросов и подбор документов")
+    Component(generator, "response_generator.py", "Claude Generator", "Генерация финальных ответов")
+    Component(history, "history_manager.py", "History Manager", "Управление историей диалогов (10 сообщений)")
+    Component(social_state, "social_state.py", "Social State", "Отслеживание повторных приветствий")
+    Component(social_resp, "social_responder.py", "Social Responder", "Локальная генерация социальных ответов")
+}
+
+Container_Boundary(data, "Knowledge Base") {
+    ComponentDb(docs, "documents_compressed/", "Markdown", "13 документов о школе")
+    ComponentDb(summaries, "summaries.json", "JSON", "Краткие описания документов")
+}
+
+Rel(main, router, "Передает запрос и историю")
+Rel(router, docs, "Подбирает документы")
+Rel(router, social_resp, "Генерирует социальные ответы")
+Rel(main, generator, "Если status=success")
+Rel(generator, docs, "Использует подобранные документы")
+Rel(main, history, "Сохраняет сообщения")
+Rel(router, social_state, "Проверяет повторные приветствия")
+
+@enduml

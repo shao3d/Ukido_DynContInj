@@ -1,0 +1,21 @@
+@startuml Ukido AI Assistant Architecture
+
+!define C4_CONTEXT
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Ukido AI Assistant - Архитектура системы (C4 Context)
+
+Person(parent, "Родитель", "Задает вопросы о школе Ukido")
+
+System(ukido_ai, "Ukido AI Assistant", "Чат-бот для консультации родителей")
+
+System_Ext(openrouter, "OpenRouter API", "Доступ к LLM моделям")
+System_Ext(gemini, "Google Gemini 2.5 Flash", "Классификация и роутинг")
+System_Ext(claude, "Claude 3.5 Haiku", "Генерация ответов")
+
+Rel(parent, ukido_ai, "Отправляет вопросы", "HTTPS")
+Rel(ukido_ai, openrouter, "Запросы к LLM", "HTTPS/API")
+Rel(openrouter, gemini, "Роутинг")
+Rel(openrouter, claude, "Генерация")
+
+@enduml

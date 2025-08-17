@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Отчет полного тестирования Ukido - 2025-08-12 14:35:05</title>
+<style>
+body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Ubuntu,sans-serif; background:#f5f6fa; color:#222; padding:20px; }
+.container { max-width: 1200px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); overflow:hidden; }
+header { background:linear-gradient(135deg,#00c6ff,#0072ff); color:#fff; padding:24px; }
+h1 { margin:0; font-size:24px; }
+.timestamp { opacity:.9 }
+.summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; padding:16px; background:#fafbff; border-bottom:1px solid #eee; }
+.card { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; text-align:center; }
+.val { font-size:28px; color:#0072ff; font-weight:700; }
+.label { color:#666; }
+.content { padding:20px; }
+.scenario { border:1px solid #eee; border-radius:8px; margin-bottom:16px; }
+.scenario-header { background:#fafbff; padding:12px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+.scenario-title { font-weight:700; }
+.scenario-body { display:none; padding:16px; }
+.scenario.expanded .scenario-body { display:block; }
+.step { background:#f9fafc; border-left:4px solid #0072ff; padding:12px; margin-bottom:12px; border-radius:6px; }
+.badge { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+.badge.success { background:#d4edda; color:#155724; }
+.badge.offtopic { background:#fff3cd; color:#856404; }
+.badge.need_simplification { background:#e2e3ff; color:#383d7c; }
+.badge.error { background:#f8d7da; color:#721c24; }
+.msg { background:#fff; border:1px solid #eee; border-radius:6px; padding:10px; margin-top:8px; }
+.docs span { background:#eef2ff; padding:3px 8px; border-radius:4px; margin-right:6px; font-size:12px; }
+.chart { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; }
+.bar { display:flex; align-items:center; margin:6px 0; }
+.bar-label { width:160px; font-size:12px; color:#555; }
+.bar-wrap { flex:1; background:#f0f2f7; height:22px; border-radius:6px; overflow:hidden; }
+.bar-fill { background:linear-gradient(90deg,#00c6ff,#0072ff); height:100%; color:#fff; font-size:12px; display:flex; align-items:center; justify-content:flex-end; padding-right:6px; }
+/* Markdown styling */
+.markdown-body h1, .markdown-body h2, .markdown-body h3 { margin: 12px 0 8px; }
+.markdown-body p { margin: 6px 0; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.2em; margin: 6px 0; }
+.markdown-body code, .markdown-body pre { background:#f6f8fa; border-radius:6px; }
+.markdown-body pre { padding:10px; overflow:auto; white-space:pre; }
+</style>
+</head>
+<body>
+<div class=container>
+<header>
+<h1>📊 Полный отчёт Ukido</h1>
+<div class=timestamp>📅 2025-08-12 14:35:05</div>
+</header>
+<div class=summary>
+<div class=card><div class=val>4</div><div class=label>Всего диалогов</div></div>
+<div class=card><div class=val>4</div><div class=label>Успешных</div></div>
+<div class=card><div class=val>13</div><div class=label>Всего шагов</div></div>
+<div class=card><div class=val>100.0%</div><div class=label>Успешность</div></div>
+<div class=card><div class=val>1 / 2 / 0</div><div class=label>Social: привет/спасибо/пока</div></div>
+</div>
+<div class=content>
+<h2 style="margin:8px 0 16px 0">📝 Диалоги</h2>
+
+<div class="scenario" id="sc-1">
+  <div class="scenario-header" onclick="document.getElementById('sc-1').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #1: Mixed #1: Приветствие + вопрос о цене</div>
+    <div>3 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Привет! Сколько стоит курс для ребенка 8 лет?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый день! Курс "Юный Оратор" стоит 18,000 грн за 3 месяца, с возможностью месячной оплаты по 6,000 грн. Он идеально подходит для детей в возрасте 7-10 лет, включая 8-летних. Цель курса — помочь детям избавиться от страха публичных выступлений и научить их уверенно излагать свои мысли. Занятия проходят два раза в неделю по 90 минут в небольших группах до 8 детей. Программа включает дыхательные упражнения, работу над дикцией, структуру выступления и взаимодействие с аудиторией. После завершения курса 94% детей не боятся выступать перед классом и становятся более общительными.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Сколько стоит курс?</li><li>Подходит ли курс для 8-летнего ребенка?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span> <span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Спасибо! А есть ли скидки для многодетных семей?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. Да, для многодетных семей предусмотрена социальная скидка в размере 20%. Она применяется к стоимости курсов для детей из семей с тремя и более детьми, а также для детей с особыми потребностями и детей из семей участников АТО/ООС. Для получения скидки требуется подтверждающий документ. Кроме того, у нас есть и другие скидки, такие как семейная скидка в 15% при обучении двух и более детей из одной семьи, а также скидка за полную оплату курса — 10%. Это позволяет сделать обучение более доступным для семей. Если у вас есть дополнительные вопросы или нужна помощь с записью, дайте знать.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Есть ли скидки для многодетных семей?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Хорошо, а можно оплачивать в рассрочку?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Да, обучение можно оплачивать в рассрочку. У нас есть несколько вариантов рассрочки. Вы можете воспользоваться беспроцентной рассрочкой на 3 месяца через банки, такие как Приват24 и Monobank. Оформление происходит онлайн за 5 минут без скрытых комиссий. Также для курса "Капитан Проектов" доступна внутренняя рассрочка на 5 месяцев. В этом случае первый взнос составляет 20% от стоимости курса, и также нет дополнительных платежей. Кроме того, мы предлагаем различные способы оплаты, включая банковские карты и банковские переводы. Это позволяет выбрать наиболее удобный вариант для вашей семьи. Если у вас есть дополнительные вопросы или нужна помощь с оформлением, дайте знать.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Можно ли оплачивать обучение в рассрочку?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span></span></div></div></div></div>
+<div class="scenario" id="sc-2">
+  <div class="scenario-header" onclick="document.getElementById('sc-2').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #2: Mixed #2: Благодарность + новый вопрос</div>
+    <div>3 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Добрый день! Какие у вас есть курсы для подростков?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый день! В нашей школе Ukido для подростков предлагается курс "Капитан проектов" для детей в возрасте 11-14 лет. Этот курс направлен на развитие лидерских качеств, ответственности и системного мышления. Учащиеся учатся работать в команде, превращая идеи в реальные проекты. Курс включает пять фаз, начиная с изучения типов лидерства и заканчивая защитой проектов перед экспертами. Занятия проходят в формате проектной работы, где дети получают поддержку менторов и используют современные цифровые инструменты, такие как Trello и Canva. Курс длится 5 месяцев, включает 40 занятий и проходит два раза в неделю. Участники работают в небольших командах, что способствует эффективному взаимодействию и развитию навыков XXI века.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Какие курсы для подростков есть в школе?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Спасибо за информацию! А кто преподаватели в курсе &#x27;Юный Оратор&#x27;?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. Курс "Юный Оратор" для детей 7-10 лет ведет Анна Коваленко, ведущий тренер с магистерской степенью в области психологии и 8-летним опытом работы с детьми в области публичных выступлений. Она специализируется на преодолении детских страхов и развитии уверенности у детей младшего школьного возраста. Анна разработала уникальную методику "Бесстрашный оратор" и имеет высокие достижения в своей области, включая 94% успеха в избавлении детей от страха публичных выступлений. Курс длится 3 месяца и включает 24 занятия, где дети учатся управлять своим волнением, структурировать выступления и работать с аудиторией. Занятия проходят в игровой форме, что помогает создать комфортную атмосферу для обучения. Анна также активно взаимодействует с родителями, предоставляя обратную связь о прогрессе детей.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Кто преподаватели в курсе &#x27;Юный Оратор&#x27;?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>teachers_team.md</span> <span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Благодарю! И последнее - есть ли пробное занятие?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div></div></div>
+<div class="scenario" id="sc-3">
+  <div class="scenario-header" onclick="document.getElementById('sc-3').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #3: Edge case #1: Необычные социалки и вопросы</div>
+    <div>3 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Хай! Почём ваши занятия по развитию soft skills?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый день! Стоимость занятий в Ukido варьируется в зависимости от курса. Например, курс "Юный Оратор" для детей 7-10 лет стоит 6,000 грн в месяц, а общая стоимость за 3 месяца составляет 18,000 грн. Курс "Эмоциональный Компас" для детей 9-12 лет стоит 7,000 грн в месяц, а полная стоимость за 4 месяца — 28,000 грн. Курс "Капитан Проектов" для детей 11-14 лет стоит 8,000 грн в месяц, общая стоимость за 5 месяцев — 40,000 грн. Soft skills — это навыки, связанные с эмоциональным интеллектом, коммуникацией и лидерством. Они помогают детям развивать уверенность в себе, строить глубокие отношения и справляться с неудачами. В отличие от hard skills, которые фокусируются на конкретных знаниях и умениях, soft skills формируют личность и позволяют успешно адаптироваться к изменениям в жизни.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Какая стоимость занятий?</li><li>Что такое soft skills?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span> <span>ukido_philosophy.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Мерси! А когда занятия проходят?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. Занятия в школе Ukido проходят два раза в неделю. Каждый курс длится 90 минут с обязательным 10-минутным перерывом на 40-й минуте для поддержания концентрации. Стандартные временные слоты для занятий: понедельник и среда, а также вторник и четверг с 17:00 до 18:30 или с 19:00 до 20:30. В выходные дни занятия могут проходить с 10:00 до 11:30 или с 16:00 до 17:30 по запросу. Все время указано по киевскому времени (UTC+2). При создании новых групп учитываются пожелания родителей по времени, что позволяет обеспечить гибкость в расписании. Также есть возможность перехода между группами при изменении обстоятельств. Индивидуальные занятия доступны по запросу с персональным расписанием.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Когда проходят занятия?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>conditions.md</span> <span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Bye! А нет, стоп, еще вопрос - можно ли записаться на пробный урок?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Да, в школе Ukido можно записаться на пробный урок, который проводится бесплатно. Это отличный способ познакомиться с преподавателем и группой, а также понять формат занятий. Пробный урок включает мини-диагностику навыков ребенка, практическое упражнение в игровой форме и консультацию для родителей с рекомендациями. Запись на пробный урок обязательна, так как группы формируются заранее. Вы можете записаться через онлайн-форму на сайте или оставить свои контакты в чате, чтобы менеджер связался с вами для подбора даты и группы. Важно указать предпочтительный курс, возраст ребенка и удобные дни для занятий. Подтверждение записи приходит в течение 1–2 рабочих дней.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Можно ли записаться на пробный урок?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>faq.md</span></span></div></div></div></div>
+<div class="scenario" id="sc-4">
+  <div class="scenario-header" onclick="document.getElementById('sc-4').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #4: Edge case #2: Только социалки vs смешанные</div>
+    <div>4 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: greeting</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Привет!</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый день! Чем помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Как записаться на курс?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Чтобы записаться на курс в школе Ukido, необходимо пройти процедуру регистрации на пробный урок, который проводится бесплатно. Запись обязательна, так как группы формируются заранее. Вы можете записаться через онлайн-форму на сайте или оставить свои контактные данные в чате, указав имя, телефон или email. При записи важно указать предпочтительный курс, возраст ребенка, город или часовой пояс, а также удобные дни и временные окна для занятий. В течение 1–2 рабочих дней менеджер свяжется с вами для подтверждения даты и отправит ссылку на подключение к занятию. Пробный урок включает знакомство с преподавателем, мини-диагностику навыков ребенка, практическое упражнение и консультацию для родителей с рекомендациями. Это поможет вам и вашему ребенку понять формат занятий и принять решение о дальнейшем обучении.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Как записаться на курс?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>faq.md</span> <span>conditions.md</span> <span>parent_involvement_guide.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Спасибо большое!</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Пока! Хотя нет, а сертификат дают после курса?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Да, по итогам обучения в школе Ukido каждый выпускник получает сертификат, который содержит детальный перечень освоенных компетенций. Этот сертификат подтверждает навыки, которые ребенок развил в процессе обучения, такие как публичные презентации, управление проектами и медиация конфликтов. Кроме сертификата, выпускники формируют портфолио достижений, которое включает видеозаписи лучших выступлений, паспорт реализованного проекта и рекомендательное письмо от преподавателя. Это портфолио становится важным аргументом при поступлении в сильные лицеи и зарубежные школы, где ценятся как soft skills, так и проектная деятельность. Таким образом, обучение в Ukido не только развивает личные качества ребенка, но и помогает ему продемонстрировать свои достижения в будущем.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Дают ли сертификат после курса?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>ukido_philosophy.md</span></span></div></div></div></div>
+<h2 style="margin:24px 0 12px 0">📈 Статистика</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
+  <div class=chart>
+    <div style="font-weight:700;margin-bottom:8px;">Распределение intent</div>
+
+    <div class=bar>
+      <div class=bar-label>success</div>
+      <div class=bar-wrap><div class=bar-fill style="width:76.9%">10 (76.9%)</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>offtopic</div>
+      <div class=bar-wrap><div class=bar-fill style="width:23.1%">3 (23.1%)</div></div>
+    </div>
+</div>
+  <div class=chart>
+    <div style="font-weight:700;margin-bottom:8px;">Топ-10 документов</div>
+
+    <div class=bar>
+      <div class=bar-label>pricing.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:100.0%">4</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>courses_detailed.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:100.0%">4</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>ukido_philosophy.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:50.0%">2</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>conditions.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:50.0%">2</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>faq.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:50.0%">2</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>teachers_team.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:25.0%">1</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>parent_involvement_guide.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:25.0%">1</div></div>
+    </div>
+</div>
+</div>
+</div>
+<footer style="padding:12px;text-align:center;color:#666;border-top:1px solid #eee;">Сгенерировано системой полного тестирования Ukido</footer>
+</div>
+<script>document.getElementById('sc-1')?.classList.add('expanded');</script>
+</body>
+</html>

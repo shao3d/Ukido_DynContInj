@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Отчет полного тестирования Ukido - 2025-08-13 00:03:08</title>
+<style>
+body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Ubuntu,sans-serif; background:#f5f6fa; color:#222; padding:20px; }
+.container { max-width: 1200px; margin:0 auto; background:#fff; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.08); overflow:hidden; }
+header { background:linear-gradient(135deg,#00c6ff,#0072ff); color:#fff; padding:24px; }
+h1 { margin:0; font-size:24px; }
+.timestamp { opacity:.9 }
+.summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; padding:16px; background:#fafbff; border-bottom:1px solid #eee; }
+.card { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; text-align:center; }
+.val { font-size:28px; color:#0072ff; font-weight:700; }
+.label { color:#666; }
+.content { padding:20px; }
+.scenario { border:1px solid #eee; border-radius:8px; margin-bottom:16px; }
+.scenario-header { background:#fafbff; padding:12px 16px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+.scenario-title { font-weight:700; }
+.scenario-body { display:none; padding:16px; }
+.scenario.expanded .scenario-body { display:block; }
+.step { background:#f9fafc; border-left:4px solid #0072ff; padding:12px; margin-bottom:12px; border-radius:6px; }
+.badge { padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+.badge.success { background:#d4edda; color:#155724; }
+.badge.offtopic { background:#fff3cd; color:#856404; }
+.badge.need_simplification { background:#e2e3ff; color:#383d7c; }
+.badge.error { background:#f8d7da; color:#721c24; }
+.msg { background:#fff; border:1px solid #eee; border-radius:6px; padding:10px; margin-top:8px; }
+.docs span { background:#eef2ff; padding:3px 8px; border-radius:4px; margin-right:6px; font-size:12px; }
+.chart { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; }
+.bar { display:flex; align-items:center; margin:6px 0; }
+.bar-label { width:160px; font-size:12px; color:#555; }
+.bar-wrap { flex:1; background:#f0f2f7; height:22px; border-radius:6px; overflow:hidden; }
+.bar-fill { background:linear-gradient(90deg,#00c6ff,#0072ff); height:100%; color:#fff; font-size:12px; display:flex; align-items:center; justify-content:flex-end; padding-right:6px; }
+/* Markdown styling */
+.markdown-body h1, .markdown-body h2, .markdown-body h3 { margin: 12px 0 8px; }
+.markdown-body p { margin: 6px 0; }
+.markdown-body ul, .markdown-body ol { padding-left: 1.2em; margin: 6px 0; }
+.markdown-body code, .markdown-body pre { background:#f6f8fa; border-radius:6px; }
+.markdown-body pre { padding:10px; overflow:auto; white-space:pre; }
+</style>
+</head>
+<body>
+<div class=container>
+<header>
+<h1>📊 Полный отчёт Ukido</h1>
+<div class=timestamp>📅 2025-08-13 00:03:08</div>
+</header>
+<div class=summary>
+<div class=card><div class=val>7</div><div class=label>Всего диалогов</div></div>
+<div class=card><div class=val>7</div><div class=label>Успешных</div></div>
+<div class=card><div class=val>35</div><div class=label>Всего шагов</div></div>
+<div class=card><div class=val>100.0%</div><div class=label>Успешность</div></div>
+<div class=card><div class=val>0 / 8 / 5</div><div class=label>Social: привет/спасибо/пока</div></div>
+</div>
+<div class=content>
+<h2 style="margin:8px 0 16px 0">📝 Диалоги</h2>
+
+<div class="scenario" id="sc-1">
+  <div class="scenario-header" onclick="document.getElementById('sc-1').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #1: Дружелюбная мама-блогер</div>
+    <div>5 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Привет-привет! 👋 Слышала про вас от подруги, у вас правда есть курсы ораторского мастерства для детей?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый вечер! Да, у нас есть курс "Юный Оратор". Он для детей 7-10 лет. Курс идет 3 месяца. Всего будет 24 занятия по 90 минут. Занимаемся два раза в неделю. В группе до 8 человек. Учим основам дыхания, голоса и структуре речи. Еще работаем с языком тела и аудиторией. 80% курса – это практика в играх. Дети становятся увереннее и учатся выступать. 94% участников больше не боятся сцены. У них улучшается речь и самооценка. Платить 6,000 грн в месяц. Весь курс стоит 18,000 грн.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Есть ли у вас курсы ораторского мастерства для детей?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>courses_detailed.md</span> <span>faq.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Супер! А сколько стоит и когда занятия? Дочке 9 лет, стесняется выступать в школе</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>У нас есть курс "Юный Оратор" для ребят 7-10 лет. Он стоит 6,000 грн в месяц. Курс длится 3 месяца, это 24 занятия по 90 минут. Занятия проходят два раза в неделю. Можно выбрать время: в будни с 17:00 до 18:30 или с 19:00 до 20:30. Курс помогает даже стеснительным детям. Сначала делаем парные упражнения. Потом постепенно усложняем. Используем техники расслабления и поддержку. 94% детей после курса больше не боятся выступать.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Сколько стоит курс Юный Оратор?</li><li>Какое расписание занятий курса Юный Оратор?</li><li>Подойдет ли обучение для стеснительного ребенка 9 лет?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span> <span>conditions.md</span> <span>faq.md</span> <span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Спасибо за инфо! А если запишу двоих детей - младшего тоже 7 лет - будет скидка?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. У нас есть курс "Юный Оратор" для детей 7-10 лет, который идеально подойдет вашей дочке. Он длится 3 месяца и включает 24 занятия по 90 минут, проходящих два раза в неделю. Стоимость курса составляет 6,000 грн в месяц, или 18,000 грн за весь курс. Если вы запишете двоих детей, то получите скидку 15% на обучение. Это отличная возможность для них развивать навыки ораторского мастерства в дружелюбной атмосфере. Курс помогает детям стать более уверенными, улучшить речь и научиться выступать перед аудиторией. Занятия проходят в группах до 8 человек, что создает комфортные условия для обучения.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Будет ли скидка при записи двоих детей?</li><li>Какой курс подойдет для младшего ребенка 7 лет?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span> <span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Класс, спасибо большое! Еще вопросик - можно ли оплатить картой прямо на сайте?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. Да, вы можете оплатить курс "Юный Оратор" картой Visa или Mastercard прямо на сайте. Это мгновенный способ оплаты. Курс предназначен для детей 7-10 лет и длится 3 месяца, включает 24 занятия по 90 минут, которые проходят два раза в неделю. Стоимость составляет 6,000 грн в месяц или 18,000 грн за весь курс. Если вы запишете двоих детей, то получите скидку 15%. Занятия проходят в группах до 8 человек, что создает комфортную атмосферу для обучения. Курс помогает детям развивать уверенность, улучшать речь и навыки выступления.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Можно ли оплатить картой прямо на сайте?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 5</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Отлично! Благодарю за консультацию! До связи!</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div></div></div>
+<div class="scenario" id="sc-2">
+  <div class="scenario-header" onclick="document.getElementById('sc-2').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #2: Занятой папа-айтишник</div>
+    <div>5 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Добрый вечер. Нужен курс для сына 12 лет - замкнутый, в компьютере сидит. Что посоветуете?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый вечер! Для 12-летнего мальчика советую курс "Эмоциональный Компас". Он развивает эмоциональный интеллект и навыки общения. Это поможет ему понимать себя и других. У нас есть адаптация для застенчивых детей. Сначала наблюдают, потом работают в парах. Затем переходят к групповым играм. Так ребенку комфортнее. После курса конфликтов станет меньше на 76%. Эмпатия увеличится на 82%. Ребенок будет лучше справляться со стрессом. Он станет популярнее и увереннее в себе.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Какой курс посоветуете для 12-летнего замкнутого мальчика, который сидит в компьютере?</li><li>Как школа работает с замкнутыми детьми?</li><li>Какие результаты можно ожидать от курса?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>courses_detailed.md</span> <span>faq.md</span> <span>ukido_philosophy.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Хм, звучит интересно. А онлайн формат есть? Мы в Польше живем</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Школа Ukido предлагает онлайн-формат занятий, что позволяет вашему сыну учиться из любого места. Занятия проходят два раза в неделю по 90 минут, с перерывом для поддержания концентрации. У нас есть курс "Эмоциональный Компас", который подходит для детей 9-12 лет и помогает развивать эмоциональный интеллект и навыки общения. Это может быть полезно для замкнутых детей, так как занятия включают поэтапную адаптацию, начиная с наблюдения и заканчивая групповыми играми. Что касается работы в Польше, в наших материалах нет информации о наличии курсов в этой стране. Однако мы активно поддерживаем диаспору и предлагаем билингвальные курсы, что может быть полезно для украинских детей за границей. Если у вас есть дополнительные вопросы или нужна помощь с записью, дайте знать.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Есть ли онлайн формат занятий?</li><li>Работает ли школа Ukido в Польше?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>conditions.md</span> <span>faq.md</span> <span>partners.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Понял, спасибо. А по времени - вечером проводите? У нас разница во времени час</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Ок, подходит. И последнее - домашки много задают? У него уже программирование и английский</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый вечер! Чем помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 5</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Спасибо за ответы! Обсужу с женой и напишу</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div></div></div>
+<div class="scenario" id="sc-3">
+  <div class="scenario-header" onclick="document.getElementById('sc-3').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #3: Бабушка с внуком</div>
+    <div>5 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Здравствуйте, милые! Внуку 10 лет, хочу записать на ваши занятия. Подскажите, что нужно?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый вечер! Записаться на занятия в Ukido можно через онлайн-форму на сайте или оставив свои контакты в чате. Для записи потребуется указать курс, возраст ребенка, город или часовой пояс, а также удобные дни и время для занятий. Менеджер свяжется с вами в течение 1-2 дней и пришлет ссылку на пробный урок. Для 10-летнего ребенка подойдет курс "Юный Оратор", который рассчитан на детей в возрасте от 7 до 10 лет. Этот курс включает в себя развитие навыков дыхания и голоса, структуры выступления, языка тела и работы с аудиторией. Занятия проходят два раза в неделю по 90 минут в группах до 8 детей.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Как записаться на занятия?</li><li>Какие курсы подходят для 10-летнего ребёнка?</li><li>Что нужно для записи на занятия?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>faq.md</span> <span>courses_detailed.md</span> <span>conditions.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Ой, а что такое soft skills? Я не очень в этих терминах разбираюсь...</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Soft skills — это навыки, связанные с эмоциональным интеллектом, коммуникацией, лидерством и другими межличностными компетенциями. Они помогают человеку эффективно взаимодействовать с окружающими, справляться с трудностями и находить внутреннюю мотивацию. В отличие от hard skills, которые могут устаревать, soft skills остаются актуальными на протяжении всей жизни и позволяют адаптироваться к изменениям в мире. Развитие soft skills важно, потому что они напрямую влияют на успех в учебе и карьере. Например, выпускники Ukido показывают улучшение оценок по устным предметам на 0,8-1,2 балла, а также избавляются от страха публичных выступлений. Эти навыки помогают строить глубокие отношения, разрешать конфликты и повышают уверенность в себе. В результате, дети становятся более успешными и счастливыми, что положительно сказывается на их будущем.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Что такое soft skills?</li><li>Почему soft skills важны?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>ukido_philosophy.md</span> <span>methodology.md</span> <span>roi_and_future_benefits.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Ааа, понятно теперь! Спасибо, деточка! А учителя у вас хорошие? С опытом?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Замечательно! А сколько это стоит? Пенсионерам скидки есть?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Обучение в Ukido стоит в зависимости от курса. Для детей 7-10 лет, на курсе "Юный Оратор", стоимость составляет 6,000 грн в месяц. Также доступны скидки: при оплате поквартально — 5%, а при полной оплате — 10%. Однако в наших материалах нет информации о скидках для пенсионеров.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Сколько стоит обучение?</li><li>Есть ли скидки для пенсионеров?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span> <span>faq.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 5</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: farewell</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Спасибо вам огромное за терпение! Всего доброго!</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div></div></div>
+<div class="scenario" id="sc-4">
+  <div class="scenario-header" onclick="document.getElementById('sc-4').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #4: Требовательный отец-бизнесмен</div>
+    <div>5 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Добрый день. Сразу к делу - ROI от ваших курсов какой? Есть метрики эффективности?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый вечер! Обучение в Ukido демонстрирует высокую окупаемость инвестиций. Каждая гривна, вложенная в программы, приносит 4,3 гривны экономического эффекта. Участники курсов показывают значительное улучшение успеваемости: 78% выпускников повысили оценки по устным предметам на 0,8-1,2 балла. Также отмечается снижение обращений к детским психологам на 67% и уменьшение расходов на репетиторов на 45%. Для оценки эффективности используются комплексные методы, включая входное и выходное тестирование (EQ-i 2.0 Youth), ежемесячные анкеты родителей и наблюдения преподавателей. Эти данные помогают отслеживать изменения в уверенности, социальных навыках и академической успеваемости. Например, 94% выпускников рекомендуют курсы друзьям, а 89% родителей отмечают значительные изменения в первый месяц обучения.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Какой ROI от курсов?</li><li>Какие метрики эффективности используются?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>roi_and_future_benefits.md</span> <span>results_achievements.md</span> <span>pricing.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Цифры впечатляют. А кто ваши партнеры? С какими школами сотрудничаете?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Да, я на связи. Чем помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Неплохо. Благодарю за информацию. Теперь по оплате - работаете по безналу с юрлицами?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Отлично. И финальный вопрос - гарантии результата даете?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>В Ukido мы уверены в эффективности наших программ и предоставляем гарантии результата. Мы используем комплексную систему тестирования, включая входное и выходное тестирование, ежемесячные анкеты родителей и наблюдения преподавателей. Это позволяет нам отслеживать прогресс и вносить необходимые коррективы в обучение. Наши данные показывают, что 89% выпускников регулярно поднимают руку на уроках через 6 месяцев после завершения курса, а 85% продолжают саморазвитие. Мы также фиксируем значительное улучшение уверенности и социальных навыков у детей. Например, 94% участников курса "Юный Оратор" избавились от страха публичных выступлений. Если по каким-то причинам прогресс не соответствует ожиданиям, мы проводим диагностику и корректируем подход. Наша цель — обеспечить каждому ребенку возможность развиваться и достигать успеха.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Даете ли вы гарантии результата?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>results_achievements.md</span> <span>roi_and_future_benefits.md</span> <span>faq.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 5</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: farewell</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Понял вас. Спасибо за время. До свидания</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div></div></div>
+<div class="scenario" id="sc-5">
+  <div class="scenario-header" onclick="document.getElementById('sc-5').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #5: Мама-перфекционистка</div>
+    <div>5 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Приветствую! У меня дочь-отличница, но жутко волнуется перед выступлениями. Что предложите?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Да, я на связи. Чем помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Спасибо! А можно посмотреть программу курса детально? Каждое занятие что проходят?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. Для вашей дочери подойдёт курс "Юный оратор" для детей 7-10 лет. Программа курса включает в себя развитие дыхания и голоса, структуру выступления, язык тела и работу с аудиторией. Занятия проходят в формате 90 минут два раза в неделю, в группах до 8 детей. На каждом занятии акцент делается на практику через игры, что помогает детям чувствовать себя комфортно. Они учатся дикции, темпу и громкости речи, а также осваивают техники расслабления и выбор тем по интересам. Важным аспектом является поддержка группы, что особенно полезно для стеснительных детей. В результате курса 94% участников не боятся выступать, у них улучшается речь и повышается самооценка. Курс длится 3 месяца и стоит 18,000 грн.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Какая программа курса?</li><li>Что проходят на каждом занятии?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Благодарю за подробности! А есть ли индивидуальный подход? Она у меня особенная...</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. В Ukido мы внимательны к каждому ребенку. На входе смотрим на темперамент, восприятие и навыки общения. Так мы строим обучение под конкретного ученика. Для детей с СДВГ или аутизмом у нас есть особые методы. Занятия короткие, с картинками и понятным планом. Можно заниматься один на один с поддержкой. Это помогает детям чувствовать себя спокойно. В Ukido безопасно и комфортно. Каждый развивается в своем темпе и учится общаться.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Есть ли индивидуальный подход к детям?</li><li>Как школа работает с детьми с особенностями?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>faq.md</span> <span>methodology.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Чудесно! Спасибо большое! И еще - сертификат выдаете по окончании?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. В Ukido по окончании обучения каждый ребенок получает сертификат, который содержит детальный перечень освоенных компетенций, таких как публичные презентации и управление проектами. Это помогает подчеркнуть достижения и навыки, которые ребенок развил в процессе обучения. Кроме того, мы уделяем внимание индивидуальному подходу к каждому ученику. Мы понимаем, что каждый ребенок уникален, и адаптируем занятия под его потребности и особенности. Это позволяет создать комфортную атмосферу, где дети могут развиваться в своем темпе. Курс "Юный оратор" поможет вашей дочери преодолеть страх перед выступлениями, улучшить уверенность в себе и навыки общения. Мы используем игровые методы и практические задания, что делает обучение увлекательным и эффективным.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Выдаете ли сертификат по окончании обучения?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>ukido_philosophy.md</span> <span>results_achievements.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 5</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: farewell</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Супер, благодарю вас! Пока-пока!</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div></div></div>
+<div class="scenario" id="sc-6">
+  <div class="scenario-header" onclick="document.getElementById('sc-6').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #6: Скептичный дедушка</div>
+    <div>5 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Алло! Это школа какая-то? Внучка сказала позвонить вам</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Да, я на связи. Чем помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> А зачем это вообще нужно? Мы и без всяких курсов выросли нормальными людьми</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Обучение в Ukido направлено на развитие не только академических знаний, но и важных жизненных навыков, таких как эмоциональный интеллект, коммуникация и лидерство. Мы учим детей не просто решать задачи, а быть уверенными в себе и находить внутреннюю мотивацию. В отличие от традиционных школ, мы не гонимся за оценками и не обещаем мгновенных результатов. Вместо этого мы создаем условия для глубокого саморазвития и поддержки индивидуальности каждого ребенка. Выпускники Ukido получают сертификаты, видеозаписи своих выступлений и рекомендации от преподавателей, что помогает им при поступлении в лицеи и университеты. По нашим данным, 78% детей улучшили оценки по устным предметам, а 92% выпускников "Юного Оратора" избавились от страха публичных выступлений. Кроме того, 89% родителей отмечают значительные изменения в поведении детей уже в первый месяц обучения.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Зачем вообще нужно обучение в вашей школе?</li><li>Чем ваша школа отличается от других?</li><li>Какие результаты получают выпускники?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>ukido_philosophy.md</span> <span>roi_and_future_benefits.md</span> <span>results_achievements.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Ну допустим... Спасибо за разъяснение. А это не секта какая-нибудь?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Ладно, убедили. Сколько стоит-то хоть?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>В Ukido есть разные курсы. "Юный Оратор" для 7-10 лет стоит 6,000 грн в месяц. Весь курс (3 месяца) – 18,000 грн. "Эмоциональный Компас" для 9-12 лет стоит 7,000 грн в месяц. За 4 месяца – 28,000 грн. Для 11-14 лет есть "Капитан Проектов". Месяц стоит 8,000 грн, а 5 месяцев – 40,000 грн. Есть скидки, если платить сразу за несколько месяцев или если у вас несколько детей. Платить можно картой или в рассрочку. Занятия проходят в маленьких группах. Так каждому ребенку уделяется больше внимания.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Сколько стоит обучение в школе Ukido?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>pricing.md</span> <span>courses_detailed.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 5</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: farewell</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Дороговато... Ну спасибо за информацию. Всего хорошего</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div></div></div>
+<div class="scenario" id="sc-7">
+  <div class="scenario-header" onclick="document.getElementById('sc-7').classList.toggle('expanded')">
+    <div class="scenario-title">✅ Диалог #7: Молодая мама с вопросами безопасности</div>
+    <div>5 шагов</div>
+  </div>
+  <div class="scenario-body">
+
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 1</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Хай! У вас есть курсы для 8-леток? И сразу вопрос - как обеспечиваете безопасность онлайн?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Добрый вечер! В нашей школе Ukido есть курс "Юный Оратор", который подходит для детей в возрасте 7-10 лет. Он включает в себя развитие навыков речи, работы с аудиторией и языка тела, что помогает детям стать более уверенными в себе. Что касается безопасности онлайн-занятий, мы принимаем несколько мер для защиты участников. Используем платформу Zoom for Education с уникальными паролями и залом ожидания, чтобы предотвратить несанкционированный доступ. Преподаватели контролируют класс, отключая приватный чат и модерируя общий чат, чтобы исключить неуместные сообщения. Также мы соблюдаем политику конфиденциальности, ограничивая доступ к записям и данным. Все эти меры помогают создать безопасную и поддерживающую среду для обучения.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Есть ли курсы для 8-летних детей?</li><li>Как обеспечивается безопасность онлайн-занятий?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>courses_detailed.md</span> <span>faq.md</span> <span>safety_and_trust.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 2</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Круто, спасибо! А если ребенка будут обижать в чате - что делаете?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 3</strong></div>
+                    
+                </div>
+                <div class="badge success">success</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Ок, успокоили) Спасибо! А пробное занятие бесплатное?</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста. Да, у нас есть возможность пройти бесплатный пробный урок по любому курсу. Он длится 90 минут и включает знакомство с группой, мини-диагностику навыков, практическое упражнение и консультацию для родителей. Если у ребенка возникнут проблемы в чате, мы принимаем меры для обеспечения безопасности. У нас есть правила взаимного уважения, и мы строго запрещаем критику и насмешки. Преподаватели модерируют чаты и могут отключить участников, если это необходимо. Также у нас есть система "стоп-слов", позволяющая детям сообщить о дискомфорте. Мы стремимся создать безопасную и поддерживающую среду для всех участников.</p></div></div>
+<div class=msg><strong>🔍 Декомпозиция:</strong><ol style="margin:6px 0 0 18px;"><li>Пробное занятие бесплатное?</li></ol></div><div class=msg><strong>📚 Документы:</strong> <span class=docs><span>faq.md</span></span></div></div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 4</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: thanks</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Отлично! Большое спасибо за ответы! Запишемся обязательно!</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Пожалуйста! Чем ещё помочь?</p></div></div>
+</div>
+        <div class="step">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <div><strong>Шаг 5</strong></div>
+                    <div class="badge" style="background:#e8f5e9;color:#2e7d32;">social: farewell</div>
+                </div>
+                <div class="badge offtopic">offtopic</div>
+            </div>
+      <div class="msg"><strong>👤 Вопрос:</strong> Пока-пока! Хорошего дня!</div>
+    <div class="msg markdown-body"><strong>🤖 Ответ:</strong><div><p>Хорошего дня! Обращайтесь при необходимости.</p></div></div>
+</div></div></div>
+<h2 style="margin:24px 0 12px 0">📈 Статистика</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
+  <div class=chart>
+    <div style="font-weight:700;margin-bottom:8px;">Распределение intent</div>
+
+    <div class=bar>
+      <div class=bar-label>success</div>
+      <div class=bar-wrap><div class=bar-fill style="width:51.4%">18 (51.4%)</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>offtopic</div>
+      <div class=bar-wrap><div class=bar-fill style="width:48.6%">17 (48.6%)</div></div>
+    </div>
+</div>
+  <div class=chart>
+    <div style="font-weight:700;margin-bottom:8px;">Топ-10 документов</div>
+
+    <div class=bar>
+      <div class=bar-label>faq.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:100.0%">10</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>courses_detailed.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:80.0%">8</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>pricing.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:60.0%">6</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>ukido_philosophy.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:40.0%">4</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>roi_and_future_benefits.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:40.0%">4</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>results_achievements.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:40.0%">4</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>conditions.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:30.0%">3</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>methodology.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:20.0%">2</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>partners.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:10.0%">1</div></div>
+    </div>
+
+    <div class=bar>
+      <div class=bar-label>safety_and_trust.md</div>
+      <div class=bar-wrap><div class=bar-fill style="width:10.0%">1</div></div>
+    </div>
+</div>
+</div>
+</div>
+<footer style="padding:12px;text-align:center;color:#666;border-top:1px solid #eee;">Сгенерировано системой полного тестирования Ukido</footer>
+</div>
+<script>document.getElementById('sc-1')?.classList.add('expanded');</script>
+</body>
+</html>

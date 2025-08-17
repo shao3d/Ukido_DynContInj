@@ -1,0 +1,156 @@
+@startuml ukido_component_detailed
+!theme blueprint
+title Ukido AI Assistant - Детальная компонентная диаграмма v0.7.6
+
+skinparam component {
+    BackgroundColor<<API>> #E6F3FF
+    BackgroundColor<<AI>> #FFE6E6
+    BackgroundColor<<Storage>> #F0E6FF
+    BackgroundColor<<Social>> #FFFACD
+    BackgroundColor<<Utils>> #E0E0E0
+    BackgroundColor<<Test>> #D4EDDA
+    BorderColor Black
+    ArrowColor #333333
+}
+
+skinparam defaultFontSize 11
+skinparam ArrowThickness 2
+
+' ===== ГЛАВНЫЕ КОМПОНЕНТЫ =====
+package "Core Pipeline" {
+    component "main.py\n[FastAPI Server]" as Main <<API>> {
+        port "POST /chat" as ChatEndpoint
+        note right: • Оркестратор системы\n• 180 строк кода\n• Версия 0.7.3
+    }
+    
+    component "router.py\n[Gemini 2.5 Flash]" as Router <<AI>> {
+        port "route()" as RouteMethod
+        note right: • Классификация интентов\n• Выбор документов\n• Fuzzy matching 85%\n• $0.30/1M tokens
+    }
+    
+    component "response_generator.py\n[Claude 3.5 Haiku]" as Generator <<AI>> {
+        port "generate()" as GenerateMethod
+        note right: • Генерация ответов\n• 100-150 слов\n• Стиль "от школы"\n• $1.25/1M tokens
+    }
+}
+
+' ===== СОЦИАЛЬНЫЕ КОМПОНЕНТЫ =====
+package "Social Processing" <<Social>> {
+    component "social_intents.py" as SocialIntents {
+        note bottom: 50+ regex паттернов\nGreeting, Thanks, Farewell
+    }
+    
+    component "social_state.py" as SocialState {
+        note bottom: Отслеживание\nприветствий в сессии
+    }
+    
+    component "social_responder.py" as SocialResponder {
+        note bottom: Генерация\nсоциальных ответов
+    }
+    
+    component "standard_responses.py" as StandardResponses {
+        note bottom: Заготовленные\nфразы для offtopic
+    }
+}
+
+' ===== ХРАНИЛИЩА =====
+package "Data Storage" <<Storage>> {
+    database "History Manager" as History {
+        note bottom: • Последние 10 сообщений\n• Per user_id\n• In-memory storage
+    }
+    
+    database "Knowledge Base" as KB {
+        folder "documents_compressed/" as Docs {
+            file "courses_detailed.md" as Doc1
+            file "pricing.md" as Doc2
+            file "faq.md" as Doc3
+            file "... (13 файлов)" as DocN
+        }
+        file "summaries.json" as Summaries
+        note bottom: • 13 документов\n• Интеллектуальные саммари\n• Trigger words
+    }
+}
+
+' ===== КЛИЕНТЫ API =====
+package "API Clients" <<Utils>> {
+    component "openrouter_client.py" as OpenRouterClient {
+        note bottom: HTTP клиент\nдля OpenRouter API
+    }
+    
+    component "gemini_cached_client.py" as GeminiClient {
+        note bottom: Кешированный клиент\nдля Gemini API
+    }
+}
+
+' ===== КОНФИГУРАЦИЯ =====
+component "config.py" as Config <<Utils>> {
+    note right
+        **Ключевые настройки:**
+        • TEMPERATURE = 0.3
+        • HISTORY_LIMIT = 10
+        • MAX_TOKENS = 500 (router)
+        • MAX_TOKENS_ANSWER = 1200
+        • SEED = 42
+    end note
+}
+
+' ===== ТЕСТИРОВАНИЕ =====
+package "Testing Framework" <<Test>> {
+    component "sandbox_v2.py" as Sandbox {
+        note top: Интерактивная\nпесочница
+    }
+    
+    component "collaborative_test.py" as CollabTest {
+        note top: Диалоговые\nсценарии
+    }
+    
+    folder "tests/integration/" as IntTests {
+        file "9 тестов" as Tests
+    }
+    
+    component "test_stress_with_report.py" as StressTest {
+        note bottom: 10 стресс-сценариев\nHTML отчёты
+    }
+}
+
+' ===== СВЯЗИ МЕЖДУ КОМПОНЕНТАМИ =====
+ChatEndpoint --> RouteMethod: 1. route request
+RouteMethod --> History: get history
+RouteMethod --> SocialIntents: detect intent
+RouteMethod --> SocialState: check greeting state
+RouteMethod --> KB: fetch documents
+RouteMethod ..> GeminiClient: uses
+
+Router --> SocialResponder: generate social
+SocialResponder --> StandardResponses: get templates
+
+Main --> GenerateMethod: 2. generate response
+GenerateMethod --> History: check history
+GenerateMethod ..> OpenRouterClient: uses
+
+Main --> History: save message
+
+' Конфигурация используется всеми
+Config ..> Main: settings
+Config ..> Router: settings
+Config ..> Generator: settings
+
+' Тестирование
+Sandbox --> Main: test requests
+CollabTest --> Main: scenario testing
+StressTest --> Main: stress testing
+
+' ===== ПОТОК ДАННЫХ =====
+note as DataFlow
+    **Поток обработки запроса:**
+    1. User → FastAPI → Router (Gemini)
+    2. Router классифицирует и выбирает документы
+    3. Если success → Generator (Claude) создаёт ответ
+    4. Если social → SocialResponder отвечает быстро
+    5. История сохраняется для контекста
+    
+    **Время обработки: 5-7 секунд**
+    **Стоимость: ~$0.0015 за ответ**
+end note
+
+@enduml

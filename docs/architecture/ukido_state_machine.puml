@@ -1,0 +1,161 @@
+@startuml ukido_state_machine
+!theme blueprint
+title Ukido AI Assistant - Диаграмма состояний обработки запросов v0.7.6
+
+skinparam state {
+    BackgroundColor<<social>> #FFFACD
+    BackgroundColor<<business>> #E6FFE6
+    BackgroundColor<<error>> #FFE6E6
+    BackgroundColor<<mixed>> #E6F3FF
+    BorderColor Black
+    FontSize 12
+}
+
+' ===== НАЧАЛЬНОЕ СОСТОЯНИЕ =====
+[*] --> ReceiveMessage: User отправляет сообщение
+
+state ReceiveMessage {
+    note right
+        **Входные данные:**
+        • user_id
+        • message
+        • timestamp
+    end note
+}
+
+' ===== ЗАГРУЗКА ИСТОРИИ =====
+ReceiveMessage --> LoadHistory: Загрузить историю
+state LoadHistory {
+    note right: Последние 10 сообщений\nдля user_id
+}
+
+' ===== ROUTER PROCESSING =====
+LoadHistory --> RouterAnalysis: Отправить в Gemini Router
+
+state RouterAnalysis {
+    state "Анализ сообщения" as Analysis
+    state "Декомпозиция вопросов" as Decompose
+    state "Определение интента" as Intent
+    state "Fuzzy matching" as Fuzzy
+    
+    Analysis --> Decompose: Разбить на вопросы
+    Decompose --> Intent: Классифицировать
+    Intent --> Fuzzy: Проверить опечатки (85%)
+}
+
+' ===== КЛАССИФИКАЦИЯ =====
+RouterAnalysis --> Classification: Результат классификации
+
+state Classification <<choice>>
+
+' ===== PURE SOCIAL =====
+Classification --> PureSocial: social_score > 0.7\n& no business
+state PureSocial <<social>> {
+    state "Проверка приветствия" as CheckGreeting
+    state "Генерация ответа" as SocialGen
+    
+    CheckGreeting --> SocialGen
+    note right of CheckGreeting: Проверяем\nповторное приветствие
+    note right of SocialGen: SocialResponder\nгенерирует ответ
+}
+
+PureSocial --> SaveAndRespond: router_social response
+
+' ===== OFFTOPIC =====
+Classification --> Offtopic: offtopic\n& no social
+state Offtopic <<error>> {
+    note right: Стандартная фраза:\n"К сожалению, я могу\nответить только на вопросы\nо школе Ukido"
+}
+
+Offtopic --> SaveAndRespond: standard response
+
+' ===== NEED SIMPLIFICATION =====
+Classification --> NeedSimplification: >3 вопросов
+state NeedSimplification <<error>> {
+    note right: "Пожалуйста, задайте\nне более 3 вопросов\nодновременно"
+}
+
+NeedSimplification --> SaveAndRespond: simplification request
+
+' ===== MIXED (Social + Business) =====
+Classification --> Mixed: social + business
+state Mixed <<mixed>> {
+    state "Обработка социальной части" as MixedSocial
+    state "Выбор документов" as MixedDocs
+    
+    MixedSocial --> MixedDocs
+    note right of MixedSocial: Сохраняем\nsocial_context
+    note right of MixedDocs: Выбираем\nдо 4 документов
+}
+
+Mixed --> GenerateResponse
+
+' ===== BUSINESS SUCCESS =====
+Classification --> BusinessSuccess: pure business
+state BusinessSuccess <<business>> {
+    state "Выбор документов" as SelectDocs
+    state "Группировка вопросов" as GroupQuestions
+    
+    SelectDocs --> GroupQuestions
+    note right of SelectDocs: 1-4 документа\nпо relevance
+    note right of GroupQuestions: Объединяем\nсвязанные вопросы
+}
+
+BusinessSuccess --> GenerateResponse
+
+' ===== CLAUDE GENERATION =====
+state GenerateResponse {
+    state "Claude 3.5 Haiku" as Claude
+    state "Проверка истории" as CheckHistory
+    state "Генерация текста" as Generate
+    state "Санитизация" as Sanitize
+    
+    CheckHistory --> Generate: Контекст готов
+    Generate --> Sanitize: Raw ответ
+    
+    note right of CheckHistory: Проверяем повторные\nприветствия в истории
+    note right of Generate: • 100-150 слов\n• Первые 2 предложения - ключ\n• Стиль "от школы"
+    note right of Sanitize: Удаляем лишние\nпробелы и форматирование
+}
+
+GenerateResponse --> SaveAndRespond
+
+' ===== СОХРАНЕНИЕ И ОТВЕТ =====
+state SaveAndRespond {
+    state "Сохранить в историю" as SaveHistory
+    state "Отправить ответ" as SendResponse
+    
+    SaveHistory --> SendResponse
+}
+
+SaveAndRespond --> [*]: Завершено
+
+' ===== МЕТРИКИ =====
+note bottom of RouterAnalysis
+    **Gemini 2.5 Flash**
+    Время: 1-2 сек
+    Стоимость: $0.00003
+end note
+
+note bottom of GenerateResponse
+    **Claude 3.5 Haiku**
+    Время: 4-6 сек
+    Стоимость: $0.0012
+end note
+
+' ===== ЛЕГЕНДА =====
+note as Legend
+    **Цветовая схема:**
+    🟡 Социальные интенты - быстрая обработка
+    🟢 Бизнес вопросы - полная генерация
+    🔴 Ошибки/Offtopic - стандартные ответы
+    🔵 Смешанные - гибридная обработка
+    
+    **Оптимизации v0.7.6:**
+    • Социалка обрабатывается мгновенно (0.00s)
+    • История ограничена 10 сообщениями
+    • Fuzzy matching для опечаток
+    • Группировка связанных вопросов
+end note
+
+@enduml
