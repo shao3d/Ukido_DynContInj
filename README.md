@@ -157,6 +157,8 @@ python collaborative_test.py "Забывчивая бабушка"  # By name
 
 ## 📊 Architecture Diagrams
 
+🎨 **[View Interactive Diagrams](https://shao3d.github.io/Ukido_DynContInj/)** - with zoom, pan, and navigation!
+
 ### Processing States
 ```mermaid
 stateDiagram-v2

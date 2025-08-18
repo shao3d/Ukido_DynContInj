@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ukido AI Assistant - Interactive Architecture Diagrams</title>
+    
+    <!-- Mermaid -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    
+    <!-- svg-pan-zoom -->
+    <script src="https://unpkg.com/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.2em;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .tab {
+            background: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .tab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .diagram-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            min-height: 600px;
+            position: relative;
+        }
+        
+        .diagram {
+            display: none;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .diagram.active {
+            display: block;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .control-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.5);
+        }
+        
+        .control-btn:hover {
+            background: #764ba2;
+            transform: scale(1.1);
+        }
+        
+        .info {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 30px;
+            text-align: center;
+            color: #333;
+        }
+        
+        .info a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        
+        .info a:hover {
+            text-decoration: underline;
+        }
+        
+        .mermaid {
+            text-align: center;
+        }
+        
+        /* Loading animation */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Ukido AI Assistant</h1>
+        <p class="subtitle">Interactive Architecture Diagrams v0.7.8</p>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showDiagram('architecture')">🏗️ Architecture</button>
+            <button class="tab" onclick="showDiagram('sequence')">📋 Sequence Flow</button>
+            <button class="tab" onclick="showDiagram('states')">🔄 Process States</button>
+            <button class="tab" onclick="showDiagram('data')">💾 Data Structure</button>
+            <button class="tab" onclick="showDiagram('distribution')">📊 Query Distribution</button>
+        </div>
+        
+        <div class="diagram-container">
+            <div class="controls">
+                <button class="control-btn" onclick="resetZoom()" title="Reset Zoom">⟲</button>
+                <button class="control-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                <button class="control-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+            </div>
+            
+            <!-- Architecture Diagram -->
+            <div id="architecture" class="diagram active">
+                <div class="loading">Loading diagram</div>
+                <div class="mermaid">
+graph TB
+    subgraph "Frontend"
+        U[👤 Parent User]
+    end
+    
+    subgraph "API Layer"
+        API[FastAPI Server<br/>localhost:8000]
+    end
+    
+    subgraph "AI Processing"
+        R[🤖 Gemini 2.5 Flash<br/>Router & Classifier<br/>$0.30/1M tokens]
+        G[🤖 Claude 3.5 Haiku<br/>Response Generator<br/>$0.25/$1.25/1M tokens]
+    end
+    
+    subgraph "Core Components"
+        SD[Social Detector<br/>50+ patterns]
+        HM[History Manager<br/>10 messages]
+        SS[Social State<br/>Greetings]
+        SR[Social Responder]
+    end
+    
+    subgraph "Knowledge"
+        KB[(Documents<br/>9 MD files)]
+    end
+    
+    U -->|POST /chat| API
+    API -->|Process| R
+    
+    R --> SD
+    R --> HM
+    R --> SS
+    R --> KB
+    
+    R -->|Generate| G
+    G --> HM
+    G --> SR
+    
+    API -->|JSON Response| U
+    
+    style U fill:#e1f5fe
+    style API fill:#fff3e0
+    style R fill:#f3e5f5
+    style G fill:#f3e5f5
+    style KB fill:#e8f5e9
+                </div>
+            </div>
+            
+            <!-- Sequence Diagram -->
+            <div id="sequence" class="diagram">
+                <div class="loading">Loading diagram</div>
+                <div class="mermaid">
+sequenceDiagram
+    participant U as 👤 Parent
+    participant API as FastAPI
+    participant R as Gemini Router
+    participant G as Claude Generator
+    participant DB as Knowledge Base
+
+    U->>+API: POST /chat {"message": "..."}
+    API->>+R: Process message
+    
+    Note over R: Check social intent<br/>Get history context
+    
+    R->>DB: Search relevant docs
+    DB-->>R: Return documents
+    
+    R-->>API: RouterResponse
+    
+    API->>+G: Generate response
+    
+    Note over G: Generate with:<br/>- Social context<br/>- Course info<br/>- 100-150 words
+    
+    G-->>-API: Final response
+    API-->>-U: {"response": "..."}
+    
+    Note over U: Time: 5-7 sec<br/>Cost: ~$0.0015
+                </div>
+            </div>
+            
+            <!-- States Diagram -->
+            <div id="states" class="diagram">
+                <div class="loading">Loading diagram</div>
+                <div class="mermaid">
+stateDiagram-v2
+    [*] --> Initial: User sends message
+    Initial --> SocialCheck: Check patterns
+    SocialCheck --> PureSocial: Social only
+    SocialCheck --> BusinessCheck: Has business intent
+    PureSocial --> QuickResponse: Generate social response
+    QuickResponse --> [*]: Return immediately
+    BusinessCheck --> RouterProcessing: Send to Gemini
+    RouterProcessing --> Success: Valid business query
+    RouterProcessing --> Offtopic: Not about school
+    RouterProcessing --> NeedSimplification: Too complex
+    Success --> GenerateResponse: Send to Claude
+    GenerateResponse --> [*]: Return to user
+                </div>
+            </div>
+            
+            <!-- Data Structure Diagram -->
+            <div id="data" class="diagram">
+                <div class="loading">Loading diagram</div>
+                <div class="mermaid">
+erDiagram
+    USER {
+        string user_id PK
+        string session_id
+        datetime last_seen
+        boolean greeted_in_session
+    }
+    
+    MESSAGE {
+        string message_id PK
+        string user_id FK
+        string content
+        datetime timestamp
+        string type
+    }
+    
+    RESPONSE {
+        string response_id PK
+        string message_id FK
+        string content
+        float cost
+        float latency_ms
+        string ai_model
+    }
+    
+    ROUTER_RESULT {
+        string router_id PK
+        string message_id FK
+        string classification
+        json documents
+        string social_context
+    }
+    
+    USER ||--o{ MESSAGE : sends
+    MESSAGE ||--|| RESPONSE : generates
+    MESSAGE ||--|| ROUTER_RESULT : processes
+    USER ||--|| HISTORY : has
+    RESPONSE }o--|| ROUTER_RESULT : uses
+                </div>
+            </div>
+            
+            <!-- Distribution Diagram -->
+            <div id="distribution" class="diagram">
+                <div class="loading">Loading diagram</div>
+                <div class="mermaid">
+pie title "Query Types Distribution"
+    "Questions about courses" : 35
+    "Pricing and discounts" : 25
+    "Schedule" : 15
+    "Teachers" : 10
+    "Social (hello/thanks)" : 10
+    "Offtopic" : 5
+                </div>
+            </div>
+        </div>
+        
+        <div class="info">
+            <p>💡 <strong>Tip:</strong> Use mouse wheel to zoom, click and drag to pan around the diagram</p>
+            <p>📱 On mobile: Pinch to zoom, drag to pan</p>
+            <p>
+                <a href="https://github.com/shao3d/Ukido_DynContInj" target="_blank">View on GitHub</a> • 
+                <a href="https://github.com/shao3d/Ukido_DynContInj/blob/main/README.md" target="_blank">Documentation</a>
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        let currentDiagram = 'architecture';
+        let panZoomInstances = {};
+        
+        // Initialize Mermaid
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#667eea',
+                primaryTextColor: '#fff',
+                primaryBorderColor: '#7c3aed',
+                lineColor: '#5b21b6',
+                secondaryColor: '#764ba2',
+                tertiaryColor: '#f3e5f5'
+            }
+        });
+        
+        // Run Mermaid and initialize pan-zoom
+        window.addEventListener('load', async () => {
+            await mermaid.run();
+            
+            // Initialize pan-zoom for all diagrams
+            document.querySelectorAll('.diagram').forEach(diagram => {
+                const svg = diagram.querySelector('svg');
+                if (svg) {
+                    // Remove loading indicator
+                    const loading = diagram.querySelector('.loading');
+                    if (loading) loading.style.display = 'none';
+                    
+                    // Initialize pan-zoom
+                    const diagramId = diagram.id;
+                    panZoomInstances[diagramId] = svgPanZoom(svg, {
+                        zoomEnabled: true,
+                        controlIconsEnabled: false, // We use custom controls
+                        fit: true,
+                        center: true,
+                        minZoom: 0.5,
+                        maxZoom: 10,
+                        zoomScaleSensitivity: 0.3,
+                        dblClickZoomEnabled: true,
+                        mouseWheelZoomEnabled: true,
+                        preventMouseEventsDefault: true
+                    });
+                }
+            });
+        });
+        
+        function showDiagram(diagramId) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update diagrams
+            document.querySelectorAll('.diagram').forEach(diagram => {
+                diagram.classList.remove('active');
+            });
+            document.getElementById(diagramId).classList.add('active');
+            
+            // Update current diagram
+            currentDiagram = diagramId;
+            
+            // Reset zoom for new diagram
+            if (panZoomInstances[diagramId]) {
+                setTimeout(() => {
+                    panZoomInstances[diagramId].resize();
+                    panZoomInstances[diagramId].fit();
+                    panZoomInstances[diagramId].center();
+                }, 100);
+            }
+        }
+        
+        function resetZoom() {
+            if (panZoomInstances[currentDiagram]) {
+                panZoomInstances[currentDiagram].resetZoom();
+                panZoomInstances[currentDiagram].center();
+            }
+        }
+        
+        function zoomIn() {
+            if (panZoomInstances[currentDiagram]) {
+                panZoomInstances[currentDiagram].zoomIn();
+            }
+        }
+        
+        function zoomOut() {
+            if (panZoomInstances[currentDiagram]) {
+                panZoomInstances[currentDiagram].zoomOut();
+            }
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (panZoomInstances[currentDiagram]) {
+                panZoomInstances[currentDiagram].resize();
+            }
+        });
+    </script>
+</body>
+</html>
