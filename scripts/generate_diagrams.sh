@@ -11,7 +11,7 @@ mkdir -p docs/diagrams
 # Check if dependencies are installed
 command -v pydeps >/dev/null 2>&1 || { echo "⚠️  pydeps not installed. Run: pip install pydeps"; }
 command -v code2flow >/dev/null 2>&1 || { echo "⚠️  code2flow not installed. Run: pip install code2flow"; }
-command -v pyreverse >/dev/null 2>&1 || { echo "⚠️  pyreverse not installed. Run: pip install pylint"; }
+python -c "import pylint" 2>/dev/null || { echo "⚠️  pylint not installed. Run: pip install pylint"; }
 
 # Generate dependency graph
 if command -v pydeps >/dev/null 2>&1; then
@@ -30,11 +30,11 @@ else
 fi
 
 # Generate UML diagrams
-if command -v pyreverse >/dev/null 2>&1; then
+if python -c "import pylint" 2>/dev/null; then
     echo "📐 Generating UML diagrams..."
-    pyreverse -o png -p Ukido src/*.py -d docs/diagrams/
+    python -m pylint.pyreverse -o png -p Ukido src/*.py -d docs/diagrams/
 else
-    echo "⏭️  Skipping UML diagrams (pyreverse not installed)"
+    echo "⏭️  Skipping UML diagrams (pylint not installed)"
 fi
 
 echo "✅ Diagram generation complete!"

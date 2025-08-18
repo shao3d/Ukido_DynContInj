@@ -48,7 +48,7 @@ jobs:
           # Затем устанавливаем инструменты для генерации диаграмм
           pip install pydeps
           pip install code2flow
-          pip install pyreverse || pip install pylint  # pyreverse часть pylint
+          pip install pylint  # pyreverse входит в состав pylint
       
       - name: 🗂️ Create diagrams directory
         run: mkdir -p docs/diagrams
@@ -77,7 +77,7 @@ jobs:
       - name: 📐 Generate UML with pyreverse
         run: |
           echo "Generating UML class diagram..."
-          pyreverse -o png -p Ukido src/*.py \
+          python -m pylint.pyreverse -o png -p Ukido src/*.py \
             -d docs/diagrams/ 2>&1 || echo "⚠️ pyreverse failed (this is normal for some code styles), continuing..."
       
       - name: 📝 Generate simple architecture overview
