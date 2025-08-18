@@ -5,12 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ukido AI Assistant - Interactive Architecture Diagrams</title>
     
-    <!-- Mermaid latest stable -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
-    
-    <!-- svg-pan-zoom -->
-    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
-    
     <style>
         * {
             margin: 0;
@@ -82,13 +76,21 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             min-height: 600px;
             position: relative;
+            overflow: auto;
+        }
+        
+        .diagram-wrapper {
+            transform-origin: top left;
+            transition: transform 0.3s ease;
+            cursor: grab;
+        }
+        
+        .diagram-wrapper:active {
+            cursor: grabbing;
         }
         
         .diagram {
             display: none;
-            width: 100%;
-            overflow: hidden;
-            text-align: center;
         }
         
         .diagram.active {
@@ -96,12 +98,16 @@
         }
         
         .controls {
-            position: absolute;
+            position: fixed;
             top: 20px;
             right: 20px;
             display: flex;
             gap: 10px;
-            z-index: 100;
+            z-index: 1000;
+            background: rgba(255,255,255,0.95);
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         
         .control-btn {
@@ -120,6 +126,14 @@
         .control-btn:hover {
             background: #764ba2;
             transform: scale(1.1);
+        }
+        
+        .zoom-level {
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-weight: bold;
+            color: #667eea;
         }
         
         .info {
@@ -148,59 +162,45 @@
         <p class="subtitle">Interactive Architecture Diagrams v0.7.8</p>
         
         <div class="tabs">
-            <button class="tab active" onclick="showDiagram(0, this)">🏗️ Architecture</button>
-            <button class="tab" onclick="showDiagram(1, this)">📋 Sequence Flow</button>
-            <button class="tab" onclick="showDiagram(2, this)">🔄 Process Flow</button>
-            <button class="tab" onclick="showDiagram(3, this)">📊 Query Distribution</button>
+            <button class="tab active" onclick="showDiagram('architecture', this)">🏗️ Architecture</button>
+            <button class="tab" onclick="showDiagram('sequence', this)">📋 Sequence Flow</button>
+            <button class="tab" onclick="showDiagram('flow', this)">🔄 Process Flow</button>
+            <button class="tab" onclick="showDiagram('pie', this)">📊 Query Distribution</button>
         </div>
         
-        <div class="diagram-container">
-            <div class="controls">
-                <button class="control-btn" onclick="resetZoom()" title="Reset Zoom">⟲</button>
-                <button class="control-btn" onclick="zoomIn()" title="Zoom In">+</button>
-                <button class="control-btn" onclick="zoomOut()" title="Zoom Out">−</button>
-            </div>
-            
-            <!-- Architecture Diagram -->
-            <div id="diagram-0" class="diagram active">
-                <pre class="mermaid">
+        <div class="controls">
+            <button class="control-btn" onclick="resetZoom()" title="Reset Zoom">⟲</button>
+            <button class="control-btn" onclick="zoomIn()" title="Zoom In">+</button>
+            <span class="zoom-level" id="zoom-level">100%</span>
+            <button class="control-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+        </div>
+        
+        <div class="diagram-container" id="diagram-container">
+            <div class="diagram-wrapper" id="diagram-wrapper">
+                
+                <!-- Architecture Diagram -->
+                <div id="architecture" class="diagram active">
+                    <div class="mermaid">
 graph TB
-    subgraph Frontend
-        U[Parent User]
-    end
-    
-    subgraph API_Layer[API Layer]
-        API[FastAPI Server<br/>localhost:8000]
-    end
-    
-    subgraph AI_Processing[AI Processing]
-        R[Gemini 2.5 Flash<br/>Router & Classifier<br/>$0.30/1M tokens]
-        G[Claude 3.5 Haiku<br/>Response Generator<br/>$0.25/$1.25/1M tokens]
-    end
-    
-    subgraph Core_Components[Core Components]
-        SD[Social Detector<br/>50+ patterns]
-        HM[History Manager<br/>10 messages]
-        SS[Social State<br/>Greetings]
-        SR[Social Responder]
-    end
-    
-    subgraph Knowledge
-        KB[(Documents<br/>9 MD files)]
-    end
+    U[Parent User]
+    API[FastAPI Server<br/>localhost:8000]
+    R[Gemini 2.5 Flash<br/>Router & Classifier<br/>$0.30/1M tokens]
+    G[Claude 3.5 Haiku<br/>Response Generator<br/>$0.25/$1.25/1M tokens]
+    SD[Social Detector<br/>50+ patterns]
+    HM[History Manager<br/>10 messages]
+    SS[Social State]
+    SR[Social Responder]
+    KB[(Documents<br/>9 MD files)]
     
     U -->|POST /chat| API
     API -->|Process| R
-    
     R --> SD
     R --> HM
     R --> SS
     R --> KB
-    
     R -->|Generate| G
     G --> HM
     G --> SR
-    
     API -->|JSON Response| U
     
     style U fill:#e1f5fe
@@ -208,12 +208,12 @@ graph TB
     style R fill:#f3e5f5
     style G fill:#f3e5f5
     style KB fill:#e8f5e9
-                </pre>
-            </div>
-            
-            <!-- Sequence Diagram -->
-            <div id="diagram-1" class="diagram">
-                <pre class="mermaid">
+                    </div>
+                </div>
+                
+                <!-- Sequence Diagram -->
+                <div id="sequence" class="diagram">
+                    <div class="mermaid">
 sequenceDiagram
     participant U as Parent
     participant API as FastAPI
@@ -223,42 +223,30 @@ sequenceDiagram
 
     U->>+API: POST /chat
     API->>+R: Process message
-    
     Note over R: Check social intent<br/>Get history context
-    
     R->>DB: Search relevant docs
     DB-->>R: Return documents
-    
     R-->>API: RouterResponse
-    
     API->>+G: Generate response
-    
     Note over G: Generate with<br/>social context<br/>100-150 words
-    
     G-->>-API: Final response
     API-->>-U: JSON response
-    
     Note over U: Time 5-7 sec<br/>Cost ~$0.0015
-                </pre>
-            </div>
-            
-            <!-- Process Flow Diagram -->
-            <div id="diagram-2" class="diagram">
-                <pre class="mermaid">
+                    </div>
+                </div>
+                
+                <!-- Process Flow Diagram -->
+                <div id="flow" class="diagram">
+                    <div class="mermaid">
 flowchart TD
     Start([User Message]) --> Check{Check Type}
-    
     Check -->|Pure Social| Social[Quick Response]
     Check -->|Has Business| Router[Send to Router]
-    
     Social --> Return([Return Response])
-    
     Router --> Classify{Classification}
-    
     Classify -->|Success| Generate[Generate with Claude]
     Classify -->|Offtopic| Template[Return Template]
     Classify -->|Complex| Simplify[Ask to Simplify]
-    
     Generate --> AddContext[Add Social Context]
     AddContext --> Return
     Template --> Return
@@ -268,12 +256,12 @@ flowchart TD
     style Return fill:#e8f5e9
     style Generate fill:#f3e5f5
     style Router fill:#fff3e0
-                </pre>
-            </div>
-            
-            <!-- Distribution Diagram -->
-            <div id="diagram-3" class="diagram">
-                <pre class="mermaid">
+                    </div>
+                </div>
+                
+                <!-- Distribution Diagram -->
+                <div id="pie" class="diagram">
+                    <div class="mermaid">
 pie title Query Types Distribution
     "Questions about courses" : 35
     "Pricing and discounts" : 25
@@ -281,13 +269,15 @@ pie title Query Types Distribution
     "Teachers" : 10
     "Social greetings" : 10
     "Offtopic" : 5
-                </pre>
+                    </div>
+                </div>
+                
             </div>
         </div>
         
         <div class="info">
-            <p>💡 <strong>Tip:</strong> Use mouse wheel to zoom, click and drag to pan around the diagram</p>
-            <p>📱 On mobile: Pinch to zoom, drag to pan</p>
+            <p>💡 <strong>Tip:</strong> Use controls to zoom, drag diagram to pan</p>
+            <p>📱 On mobile: Pinch to zoom, drag to move</p>
             <p>
                 <a href="https://github.com/shao3d/Ukido_DynContInj" target="_blank">View on GitHub</a> • 
                 <a href="https://github.com/shao3d/Ukido_DynContInj/blob/main/README.md" target="_blank">Documentation</a>
@@ -295,61 +285,49 @@ pie title Query Types Distribution
         </div>
     </div>
     
+    <!-- Mermaid from CDN - простая стабильная версия -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@9.4.3/dist/mermaid.min.js"></script>
+    
     <script>
-        let currentDiagram = 0;
-        let panZoomInstances = {};
-        
-        // Configure Mermaid
+        // Initialize Mermaid
         mermaid.initialize({ 
             startOnLoad: true,
-            theme: 'default',
-            flowchart: {
-                useMaxWidth: true,
-                htmlLabels: true,
-                rankSpacing: 50
-            },
-            themeVariables: {
-                primaryColor: '#667eea',
-                primaryTextColor: '#fff',
-                primaryBorderColor: '#7c3aed',
-                lineColor: '#5b21b6',
-                secondaryColor: '#764ba2',
-                tertiaryColor: '#f3e5f5'
-            }
+            theme: 'default'
         });
         
-        // Initialize after page load
-        window.addEventListener('load', () => {
-            setTimeout(initializePanZoom, 500);
-        });
+        // Zoom functionality with CSS transform
+        let currentZoom = 1;
+        let currentDiagram = 'architecture';
+        const zoomStep = 0.1;
+        const minZoom = 0.5;
+        const maxZoom = 3;
         
-        function initializePanZoom() {
-            // Find all rendered SVGs
-            document.querySelectorAll('.diagram').forEach((diagram, index) => {
-                const svg = diagram.querySelector('svg');
-                if (svg) {
-                    try {
-                        panZoomInstances[index] = svgPanZoom(svg, {
-                            zoomEnabled: true,
-                            controlIconsEnabled: false,
-                            fit: true,
-                            center: true,
-                            minZoom: 0.5,
-                            maxZoom: 10,
-                            zoomScaleSensitivity: 0.3,
-                            dblClickZoomEnabled: true,
-                            mouseWheelZoomEnabled: true,
-                            panEnabled: true
-                        });
-                        console.log(`Initialized pan-zoom for diagram ${index}`);
-                    } catch (e) {
-                        console.error(`Failed to init diagram ${index}:`, e);
-                    }
-                }
-            });
+        function updateZoom() {
+            const wrapper = document.getElementById('diagram-wrapper');
+            wrapper.style.transform = `scale(${currentZoom})`;
+            document.getElementById('zoom-level').textContent = Math.round(currentZoom * 100) + '%';
         }
         
-        function showDiagram(index, button) {
+        function zoomIn() {
+            if (currentZoom < maxZoom) {
+                currentZoom += zoomStep;
+                updateZoom();
+            }
+        }
+        
+        function zoomOut() {
+            if (currentZoom > minZoom) {
+                currentZoom -= zoomStep;
+                updateZoom();
+            }
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            updateZoom();
+        }
+        
+        function showDiagram(diagramId, button) {
             // Update tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
@@ -360,43 +338,72 @@ pie title Query Types Distribution
             document.querySelectorAll('.diagram').forEach(diagram => {
                 diagram.classList.remove('active');
             });
-            document.getElementById(`diagram-${index}`).classList.add('active');
+            document.getElementById(diagramId).classList.add('active');
             
-            currentDiagram = index;
-            
-            // Refresh pan-zoom for the shown diagram
-            if (panZoomInstances[index]) {
-                setTimeout(() => {
-                    panZoomInstances[index].resize();
-                    panZoomInstances[index].fit();
-                    panZoomInstances[index].center();
-                }, 100);
-            }
+            currentDiagram = diagramId;
+            resetZoom(); // Reset zoom when switching diagrams
         }
         
-        function resetZoom() {
-            if (panZoomInstances[currentDiagram]) {
-                panZoomInstances[currentDiagram].resetZoom();
-                panZoomInstances[currentDiagram].center();
-            }
-        }
+        // Drag to pan functionality
+        let isDragging = false;
+        let startX, startY, scrollLeft, scrollTop;
+        const container = document.getElementById('diagram-container');
         
-        function zoomIn() {
-            if (panZoomInstances[currentDiagram]) {
-                panZoomInstances[currentDiagram].zoomIn();
-            }
-        }
+        container.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            container.style.cursor = 'grabbing';
+            startX = e.pageX - container.offsetLeft;
+            startY = e.pageY - container.offsetTop;
+            scrollLeft = container.scrollLeft;
+            scrollTop = container.scrollTop;
+        });
         
-        function zoomOut() {
-            if (panZoomInstances[currentDiagram]) {
-                panZoomInstances[currentDiagram].zoomOut();
-            }
-        }
+        container.addEventListener('mouseleave', () => {
+            isDragging = false;
+            container.style.cursor = 'grab';
+        });
         
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            if (panZoomInstances[currentDiagram]) {
-                panZoomInstances[currentDiagram].resize();
+        container.addEventListener('mouseup', () => {
+            isDragging = false;
+            container.style.cursor = 'grab';
+        });
+        
+        container.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const x = e.pageX - container.offsetLeft;
+            const y = e.pageY - container.offsetTop;
+            const walkX = (x - startX) * 2;
+            const walkY = (y - startY) * 2;
+            container.scrollLeft = scrollLeft - walkX;
+            container.scrollTop = scrollTop - walkY;
+        });
+        
+        // Mouse wheel zoom
+        container.addEventListener('wheel', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    zoomIn();
+                } else {
+                    zoomOut();
+                }
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === '+' || e.key === '=') {
+                    e.preventDefault();
+                    zoomIn();
+                } else if (e.key === '-') {
+                    e.preventDefault();
+                    zoomOut();
+                } else if (e.key === '0') {
+                    e.preventDefault();
+                    resetZoom();
+                }
             }
         });
     </script>
