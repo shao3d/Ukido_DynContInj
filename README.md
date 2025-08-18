@@ -157,7 +157,11 @@ python collaborative_test.py "Забывчивая бабушка"  # By name
 
 ## 📊 Architecture Diagrams
 
-🎨 **[View Interactive Diagrams](https://shao3d.github.io/Ukido_DynContInj/)** - with zoom, pan, and navigation!
+### 🎨 Интерактивные визуализации:
+- **[Простые диаграммы](https://shao3d.github.io/Ukido_DynContInj/simple-diagrams.html)** - чистый Mermaid.js без зависимостей
+- **[Конвертер в Excalidraw](https://shao3d.github.io/Ukido_DynContInj/mermaid-to-excalidraw.html)** - превратите диаграммы в рисунки
+- **[Интерактивные диаграммы](https://shao3d.github.io/Ukido_DynContInj/)** - с zoom и навигацией (экспериментальная)
+- **[GitDiagram](https://gitdiagram.com/shao3d/Ukido_DynContInj)** - автоматическая визуализация структуры репозитория
 
 ### Processing States
 ```mermaid
