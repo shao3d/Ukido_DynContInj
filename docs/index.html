@@ -143,24 +143,6 @@
         .mermaid {
             text-align: center;
         }
-        
-        /* Loading animation */
-        .loading {
-            text-align: center;
-            padding: 50px;
-            color: #999;
-        }
-        
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(4, end) infinite;
-        }
-        
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
-        }
     </style>
 </head>
 <body>
@@ -185,7 +167,6 @@
             
             <!-- Architecture Diagram -->
             <div id="architecture" class="diagram active">
-                <div class="loading">Loading diagram</div>
                 <div class="mermaid">
 graph TB
     subgraph "Frontend"
@@ -236,7 +217,6 @@ graph TB
             
             <!-- Sequence Diagram -->
             <div id="sequence" class="diagram">
-                <div class="loading">Loading diagram</div>
                 <div class="mermaid">
 sequenceDiagram
     participant U as 👤 Parent
@@ -268,7 +248,6 @@ sequenceDiagram
             
             <!-- States Diagram -->
             <div id="states" class="diagram">
-                <div class="loading">Loading diagram</div>
                 <div class="mermaid">
 stateDiagram-v2
     [*] --> Initial: User sends message
@@ -288,7 +267,6 @@ stateDiagram-v2
             
             <!-- Data Structure Diagram -->
             <div id="data" class="diagram">
-                <div class="loading">Loading diagram</div>
                 <div class="mermaid">
 erDiagram
     USER {
@@ -333,7 +311,6 @@ erDiagram
             
             <!-- Distribution Diagram -->
             <div id="distribution" class="diagram">
-                <div class="loading">Loading diagram</div>
                 <div class="mermaid">
 pie title "Query Types Distribution"
     "Questions about courses" : 35
@@ -360,10 +337,14 @@ pie title "Query Types Distribution"
         let currentDiagram = 'architecture';
         let panZoomInstances = {};
         
-        // Initialize Mermaid
+        // Initialize Mermaid with proper config
         mermaid.initialize({ 
-            startOnLoad: false,
+            startOnLoad: true,
             theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            },
             themeVariables: {
                 primaryColor: '#667eea',
                 primaryTextColor: '#fff',
@@ -374,35 +355,48 @@ pie title "Query Types Distribution"
             }
         });
         
-        // Run Mermaid and initialize pan-zoom
-        window.addEventListener('load', async () => {
-            await mermaid.run();
-            
+        // Wait for DOM and Mermaid to fully load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Give Mermaid time to render, then initialize pan-zoom
+            setTimeout(() => {
+                initializePanZoom();
+            }, 1000);  // Increased timeout for better rendering
+        });
+        
+        function initializePanZoom() {
             // Initialize pan-zoom for all diagrams
             document.querySelectorAll('.diagram').forEach(diagram => {
                 const svg = diagram.querySelector('svg');
-                if (svg) {
-                    // Remove loading indicator
-                    const loading = diagram.querySelector('.loading');
-                    if (loading) loading.style.display = 'none';
-                    
-                    // Initialize pan-zoom
+                if (svg && svg.clientHeight > 0) {  // Check if SVG is actually rendered
                     const diagramId = diagram.id;
-                    panZoomInstances[diagramId] = svgPanZoom(svg, {
-                        zoomEnabled: true,
-                        controlIconsEnabled: false, // We use custom controls
-                        fit: true,
-                        center: true,
-                        minZoom: 0.5,
-                        maxZoom: 10,
-                        zoomScaleSensitivity: 0.3,
-                        dblClickZoomEnabled: true,
-                        mouseWheelZoomEnabled: true,
-                        preventMouseEventsDefault: true
-                    });
+                    
+                    // Destroy existing instance if any
+                    if (panZoomInstances[diagramId]) {
+                        panZoomInstances[diagramId].destroy();
+                    }
+                    
+                    // Create new pan-zoom instance
+                    try {
+                        panZoomInstances[diagramId] = svgPanZoom(svg, {
+                            zoomEnabled: true,
+                            controlIconsEnabled: false,
+                            fit: true,
+                            center: true,
+                            minZoom: 0.5,
+                            maxZoom: 10,
+                            zoomScaleSensitivity: 0.3,
+                            dblClickZoomEnabled: true,
+                            mouseWheelZoomEnabled: true,
+                            panEnabled: true
+                        });
+                        
+                        console.log(`Pan-zoom initialized for ${diagramId}`);
+                    } catch (e) {
+                        console.error(`Failed to initialize pan-zoom for ${diagramId}:`, e);
+                    }
                 }
             });
-        });
+        }
         
         function showDiagram(diagramId) {
             // Update tabs
@@ -420,14 +414,36 @@ pie title "Query Types Distribution"
             // Update current diagram
             currentDiagram = diagramId;
             
-            // Reset zoom for new diagram
-            if (panZoomInstances[diagramId]) {
-                setTimeout(() => {
+            // Reinitialize pan-zoom for the shown diagram
+            setTimeout(() => {
+                const diagram = document.getElementById(diagramId);
+                const svg = diagram.querySelector('svg');
+                
+                if (svg && !panZoomInstances[diagramId]) {
+                    // If pan-zoom not initialized yet, initialize it
+                    try {
+                        panZoomInstances[diagramId] = svgPanZoom(svg, {
+                            zoomEnabled: true,
+                            controlIconsEnabled: false,
+                            fit: true,
+                            center: true,
+                            minZoom: 0.5,
+                            maxZoom: 10,
+                            zoomScaleSensitivity: 0.3,
+                            dblClickZoomEnabled: true,
+                            mouseWheelZoomEnabled: true,
+                            panEnabled: true
+                        });
+                    } catch (e) {
+                        console.error(`Failed to initialize pan-zoom for ${diagramId}:`, e);
+                    }
+                } else if (panZoomInstances[diagramId]) {
+                    // If already initialized, just reset view
                     panZoomInstances[diagramId].resize();
                     panZoomInstances[diagramId].fit();
                     panZoomInstances[diagramId].center();
-                }, 100);
-            }
+                }
+            }, 200);
         }
         
         function resetZoom() {
