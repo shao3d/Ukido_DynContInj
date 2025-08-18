@@ -3,7 +3,6 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-green.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Architecture Diagrams](https://github.com/shao3d/Ukido_DynContInj/actions/workflows/update-diagrams.yml/badge.svg)](https://github.com/shao3d/Ukido_DynContInj/actions/workflows/update-diagrams.yml)
 
 AI-powered chatbot for Ukido soft skills school. Built with FastAPI, Gemini Router, and Claude Generator for dynamic context-aware responses to parent inquiries.
 
@@ -19,18 +18,81 @@ AI-powered chatbot for Ukido soft skills school. Built with FastAPI, Gemini Rout
 
 ## 🏗️ Architecture
 
+### System Architecture
+```mermaid
+graph TB
+    subgraph "Frontend"
+        U[👤 Parent User]
+    end
+    
+    subgraph "API Layer"
+        API[FastAPI Server<br/>localhost:8000]
+    end
+    
+    subgraph "AI Processing"
+        R[🤖 Gemini 2.5 Flash<br/>Router & Classifier<br/>$0.30/1M tokens]
+        G[🤖 Claude 3.5 Haiku<br/>Response Generator<br/>$0.25/$1.25/1M tokens]
+    end
+    
+    subgraph "Core Components"
+        SD[Social Detector<br/>50+ patterns]
+        HM[History Manager<br/>10 messages]
+        SS[Social State<br/>Greetings]
+        SR[Social Responder]
+    end
+    
+    subgraph "Knowledge"
+        KB[(Documents<br/>9 MD files)]
+    end
+    
+    U -->|POST /chat| API
+    API -->|Process| R
+    
+    R --> SD
+    R --> HM
+    R --> SS
+    R --> KB
+    
+    R -->|Generate| G
+    G --> HM
+    G --> SR
+    
+    API -->|JSON Response| U
+    
+    style U fill:#e1f5fe
+    style API fill:#fff3e0
+    style R fill:#f3e5f5
+    style G fill:#f3e5f5
+    style KB fill:#e8f5e9
 ```
-[User Message] → FastAPI (/chat endpoint)
-       ↓
-[Gemini 2.5 Flash Router] ($0.30/1M tokens)
-   • Intent classification
-   • Document selection (max 4)
-   • Social context detection
-       ↓
-[Claude 3.5 Haiku Generator] ($0.25/$1.25 per 1M)
-   • Final response generation (100-150 words)
-   • School voice ("we")
-   • Key info in first 2 sentences
+
+### Request Flow
+```mermaid
+sequenceDiagram
+    participant U as 👤 Parent
+    participant API as FastAPI
+    participant R as Gemini Router
+    participant G as Claude Generator
+    participant DB as Knowledge Base
+
+    U->>+API: POST /chat {"message": "..."}
+    API->>+R: Process message
+    
+    Note over R: Check social intent<br/>Get history context
+    
+    R->>DB: Search relevant docs
+    DB-->>R: Return documents
+    
+    R-->>API: RouterResponse
+    
+    API->>+G: Generate response
+    
+    Note over G: Generate with:<br/>- Social context<br/>- Course info<br/>- 100-150 words
+    
+    G-->>-API: Final response
+    API-->>-U: {"response": "..."}
+    
+    Note over U: Time: 5-7 sec<br/>Cost: ~$0.0015
 ```
 
 ## 🚀 Quick Start
@@ -93,17 +155,10 @@ python collaborative_test.py 1  # By scenario number
 python collaborative_test.py "Забывчивая бабушка"  # By name
 ```
 
-## 📊 Generate Architecture Diagrams
+## 📊 Architecture Diagrams
 
-Diagrams are automatically generated on push via GitHub Actions. To generate locally:
-
-```bash
-# Install visualization tools
-pip install pydeps code2flow pylint
-
-# Generate diagrams
-./scripts/generate_diagrams.sh
-```
+The architecture diagrams above are created using Mermaid and are automatically rendered by GitHub in the README.
+For high-resolution versions, check the `docs/diagrams/` folder.
 
 ## 📁 Project Structure
 
