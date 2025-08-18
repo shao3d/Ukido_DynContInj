@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 from config import Config
 from openrouter_client import OpenRouterClient
 from standard_responses import DEFAULT_FALLBACK
+from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
 import re
 
 class ResponseGenerator:
@@ -40,9 +41,12 @@ class ResponseGenerator:
         if not docs or not questions:
             return DEFAULT_FALLBACK
 
+        # Получаем user_signal для персонализации
+        user_signal = router_result.get("user_signal", "exploring_only")
+        
         doc_texts = self._load_docs(docs)
         
-        # Одноэтапная генерация с Claude Haiku
+        # Одноэтапная генерация с Claude Haiku + dynamic few-shot
         messages = self._build_messages(doc_texts, questions, history or [], router_result)
 
         try:
@@ -60,6 +64,12 @@ class ResponseGenerator:
             
             # Финальная санитизация (убираем восклицания и дедупликация)
             final_text = self._final_sanitize(no_cta)
+            
+            # Добавляем персонализированное предложение в конец (если есть)
+            offer = get_offer(user_signal)
+            if offer and offer["priority"] in ["high", "medium"]:
+                final_text = self._inject_offer(final_text, offer)
+            
             return final_text
         except Exception as e:
             print(f"❌ Ошибка генерации ответа: {e}")
@@ -94,7 +104,12 @@ class ResponseGenerator:
         history: List[Dict[str, str]],
         router_result: Dict,
     ) -> List[Dict[str, str]]:
-        # Объединённый промпт для Claude Haiku - факты + стиль
+        # Получаем user_signal для адаптации тона
+        user_signal = router_result.get("user_signal", "exploring_only")
+        tone_adaptation = get_tone_adaptation(user_signal)
+        dynamic_example = get_dynamic_example(user_signal)
+        
+        # Объединённый промпт для Claude Haiku - факты + стиль + адаптация
         system_role = (
             "Ты — консультант детской школы soft skills Ukido. "
             "Отвечай живым разговорным языком от лица школы (используй 'мы', не 'я'). "
@@ -103,6 +118,10 @@ class ResponseGenerator:
             "Если данных нет в документах — скажи: 'В наших материалах этого нет.' "
             "Все факты, цифры, цены — ТОЛЬКО из документов."
         )
+        
+        # Добавляем адаптацию тона если есть
+        if tone_adaptation.get("style"):
+            system_role += f"\n\nАДАПТАЦИЯ ТОНА:\n{tone_adaptation['style']}"
 
         # Разрешённые документы
         allowed_docs = list(doc_texts.keys())
@@ -117,6 +136,13 @@ class ResponseGenerator:
             f"{system_role}\n\n"
             f"Разрешённые источники: {', '.join(allowed_docs) if allowed_docs else '—'}\n\n"
             f"=== База знаний ===\n{docs_block}\n\n"
+        )
+        
+        # Добавляем динамический пример если есть
+        if dynamic_example:
+            system_content += f"=== ПРИМЕР АДАПТАЦИИ СТИЛЯ ===\n{dynamic_example}\n\n"
+        
+        system_content += (
             "Стиль ответа:\n"
             "• Естественный разговорный язык от лица школы (используй 'мы', 'у нас', 'наши')\n"
             "• Короткие предложения, простые слова вместо канцелярских\n"
@@ -306,3 +332,27 @@ class ResponseGenerator:
     def _sanitize_style(self, text: str) -> str:
         """Старый метод оставляем для обратной совместимости."""
         return self._final_sanitize(text)
+    
+    def _inject_offer(self, response: str, offer: dict) -> str:
+        """Органично добавляет персонализированное предложение в конец ответа
+        
+        Args:
+            response: Основной ответ
+            offer: Словарь с предложением из offers_catalog
+            
+        Returns:
+            Ответ с добавленным предложением
+        """
+        # Убираем последнюю точку если есть
+        response_trimmed = response.rstrip()
+        if response_trimmed.endswith('.'):
+            response_trimmed = response_trimmed[:-1]
+        
+        # Определяем переход в зависимости от placement
+        if offer.get("placement") == "end_with_urgency":
+            transition = "!\n\n"  # Восклицательный знак для urgency
+        else:
+            transition = ".\n\n"  # Обычная точка
+        
+        # Добавляем предложение
+        return f"{response_trimmed}{transition}{offer['text']}"

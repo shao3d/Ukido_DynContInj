@@ -640,17 +640,40 @@ class Router:
 - Максимум 4 документа на весь ответ
 - Первые по приоритету - документы для первых вопросов
 
+ШАГ 4: ОПРЕДЕЛЕНИЕ СИГНАЛА ПОЛЬЗОВАТЕЛЯ
+Проанализируй декомпозированные вопросы и определи ОДИН основной сигнал состояния пользователя:
+
+СИГНАЛЫ:
+- "price_sensitive" - вопросы о ценах, стоимости, скидках, способах оплаты, рассрочке
+- "anxiety_about_child" - упоминание проблем ребенка (стеснительность, неуверенность, страхи, сложности в общении)
+- "ready_to_buy" - вопросы как записаться, когда начало, есть ли места, хочу записать ребенка
+- "exploring_only" - общие вопросы о школе, методологии, курсах без конкретной готовности к покупке
+
+ПРАВИЛА ОПРЕДЕЛЕНИЯ:
+1. Анализируй ВСЕ декомпозированные вопросы в совокупности
+2. Выбирай наиболее приоритетный сигнал по порядку: ready_to_buy > anxiety_about_child > price_sensitive > exploring_only
+3. Если не можешь однозначно определить - используй "exploring_only"
+
+ПРИМЕРЫ:
+- "Сколько стоит курс Юный Оратор?" → "price_sensitive"
+- "У меня сын очень стеснительный, поможет ли ваш курс?" → "anxiety_about_child"  
+- "Как записаться на пробное занятие?" → "ready_to_buy"
+- "Расскажите о вашей школе" → "exploring_only"
+- "Сколько стоит и как записаться?" → "ready_to_buy" (приоритетнее чем price_sensitive)
+- "Ребенок боится выступать, какая цена?" → "anxiety_about_child" (приоритетнее чем price_sensitive)
+
 """
     
     def _get_response_format_section(self) -> str:
         """Минимальный формат JSON-ответа"""
         return (
             "=== ФОРМАТ JSON ОТВЕТА (МИНИМАЛЬНЫЙ) ===\n\n"
-            "1) success:\n{\n  \"status\": \"success\",\n  \"documents\": [\"doc1.md\", ...],\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"social_context\": \"greeting\"  // опционально, если был социальный контекст\n}\n\n"
-            "2) offtopic:\n{\n  \"status\": \"offtopic\",\n  \"decomposed_questions\": [],\n  \"social_context\": \"farewell\"  // опционально\n}\n"
+            "1) success:\n{\n  \"status\": \"success\",\n  \"documents\": [\"doc1.md\", ...],\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"user_signal\": \"price_sensitive\",  // ОБЯЗАТЕЛЬНО: один из 4 сигналов\n  \"social_context\": \"greeting\"  // опционально, если был социальный контекст\n}\n\n"
+            "2) offtopic:\n{\n  \"status\": \"offtopic\",\n  \"decomposed_questions\": [],\n  \"user_signal\": \"exploring_only\",  // для offtopic всегда exploring_only\n  \"social_context\": \"farewell\"  // опционально\n}\n"
             "ВАЖНО: для offtopic НЕ генерируй message - используется заготовленная фраза\n\n"
-            "3) need_simplification:\n{\n  \"status\": \"need_simplification\",\n  \"message\": \"Пожалуйста, задавайте не более трёх вопросов за раз. Например, начните с самого важного для вас.\",\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"social_context\": \"apology\"  // опционально\n}\n\n"
+            "3) need_simplification:\n{\n  \"status\": \"need_simplification\",\n  \"message\": \"Пожалуйста, задавайте не более трёх вопросов за раз. Например, начните с самого важного для вас.\",\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"user_signal\": \"exploring_only\",  // определи сигнал даже для need_simplification\n  \"social_context\": \"apology\"  // опционально\n}\n\n"
             "Только валидный JSON, без markdown и комментариев. Поле decomposed_questions всегда присутствует.\n"
+            "Поле user_signal ОБЯЗАТЕЛЬНО (price_sensitive|anxiety_about_child|ready_to_buy|exploring_only).\n"
             "Поле social_context добавляй ТОЛЬКО если был социальный контекст (greeting/thanks/apology/farewell).\n"
         )
     
@@ -659,5 +682,6 @@ class Router:
         return {
             "status": "offtopic",
             "message": DEFAULT_FALLBACK,
-            "decomposed_questions": []
+            "decomposed_questions": [],
+            "user_signal": "exploring_only"
         }

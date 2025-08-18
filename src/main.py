@@ -22,9 +22,11 @@ from social_responder import SocialResponder
 from social_state import SocialStateManager
 from config import Config
 from standard_responses import DEFAULT_FALLBACK, get_error_response
+from datetime import datetime
+from typing import Dict
 
 # === ИНИЦИАЛИЗАЦИЯ ===
-app = FastAPI(title="Ukido Chatbot API", version="0.7.3")
+app = FastAPI(title="Ukido Chatbot API", version="0.8.0-state-machine")
 
 # CORS настройки
 app.add_middleware(
@@ -34,6 +36,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# === ПРОСТЫЕ МЕТРИКИ ===
+signal_stats = {
+    "price_sensitive": 0,
+    "anxiety_about_child": 0, 
+    "ready_to_buy": 0,
+    "exploring_only": 0
+}
+request_count = 0
+total_latency = 0.0
+start_time = datetime.now()
 
 # === МОДЕЛИ ДАННЫХ ===
 class ChatRequest(BaseModel):
@@ -49,6 +62,7 @@ class ChatResponse(BaseModel):
     decomposed_questions: List[str] = []
     fuzzy_matched: Optional[bool] = None
     social: Optional[str] = None
+    user_signal: Optional[str] = None  # Добавляем user_signal в ответ
 
 
 # === ГЛОБАЛЬНЫЕ КОМПОНЕНТЫ ===
@@ -63,7 +77,12 @@ config = Config()
 # === ЭНДПОИНТЫ ===
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Основной эндпоинт для общения с чатботом - ULTRA минималистичная версия"""
+    """Основной эндпоинт для общения с чатботом - версия с State Machine"""
+    global signal_stats, request_count, total_latency
+    
+    # Засекаем время для метрик
+    import time
+    start = time.time()
     
     # Получаем историю если есть
     history_messages = []
@@ -96,18 +115,24 @@ async def chat(request: ChatRequest):
     decomposed_questions = route_result.get("decomposed_questions", [])
     social_context = route_result.get("social_context")  # Новое поле от Gemini
     fuzzy_matched = route_result.get("fuzzy_matched", False)
+    user_signal = route_result.get("user_signal", "exploring_only")  # Получаем user_signal
+    
+    # Собираем метрики
+    if user_signal in signal_stats:
+        signal_stats[user_signal] += 1
     
     # Генерация ответа в зависимости от статуса
     if status == "success":
         documents_used = documents if isinstance(documents, list) else []
         try:
-            # Передаем социальный контекст в генератор
+            # Передаем социальный контекст и user_signal в генератор
             response_text = await response_generator.generate(
                 {
                     "status": status,
                     "documents": documents_used,
                     "decomposed_questions": decomposed_questions,
                     "social_context": social_context,  # Передаем контекст
+                    "user_signal": user_signal,  # Передаем user_signal для персонализации
                 },
                 history_messages,
             )
@@ -160,6 +185,14 @@ async def chat(request: ChatRequest):
         history.add_message(request.user_id, "user", request.message)
         history.add_message(request.user_id, "assistant", response_text)
     
+    # Собираем финальные метрики
+    latency = time.time() - start
+    request_count += 1
+    total_latency += latency
+    
+    if config.LOG_LEVEL == "DEBUG":
+        print(f"⏱️ Latency: {latency:.2f}s | Signal: {user_signal}")
+    
     # === ВОЗВРАТ РЕЗУЛЬТАТА ===
     return ChatResponse(
         response=response_text,
@@ -169,13 +202,38 @@ async def chat(request: ChatRequest):
         decomposed_questions=decomposed_questions,
         fuzzy_matched=fuzzy_matched,
         social=social_context,  # Социальный контекст от Gemini
+        user_signal=user_signal,  # Возвращаем user_signal в ответе
     )
+
+
+@app.get("/metrics")
+async def get_metrics():
+    """Endpoint для просмотра метрик State Machine"""
+    global signal_stats, request_count, total_latency, start_time
+    
+    uptime = (datetime.now() - start_time).total_seconds()
+    avg_latency = total_latency / request_count if request_count > 0 else 0
+    
+    # Вычисляем проценты для каждого сигнала
+    percentages = {}
+    if request_count > 0:
+        for signal, count in signal_stats.items():
+            percentages[signal] = f"{(count / request_count * 100):.1f}%"
+    
+    return {
+        "uptime_seconds": round(uptime, 2),
+        "total_requests": request_count,
+        "avg_latency": round(avg_latency, 3),
+        "signal_distribution": signal_stats,
+        "signal_percentages": percentages,
+        "most_common_signal": max(signal_stats, key=signal_stats.get) if request_count > 0 else None
+    }
 
 
 @app.get("/health")
 async def health_check():
     """Проверка состояния сервера"""
-    return {"status": "healthy", "version": "0.7.3"}
+    return {"status": "healthy", "version": "0.8.0-state-machine"}
 
 
 @app.get("/")
