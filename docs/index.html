@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ukido AI Assistant - Interactive Architecture Diagrams</title>
     
-    <!-- Mermaid -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <!-- Mermaid latest stable -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
     
     <!-- svg-pan-zoom -->
-    <script src="https://unpkg.com/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
     
     <style>
         * {
@@ -88,6 +88,7 @@
             display: none;
             width: 100%;
             overflow: hidden;
+            text-align: center;
         }
         
         .diagram.active {
@@ -139,10 +140,6 @@
         .info a:hover {
             text-decoration: underline;
         }
-        
-        .mermaid {
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -151,11 +148,10 @@
         <p class="subtitle">Interactive Architecture Diagrams v0.7.8</p>
         
         <div class="tabs">
-            <button class="tab active" onclick="showDiagram('architecture')">🏗️ Architecture</button>
-            <button class="tab" onclick="showDiagram('sequence')">📋 Sequence Flow</button>
-            <button class="tab" onclick="showDiagram('states')">🔄 Process States</button>
-            <button class="tab" onclick="showDiagram('data')">💾 Data Structure</button>
-            <button class="tab" onclick="showDiagram('distribution')">📊 Query Distribution</button>
+            <button class="tab active" onclick="showDiagram(0, this)">🏗️ Architecture</button>
+            <button class="tab" onclick="showDiagram(1, this)">📋 Sequence Flow</button>
+            <button class="tab" onclick="showDiagram(2, this)">🔄 Process Flow</button>
+            <button class="tab" onclick="showDiagram(3, this)">📊 Query Distribution</button>
         </div>
         
         <div class="diagram-container">
@@ -166,30 +162,30 @@
             </div>
             
             <!-- Architecture Diagram -->
-            <div id="architecture" class="diagram active">
-                <div class="mermaid">
+            <div id="diagram-0" class="diagram active">
+                <pre class="mermaid">
 graph TB
-    subgraph "Frontend"
-        U[👤 Parent User]
+    subgraph Frontend
+        U[Parent User]
     end
     
-    subgraph "API Layer"
+    subgraph API_Layer[API Layer]
         API[FastAPI Server<br/>localhost:8000]
     end
     
-    subgraph "AI Processing"
-        R[🤖 Gemini 2.5 Flash<br/>Router & Classifier<br/>$0.30/1M tokens]
-        G[🤖 Claude 3.5 Haiku<br/>Response Generator<br/>$0.25/$1.25/1M tokens]
+    subgraph AI_Processing[AI Processing]
+        R[Gemini 2.5 Flash<br/>Router & Classifier<br/>$0.30/1M tokens]
+        G[Claude 3.5 Haiku<br/>Response Generator<br/>$0.25/$1.25/1M tokens]
     end
     
-    subgraph "Core Components"
+    subgraph Core_Components[Core Components]
         SD[Social Detector<br/>50+ patterns]
         HM[History Manager<br/>10 messages]
         SS[Social State<br/>Greetings]
         SR[Social Responder]
     end
     
-    subgraph "Knowledge"
+    subgraph Knowledge
         KB[(Documents<br/>9 MD files)]
     end
     
@@ -212,20 +208,20 @@ graph TB
     style R fill:#f3e5f5
     style G fill:#f3e5f5
     style KB fill:#e8f5e9
-                </div>
+                </pre>
             </div>
             
             <!-- Sequence Diagram -->
-            <div id="sequence" class="diagram">
-                <div class="mermaid">
+            <div id="diagram-1" class="diagram">
+                <pre class="mermaid">
 sequenceDiagram
-    participant U as 👤 Parent
+    participant U as Parent
     participant API as FastAPI
     participant R as Gemini Router
     participant G as Claude Generator
     participant DB as Knowledge Base
 
-    U->>+API: POST /chat {"message": "..."}
+    U->>+API: POST /chat
     API->>+R: Process message
     
     Note over R: Check social intent<br/>Get history context
@@ -237,89 +233,55 @@ sequenceDiagram
     
     API->>+G: Generate response
     
-    Note over G: Generate with:<br/>- Social context<br/>- Course info<br/>- 100-150 words
+    Note over G: Generate with<br/>social context<br/>100-150 words
     
     G-->>-API: Final response
-    API-->>-U: {"response": "..."}
+    API-->>-U: JSON response
     
-    Note over U: Time: 5-7 sec<br/>Cost: ~$0.0015
-                </div>
+    Note over U: Time 5-7 sec<br/>Cost ~$0.0015
+                </pre>
             </div>
             
-            <!-- States Diagram -->
-            <div id="states" class="diagram">
-                <div class="mermaid">
-stateDiagram-v2
-    [*] --> Initial: User sends message
-    Initial --> SocialCheck: Check patterns
-    SocialCheck --> PureSocial: Social only
-    SocialCheck --> BusinessCheck: Has business intent
-    PureSocial --> QuickResponse: Generate social response
-    QuickResponse --> [*]: Return immediately
-    BusinessCheck --> RouterProcessing: Send to Gemini
-    RouterProcessing --> Success: Valid business query
-    RouterProcessing --> Offtopic: Not about school
-    RouterProcessing --> NeedSimplification: Too complex
-    Success --> GenerateResponse: Send to Claude
-    GenerateResponse --> [*]: Return to user
-                </div>
-            </div>
-            
-            <!-- Data Structure Diagram -->
-            <div id="data" class="diagram">
-                <div class="mermaid">
-erDiagram
-    USER {
-        string user_id PK
-        string session_id
-        datetime last_seen
-        boolean greeted_in_session
-    }
+            <!-- Process Flow Diagram -->
+            <div id="diagram-2" class="diagram">
+                <pre class="mermaid">
+flowchart TD
+    Start([User Message]) --> Check{Check Type}
     
-    MESSAGE {
-        string message_id PK
-        string user_id FK
-        string content
-        datetime timestamp
-        string type
-    }
+    Check -->|Pure Social| Social[Quick Response]
+    Check -->|Has Business| Router[Send to Router]
     
-    RESPONSE {
-        string response_id PK
-        string message_id FK
-        string content
-        float cost
-        float latency_ms
-        string ai_model
-    }
+    Social --> Return([Return Response])
     
-    ROUTER_RESULT {
-        string router_id PK
-        string message_id FK
-        string classification
-        json documents
-        string social_context
-    }
+    Router --> Classify{Classification}
     
-    USER ||--o{ MESSAGE : sends
-    MESSAGE ||--|| RESPONSE : generates
-    MESSAGE ||--|| ROUTER_RESULT : processes
-    USER ||--|| HISTORY : has
-    RESPONSE }o--|| ROUTER_RESULT : uses
-                </div>
+    Classify -->|Success| Generate[Generate with Claude]
+    Classify -->|Offtopic| Template[Return Template]
+    Classify -->|Complex| Simplify[Ask to Simplify]
+    
+    Generate --> AddContext[Add Social Context]
+    AddContext --> Return
+    Template --> Return
+    Simplify --> Return
+    
+    style Start fill:#e1f5fe
+    style Return fill:#e8f5e9
+    style Generate fill:#f3e5f5
+    style Router fill:#fff3e0
+                </pre>
             </div>
             
             <!-- Distribution Diagram -->
-            <div id="distribution" class="diagram">
-                <div class="mermaid">
-pie title "Query Types Distribution"
+            <div id="diagram-3" class="diagram">
+                <pre class="mermaid">
+pie title Query Types Distribution
     "Questions about courses" : 35
     "Pricing and discounts" : 25
     "Schedule" : 15
     "Teachers" : 10
-    "Social (hello/thanks)" : 10
+    "Social greetings" : 10
     "Offtopic" : 5
-                </div>
+                </pre>
             </div>
         </div>
         
@@ -334,16 +296,17 @@ pie title "Query Types Distribution"
     </div>
     
     <script>
-        let currentDiagram = 'architecture';
+        let currentDiagram = 0;
         let panZoomInstances = {};
         
-        // Initialize Mermaid with proper config
+        // Configure Mermaid
         mermaid.initialize({ 
             startOnLoad: true,
             theme: 'default',
             flowchart: {
                 useMaxWidth: true,
-                htmlLabels: true
+                htmlLabels: true,
+                rankSpacing: 50
             },
             themeVariables: {
                 primaryColor: '#667eea',
@@ -355,29 +318,18 @@ pie title "Query Types Distribution"
             }
         });
         
-        // Wait for DOM and Mermaid to fully load
-        window.addEventListener('DOMContentLoaded', () => {
-            // Give Mermaid time to render, then initialize pan-zoom
-            setTimeout(() => {
-                initializePanZoom();
-            }, 1000);  // Increased timeout for better rendering
+        // Initialize after page load
+        window.addEventListener('load', () => {
+            setTimeout(initializePanZoom, 500);
         });
         
         function initializePanZoom() {
-            // Initialize pan-zoom for all diagrams
-            document.querySelectorAll('.diagram').forEach(diagram => {
+            // Find all rendered SVGs
+            document.querySelectorAll('.diagram').forEach((diagram, index) => {
                 const svg = diagram.querySelector('svg');
-                if (svg && svg.clientHeight > 0) {  // Check if SVG is actually rendered
-                    const diagramId = diagram.id;
-                    
-                    // Destroy existing instance if any
-                    if (panZoomInstances[diagramId]) {
-                        panZoomInstances[diagramId].destroy();
-                    }
-                    
-                    // Create new pan-zoom instance
+                if (svg) {
                     try {
-                        panZoomInstances[diagramId] = svgPanZoom(svg, {
+                        panZoomInstances[index] = svgPanZoom(svg, {
                             zoomEnabled: true,
                             controlIconsEnabled: false,
                             fit: true,
@@ -389,61 +341,37 @@ pie title "Query Types Distribution"
                             mouseWheelZoomEnabled: true,
                             panEnabled: true
                         });
-                        
-                        console.log(`Pan-zoom initialized for ${diagramId}`);
+                        console.log(`Initialized pan-zoom for diagram ${index}`);
                     } catch (e) {
-                        console.error(`Failed to initialize pan-zoom for ${diagramId}:`, e);
+                        console.error(`Failed to init diagram ${index}:`, e);
                     }
                 }
             });
         }
         
-        function showDiagram(diagramId) {
+        function showDiagram(index, button) {
             // Update tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            event.target.classList.add('active');
+            button.classList.add('active');
             
             // Update diagrams
             document.querySelectorAll('.diagram').forEach(diagram => {
                 diagram.classList.remove('active');
             });
-            document.getElementById(diagramId).classList.add('active');
+            document.getElementById(`diagram-${index}`).classList.add('active');
             
-            // Update current diagram
-            currentDiagram = diagramId;
+            currentDiagram = index;
             
-            // Reinitialize pan-zoom for the shown diagram
-            setTimeout(() => {
-                const diagram = document.getElementById(diagramId);
-                const svg = diagram.querySelector('svg');
-                
-                if (svg && !panZoomInstances[diagramId]) {
-                    // If pan-zoom not initialized yet, initialize it
-                    try {
-                        panZoomInstances[diagramId] = svgPanZoom(svg, {
-                            zoomEnabled: true,
-                            controlIconsEnabled: false,
-                            fit: true,
-                            center: true,
-                            minZoom: 0.5,
-                            maxZoom: 10,
-                            zoomScaleSensitivity: 0.3,
-                            dblClickZoomEnabled: true,
-                            mouseWheelZoomEnabled: true,
-                            panEnabled: true
-                        });
-                    } catch (e) {
-                        console.error(`Failed to initialize pan-zoom for ${diagramId}:`, e);
-                    }
-                } else if (panZoomInstances[diagramId]) {
-                    // If already initialized, just reset view
-                    panZoomInstances[diagramId].resize();
-                    panZoomInstances[diagramId].fit();
-                    panZoomInstances[diagramId].center();
-                }
-            }, 200);
+            // Refresh pan-zoom for the shown diagram
+            if (panZoomInstances[index]) {
+                setTimeout(() => {
+                    panZoomInstances[index].resize();
+                    panZoomInstances[index].fit();
+                    panZoomInstances[index].center();
+                }, 100);
+            }
         }
         
         function resetZoom() {
