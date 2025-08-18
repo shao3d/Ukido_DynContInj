@@ -157,8 +157,46 @@ python collaborative_test.py "Забывчивая бабушка"  # By name
 
 ## 📊 Architecture Diagrams
 
+### Processing States
+```mermaid
+stateDiagram-v2
+    [*] --> Initial: User sends message
+    Initial --> SocialCheck: Check patterns
+    SocialCheck --> PureSocial: Social only
+    SocialCheck --> BusinessCheck: Has business intent
+    PureSocial --> QuickResponse: Generate social response
+    QuickResponse --> [*]: Return immediately
+    BusinessCheck --> RouterProcessing: Send to Gemini
+    RouterProcessing --> Success: Valid business query
+    RouterProcessing --> Offtopic: Not about school
+    RouterProcessing --> NeedSimplification: Too complex
+    Success --> GenerateResponse: Send to Claude
+    GenerateResponse --> [*]: Return to user
+```
+
+### Query Distribution
+```mermaid
+pie title "Query Types Distribution"
+    "Questions about courses" : 35
+    "Pricing and discounts" : 25
+    "Schedule" : 15
+    "Teachers" : 10
+    "Social (hello/thanks)" : 10
+    "Offtopic" : 5
+```
+
+### Data Structure
+```mermaid
+erDiagram
+    USER ||--o{ MESSAGE : sends
+    MESSAGE ||--|| RESPONSE : generates
+    MESSAGE ||--|| ROUTER_RESULT : processes
+    USER ||--|| HISTORY : has
+    RESPONSE }o--|| ROUTER_RESULT : uses
+```
+
 The architecture diagrams above are created using Mermaid and are automatically rendered by GitHub in the README.
-For high-resolution versions, check the `docs/diagrams/` folder.
+For high-resolution PNG versions, check the `docs/diagrams/` folder.
 
 ## 📁 Project Structure
 
