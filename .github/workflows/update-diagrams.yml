@@ -31,9 +31,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y graphviz
       
-      - name: 📚 Install Python dependencies
+      - name: 📚 Install project dependencies
         run: |
           pip install --upgrade pip
+          # Сначала устанавливаем зависимости проекта
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+        env:
+          # Заглушки для API ключей (не используются при генерации диаграмм)
+          OPENROUTER_API_KEY: "dummy_key_for_diagram_generation"
+          GOOGLE_API_KEY: "dummy_key_for_diagram_generation"
+          
+      - name: 📊 Install diagram generation tools
+        run: |
+          # Затем устанавливаем инструменты для генерации диаграмм
           pip install pydeps
           pip install code2flow
           pip install pyreverse || pip install pylint  # pyreverse часть pylint
@@ -44,11 +56,15 @@ jobs:
       - name: 🔍 Generate dependency graph with pydeps
         run: |
           echo "Generating dependency graph..."
+          echo "Python version: $(python --version)"
+          echo "Installed packages:"
+          pip list
+          echo "---"
           pydeps src \
             --max-bacon=2 \
             --cluster \
             --noshow \
-            -o docs/diagrams/dependencies.svg || echo "pydeps failed, continuing..."
+            -o docs/diagrams/dependencies.svg 2>&1 || echo "⚠️ pydeps failed (this is normal for some projects), continuing..."
       
       - name: 🔄 Generate call flow with code2flow
         run: |
@@ -56,13 +72,13 @@ jobs:
           code2flow src/ \
             --output docs/diagrams/call_flow.png \
             --no-trimming \
-            --hide-legend || echo "code2flow failed, continuing..."
+            --hide-legend 2>&1 || echo "⚠️ code2flow failed (this is normal for async code), continuing..."
       
       - name: 📐 Generate UML with pyreverse
         run: |
           echo "Generating UML class diagram..."
           pyreverse -o png -p Ukido src/*.py \
-            -d docs/diagrams/ || echo "pyreverse failed, continuing..."
+            -d docs/diagrams/ 2>&1 || echo "⚠️ pyreverse failed (this is normal for some code styles), continuing..."
       
       - name: 📝 Generate simple architecture overview
         run: |
