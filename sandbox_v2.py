@@ -48,6 +48,7 @@ class ProcessingResult:
     generator_time: float
     total_time: float
     source: str  # "router_social", "claude", "fallback"
+    user_signal: Optional[str] = None  # Level 1: добавляем user_signal для отладки
 
 # ====== ВАЛИДАЦИЯ ======
 @dataclass 
@@ -101,6 +102,9 @@ class SandboxV2:
                 print(f"  Status: {route_result.get('status')}")
                 if route_result.get('social_context'):
                     print(f"  Social: {route_result['social_context']}")
+                # Level 1: добавляем логирование user_signal
+                if route_result.get('user_signal'):
+                    print(f"  Signal: {route_result['user_signal']}")
         except Exception as e:
             print(f"{Colors.RED}❌ Router failed: {e}{Colors.ENDC}")
             route_result = {
@@ -114,6 +118,7 @@ class SandboxV2:
         social_context = route_result.get("social_context")
         documents = route_result.get("documents", [])
         questions = route_result.get("decomposed_questions", [])
+        user_signal = route_result.get("user_signal", "exploring_only")  # Level 1: извлекаем user_signal
         
         # ====== ШАГ 2: ГЕНЕРАЦИЯ ОТВЕТА ======
         generator_time = 0
@@ -174,7 +179,8 @@ class SandboxV2:
             router_time=router_time,
             generator_time=generator_time,
             total_time=total_time,
-            source=source
+            source=source,
+            user_signal=user_signal  # Level 1: передаем user_signal
         )
     
     def validate_result(self, result: ProcessingResult, context: Dict = None) -> ValidationResult:
@@ -244,6 +250,9 @@ class SandboxV2:
         print(f"  • Источник: {result.source}")
         if result.social_context:
             print(f"  • Социальный контекст: {result.social_context}")
+        # Level 1: добавляем вывод user_signal
+        if result.user_signal:
+            print(f"  • User Signal: {result.user_signal}")
         if result.documents:
             print(f"  • Документы: {', '.join(result.documents)}")
         print(f"  • Время: {result.total_time:.2f}s (Router: {result.router_time:.2f}s, Generator: {result.generator_time:.2f}s)")

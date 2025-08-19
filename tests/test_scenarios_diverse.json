@@ -1,0 +1,263 @@
+{
+  "scenarios": [
+    {
+      "scenario_name": "Агрессивный отец Виктор",
+      "description": "Смесь price_sensitive и exploring - недоверчивый, требовательный",
+      "expected_signal": "price_sensitive",
+      "persona_traits": {
+        "main_concern": "подозревает обман",
+        "speaking_style": "резкий, требовательный",
+        "decision_factors": ["прозрачность", "гарантии", "результаты"]
+      },
+      "steps": [
+        {
+          "user_input": "Что за развод для родителей? Сколько стоит ваша лабуда?",
+          "expected_signal": "price_sensitive",
+          "tone_expectation": "спокойствие и ценность"
+        },
+        {
+          "user_input": "30 тысяч за курс?! Вы там с ума сошли?",
+          "expected_signal": "price_sensitive",
+          "tone_expectation": "понимание и объяснение ценности"
+        },
+        {
+          "user_input": "И что, реально работает? Или просто бабло тянете?",
+          "expected_signal": "price_sensitive",
+          "tone_expectation": "конкретные результаты"
+        },
+        {
+          "user_input": "Покажите реальные отзывы, а не эту маркетинговую чушь",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "факты и доказательства"
+        },
+        {
+          "user_input": "Ладно, допустим. Гарантии какие?",
+          "expected_signal": "price_sensitive",
+          "tone_expectation": "четкие условия"
+        }
+      ]
+    },
+    {
+      "scenario_name": "Паническая мама Светлана",
+      "description": "Чистый anxiety_about_child - сильная тревога, много страхов",
+      "expected_signal": "anxiety_about_child",
+      "persona_traits": {
+        "main_concern": "безопасность ребенка",
+        "speaking_style": "тревожный, много вопросов",
+        "decision_factors": ["безопасность", "мягкость", "поддержка"]
+      },
+      "steps": [
+        {
+          "user_input": "Ой, я так волнуюсь! Мой сын такой ранимый, боюсь его травмировать еще больше",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "максимальная эмпатия"
+        },
+        {
+          "user_input": "А если он расплачется? Или откажется? Или дети будут смеяться?",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "успокоение и гарантии"
+        },
+        {
+          "user_input": "У него была травма в школе, теперь боится всего... Справитесь?",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "профессиональная поддержка"
+        },
+        {
+          "user_input": "Можно мне присутствовать? Хотя бы первый месяц?",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "гибкость и понимание"
+        },
+        {
+          "user_input": "Я прочитала, что групповые занятия могут навредить... Это правда?",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "развеивание страхов"
+        }
+      ]
+    },
+    {
+      "scenario_name": "Корпоративный заказчик Елена",
+      "description": "ready_to_buy - формальный стиль, нужен для компании",
+      "expected_signal": "ready_to_buy",
+      "persona_traits": {
+        "main_concern": "корпоративное обучение",
+        "speaking_style": "официальный, деловой",
+        "decision_factors": ["документы", "НДС", "договор"]
+      },
+      "steps": [
+        {
+          "user_input": "Добрый день. Нужны курсы для детей сотрудников. Работаете с юр.лицами?",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "профессионализм"
+        },
+        {
+          "user_input": "НДС? Договор? Акты?",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "конкретика по документам"
+        },
+        {
+          "user_input": "10 детей. Скидка?",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "коммерческое предложение"
+        },
+        {
+          "user_input": "КП на почту: hr@company.ua",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "оперативность"
+        },
+        {
+          "user_input": "Сроки? Старт?",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "четкий график"
+        }
+      ]
+    },
+    {
+      "scenario_name": "Бабушка-опекун Раиса",
+      "description": "Смесь anxiety и price_sensitive - воспитывает внучку, ограничен бюджет",
+      "expected_signal": "anxiety_about_child",
+      "persona_traits": {
+        "main_concern": "адаптация ребенка после потери родителей",
+        "speaking_style": "заботливый, осторожный",
+        "decision_factors": ["психологическая поддержка", "доступность", "внимание"]
+      },
+      "steps": [
+        {
+          "user_input": "Здравствуйте. Я воспитываю внучку одна... Ей нужна помощь с общением",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "теплота и поддержка"
+        },
+        {
+          "user_input": "После потери мамы она замкнулась. Поможете?",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "деликатность"
+        },
+        {
+          "user_input": "Пенсия небольшая... Есть ли льготы?",
+          "expected_signal": "price_sensitive",
+          "tone_expectation": "понимание ситуации"
+        },
+        {
+          "user_input": "Она очень чувствительная. Не навредят ли групповые занятия?",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "профессиональные гарантии"
+        },
+        {
+          "user_input": "Хочется, чтобы она снова улыбалась...",
+          "expected_signal": "anxiety_about_child",
+          "tone_expectation": "надежда и поддержка"
+        }
+      ]
+    },
+    {
+      "scenario_name": "Молодая мама-блогер Карина",
+      "description": "exploring_only с переходом в ready_to_buy - ищет контент",
+      "expected_signal": "exploring_only",
+      "persona_traits": {
+        "main_concern": "интересный контент для блога",
+        "speaking_style": "модный, с англицизмами",
+        "decision_factors": ["уникальность", "визуал", "отзывы"]
+      },
+      "steps": [
+        {
+          "user_input": "Хай! Слышала про вас, расскажите что за вайб у вашей школы?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "современность"
+        },
+        {
+          "user_input": "Окей, а что там по методикам? Что-то инновационное есть?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "уникальность"
+        },
+        {
+          "user_input": "Вау, sounds cool! А результаты какие? Кейсы есть?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "истории успеха"
+        },
+        {
+          "user_input": "Думаю записать дочку. Trial есть?",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "быстрое действие"
+        },
+        {
+          "user_input": "Book us на пробное!",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "запись"
+        }
+      ]
+    },
+    {
+      "scenario_name": "Дедушка-скептик Борис",
+      "description": "exploring_only - не верит в современные методики",
+      "expected_signal": "exploring_only",
+      "persona_traits": {
+        "main_concern": "сравнение с советским образованием",
+        "speaking_style": "критичный, сравнивающий",
+        "decision_factors": ["доказательства", "логика", "проверенность"]
+      },
+      "steps": [
+        {
+          "user_input": "В наше время без всяких курсов росли. Зачем это нужно?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "уважение к опыту"
+        },
+        {
+          "user_input": "Soft skills... Опять западные штучки. А толк?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "практическая польза"
+        },
+        {
+          "user_input": "Лучше бы математику подтянули, а не эмоции изучали",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "связь с академическим успехом"
+        },
+        {
+          "user_input": "Ну допустим. А учителя кто? Психологи небось?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "квалификация"
+        },
+        {
+          "user_input": "Посмотрим, что внук скажет",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "открытость"
+        }
+      ]
+    },
+    {
+      "scenario_name": "Многодетная мама Оля",
+      "description": "price_sensitive с быстрым переходом в ready_to_buy",
+      "expected_signal": "price_sensitive",
+      "persona_traits": {
+        "main_concern": "организация для 3 детей",
+        "speaking_style": "быстрый, по существу",
+        "decision_factors": ["групповые скидки", "расписание", "онлайн"]
+      },
+      "steps": [
+        {
+          "user_input": "У меня трое: 7, 10 и 12 лет. Скидки есть?",
+          "expected_signal": "price_sensitive",
+          "tone_expectation": "выгодное предложение"
+        },
+        {
+          "user_input": "А если всех троих сразу?",
+          "expected_signal": "price_sensitive",
+          "tone_expectation": "максимальная скидка"
+        },
+        {
+          "user_input": "Онлайн? Отлично. Расписание?",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "варианты времени"
+        },
+        {
+          "user_input": "Субботы 10:00 подходят. Записывайте всех",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "оформление"
+        },
+        {
+          "user_input": "Документы какие нужны?",
+          "expected_signal": "ready_to_buy",
+          "tone_expectation": "список документов"
+        }
+      ]
+    }
+  ]
+}
