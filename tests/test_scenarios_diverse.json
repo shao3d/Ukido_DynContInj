@@ -75,39 +75,39 @@
       ]
     },
     {
-      "scenario_name": "Корпоративный заказчик Елена",
-      "description": "ready_to_buy - формальный стиль, нужен для компании",
-      "expected_signal": "ready_to_buy",
+      "scenario_name": "Заботливая мама Оксана",
+      "description": "exploring_only - дружелюбная мама изучает варианты для дочки",
+      "expected_signal": "exploring_only",
       "persona_traits": {
-        "main_concern": "корпоративное обучение",
-        "speaking_style": "официальный, деловой",
-        "decision_factors": ["документы", "НДС", "договор"]
+        "main_concern": "развитие дочки",
+        "speaking_style": "дружелюбный, открытый",
+        "decision_factors": ["программа", "подход", "атмосфера"]
       },
       "steps": [
         {
-          "user_input": "Добрый день. Нужны курсы для детей сотрудников. Работаете с юр.лицами?",
-          "expected_signal": "ready_to_buy",
-          "tone_expectation": "профессионализм"
+          "user_input": "Добрый день! Ищу курсы для дочки 10 лет, хочется развить уверенность в себе",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "информативность"
         },
         {
-          "user_input": "НДС? Договор? Акты?",
-          "expected_signal": "ready_to_buy",
-          "tone_expectation": "конкретика по документам"
+          "user_input": "А какая у вас методология? Как проходят занятия?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "подробное объяснение"
         },
         {
-          "user_input": "10 детей. Скидка?",
-          "expected_signal": "ready_to_buy",
-          "tone_expectation": "коммерческое предложение"
+          "user_input": "Сколько детей в группе? Как делите по возрасту?",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "детали организации"
         },
         {
-          "user_input": "КП на почту: hr@company.ua",
-          "expected_signal": "ready_to_buy",
-          "tone_expectation": "оперативность"
+          "user_input": "А есть пробное занятие? Хочется посмотреть",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "приглашение попробовать"
         },
         {
-          "user_input": "Сроки? Старт?",
-          "expected_signal": "ready_to_buy",
-          "tone_expectation": "четкий график"
+          "user_input": "Спасибо, я подумаю и свяжусь с вами",
+          "expected_signal": "exploring_only",
+          "tone_expectation": "ненавязчивое завершение"
         }
       ]
     },
