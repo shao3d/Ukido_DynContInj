@@ -164,6 +164,9 @@ async def chat(request: ChatRequest):
             elif social_context == "apology":
                 apology_responses = ["Ничего страшного!", "Всё в порядке!", "Не переживайте!"]
                 response_text = f"{random.choice(apology_responses)} {base_message}"
+            elif social_context == "repeated_greeting":
+                # Для повторного приветствия НЕ добавляем социальный префикс
+                response_text = base_message
             elif social_context == "farewell":
                 # Для прощания используем ТОЛЬКО прощальную фразу, без offtopic сообщения
                 farewells = [
