@@ -25,6 +25,12 @@ from standard_responses import DEFAULT_FALLBACK, get_error_response
 from datetime import datetime
 from typing import Dict
 
+# === ДЕТЕРМИНИРОВАННОСТЬ ДЛЯ ВОСПРОИЗВОДИМОСТИ ===
+# Устанавливаем глобальный seed для всех random операций
+config = Config()
+random.seed(config.SEED)  # Теперь все random.choice() будут предсказуемыми
+print(f"🎲 Random seed установлен: {config.SEED}")
+
 # === ИНИЦИАЛИЗАЦИЯ ===
 app = FastAPI(title="Ukido Chatbot API", version="0.8.0-state-machine")
 
@@ -136,14 +142,47 @@ async def chat(request: ChatRequest):
                 },
                 history_messages,
             )
+            
+            # === ОБРАБОТКА СОЦИАЛЬНЫХ ИНТЕНТОВ ДЛЯ SUCCESS СЛУЧАЕВ ===
+            # Правило: Бизнес-интент ВСЕГДА приоритетнее социального
+            
+            # 1. Farewell для success - добавляем прощание в КОНЕЦ ответа
+            if social_context == "farewell":
+                # Проверяем, нет ли уже прощания в ответе
+                farewell_markers = ["до свидания", "до встречи", "всего доброго", "удачи", "до связи"]
+                if not any(marker in response_text.lower() for marker in farewell_markers):
+                    farewells = [
+                        "\n\nДо свидания! Будем рады видеть вас в нашей школе!",
+                        "\n\nВсего доброго! Обращайтесь, если появятся вопросы!",
+                        "\n\nДо встречи! Надеемся увидеть вашего ребенка на занятиях!",
+                        "\n\nУдачи вам! До связи!"
+                    ]
+                    response_text += random.choice(farewells)
+                    if config.LOG_LEVEL == "DEBUG":
+                        print(f"✅ Added farewell to success response")
+            
+            # 2. Thanks для success - добавляем короткий префикс
+            elif social_context == "thanks":
+                # Проверяем, нет ли уже благодарности в начале
+                thanks_markers = ["рад", "пожалуйста", "всегда пожалуйста"]
+                if not any(response_text.lower().startswith(marker) for marker in thanks_markers):
+                    thanks_prefixes = ["Рады помочь! ", "Пожалуйста! "]
+                    response_text = random.choice(thanks_prefixes) + response_text
+                    if config.LOG_LEVEL == "DEBUG":
+                        print(f"✅ Added thanks prefix to success response")
+                        
         except Exception as e:
             print(f"❌ ResponseGenerator failed: {e}")
             response_text = get_error_response("generation_failed")
     else:
         # Для offtopic и need_simplification тоже обрабатываем социальный контекст
-        # НО! Если это прощание (farewell), то игнорируем offtopic message
-        if social_context == "farewell":
-            base_message = ""  # Для прощания НЕ используем offtopic сообщение
+        # Определяем, нужно ли добавлять offtopic сообщение
+        pure_social_intents = ["greeting", "thanks", "farewell", "apology"]
+        is_pure_social = social_context in pure_social_intents and status == "offtopic"
+        
+        if is_pure_social:
+            # Для чистых социальных интентов НЕ используем offtopic сообщение
+            base_message = ""
         else:
             base_message = message if message else DEFAULT_FALLBACK
         documents_used = []
@@ -153,17 +192,44 @@ async def chat(request: ChatRequest):
             if social_context == "greeting":
                 # Проверяем, было ли уже приветствие
                 if not social_state.has_greeted(request.user_id):
-                    greetings = ["Здравствуйте!", "Добрый день!", "Приветствуем!"]
-                    response_text = f"{random.choice(greetings)} {base_message}"
+                    if is_pure_social:
+                        # Для чистого приветствия используем полноценный ответ
+                        greetings = [
+                            "Здравствуйте! Я помощник школы Ukido. Чем могу помочь?",
+                            "Добрый день! Рад помочь с вопросами о наших курсах.",
+                            "Приветствую! Готов рассказать о программах школы Ukido."
+                        ]
+                        response_text = random.choice(greetings)
+                    else:
+                        # Для mixed случаев добавляем префикс
+                        response_text = f"Здравствуйте! {base_message}"
                     social_state.mark_greeted(request.user_id)
                 else:
-                    response_text = base_message
+                    response_text = base_message if base_message else "Я на связи. Чем помочь?"
             elif social_context == "thanks":
-                thanks_responses = ["Пожалуйста!", "Рады помочь!", "Всегда пожалуйста!"]
-                response_text = f"{random.choice(thanks_responses)} {base_message}"
+                if is_pure_social:
+                    # Для чистой благодарности используем полноценный ответ
+                    thanks_responses = [
+                        "Пожалуйста! Обращайтесь, если будут вопросы.",
+                        "Рады помочь! Если нужна дополнительная информация - спрашивайте.",
+                        "Всегда пожалуйста! Готов ответить на другие вопросы."
+                    ]
+                    response_text = random.choice(thanks_responses)
+                else:
+                    # Для mixed случаев добавляем префикс
+                    response_text = f"Пожалуйста! {base_message}"
             elif social_context == "apology":
-                apology_responses = ["Ничего страшного!", "Всё в порядке!", "Не переживайте!"]
-                response_text = f"{random.choice(apology_responses)} {base_message}"
+                if is_pure_social:
+                    # Для чистого извинения используем полноценный ответ
+                    apology_responses = [
+                        "Ничего страшного! Чем могу помочь?",
+                        "Всё в порядке! Готов ответить на ваши вопросы.",
+                        "Не переживайте! Расскажите, что вас интересует."
+                    ]
+                    response_text = random.choice(apology_responses)
+                else:
+                    # Для mixed случаев добавляем префикс
+                    response_text = f"Ничего страшного! {base_message}"
             elif social_context == "repeated_greeting":
                 # Для повторного приветствия НЕ добавляем социальный префикс
                 response_text = base_message
