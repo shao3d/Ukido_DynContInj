@@ -1,21 +1,88 @@
 @startuml Ukido AI Assistant Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
-!define C4_CONTEXT
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!define DEVICONS https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
 
-title Ukido AI Assistant - Архитектура системы (C4 Context)
+!include DEVICONS/python.puml
+!include FONTAWESOME/users.puml
+!include FONTAWESOME/robot.puml
+!include FONTAWESOME/database.puml
+!include FONTAWESOME/brain.puml
 
-Person(parent, "Родитель", "Задает вопросы о школе Ukido")
+LAYOUT_WITH_LEGEND()
 
-System(ukido_ai, "Ukido AI Assistant", "Чат-бот для консультации родителей")
+title Архитектура Ukido AI Assistant - Container Diagram (v0.7.6)
 
-System_Ext(openrouter, "OpenRouter API", "Доступ к LLM моделям")
-System_Ext(gemini, "Google Gemini 2.5 Flash", "Классификация и роутинг")
-System_Ext(claude, "Claude 3.5 Haiku", "Генерация ответов")
+Person(user, "Родитель", "Родители детей 7-14 лет из Украины", $sprite="users")
 
-Rel(parent, ukido_ai, "Отправляет вопросы", "HTTPS")
-Rel(ukido_ai, openrouter, "Запросы к LLM", "HTTPS/API")
-Rel(openrouter, gemini, "Роутинг")
-Rel(openrouter, claude, "Генерация")
+System_Boundary(ukido_system, "Ukido AI Assistant System") {
+    
+    Container(api, "FastAPI Server", "Python/FastAPI", "Главный оркестратор\n• Обработка HTTP запросов\n• Управление сессиями\n• История диалогов (10 сообщений)", $sprite="python")
+    
+    Container(router, "Gemini Router", "Gemini 2.5 Flash", "Классификатор запросов\n• Обработка социальных интентов\n• Подбор документов (max 4)\n• Декомпозиция вопросов\n$0.30/1M токенов", $sprite="brain")
+    
+    Container(generator, "Claude Generator", "Claude 3.5 Haiku", "Генератор ответов\n• Финальные ответы (100-150 слов)\n• Стиль от лица школы\n• Контекстная адаптация\n$0.25/$1.25 за 1M", $sprite="robot")
+    
+    ContainerDb(knowledge, "База знаний", "Markdown files", "13 документов\n• Курсы и методология\n• Цены и условия\n• Философия школы", $sprite="database")
+    
+    Container(history, "History Manager", "Python", "Управление историей\n• Последние 10 сообщений\n• Контекст диалога")
+    
+    Container(social, "Social Components", "Python", "Социальная обработка\n• Social State Tracker\n• Social Responder\n• Standard Responses")
+}
+
+System_Ext(openrouter, "OpenRouter API", "Доступ к Claude 3.5 Haiku")
+System_Ext(gemini_api, "Google Gemini API", "Доступ к Gemini 2.5 Flash")
+
+' Основной поток данных
+Rel(user, api, "Отправляет сообщение", "HTTPS/JSON")
+Rel(api, router, "1. Классифицирует запрос", "user_id, message, history")
+Rel(router, knowledge, "Подбирает документы", "fuzzy matching")
+
+' Ветвление по типам ответов
+Rel_Back(router, api, "offtopic/need_simplification", "JSON response")
+Rel(api, generator, "2. success → генерация", "context, documents")
+Rel(generator, knowledge, "Использует документы", "Read")
+
+' Внешние API
+Rel(router, gemini_api, "API вызов", "HTTPS")
+Rel(generator, openrouter, "API вызов", "HTTPS")
+
+' Вспомогательные связи
+Rel(api, history, "Сохраняет/читает", "In-memory")
+Rel(api, social, "Проверяет социалку", "Check state")
+Rel_Back(generator, api, "Финальный ответ", "JSON")
+Rel_Back(api, user, "Возвращает ответ", "HTTPS/JSON")
+
+' Дополнительные аннотации
+note right of router
+  **Классификация:**
+  • success → к Generator
+  • offtopic → стандартный ответ
+  • need_simplification → упрощение
+  
+  **Специальная обработка:**
+  • Повторные приветствия
+  • Ультра-краткие ("А?")
+  • Fuzzy matching (85%)
+end note
+
+note left of generator
+  **Правило первых 2 предложений:**
+  Ключевая информация 
+  в начале ответа для
+  раздраженных родителей
+  
+  **Производительность:**
+  5-7 секунд на ответ
+end note
+
+note bottom of knowledge
+  **Оптимизация выбора:**
+  • 1 вопрос → 1-2 документа
+  • 2 вопроса → 2-4 документа  
+  • 3+ вопроса → max 4 документа
+  • Группировка связанных вопросов
+end note
 
 @enduml
