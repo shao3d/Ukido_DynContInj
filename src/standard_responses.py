@@ -3,6 +3,11 @@ standard_responses.py - Единое место для всех заготовл
 """
 
 import random
+from config import Config
+
+# Устанавливаем seed для детерминированности
+config = Config()
+random.seed(config.SEED)
 
 # Единый fallback для всех ошибок и неопределённых ситуаций
 DEFAULT_FALLBACK = "Не совсем понял вопрос. Расскажите, что вас интересует о школе Ukido?"

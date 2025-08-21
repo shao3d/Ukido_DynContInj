@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Test Report - 2025-08-19 14:24</title>
+    
+        <style>
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                line-height: 1.6; 
+                color: #333; 
+                max-width: 1400px; 
+                margin: 0 auto; 
+                padding: 20px;
+                background: #f5f5f5;
+            }
+            h1 { 
+                color: #2c3e50; 
+                border-bottom: 3px solid #3498db; 
+                padding-bottom: 10px; 
+            }
+            h2 { 
+                color: #34495e; 
+                margin-top: 40px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            h3 {
+                color: #2c3e50;
+                margin-top: 30px;
+            }
+            .stats { 
+                display: grid; 
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+                gap: 20px; 
+                margin: 30px 0; 
+            }
+            .stat-card { 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; 
+                padding: 25px; 
+                border-radius: 12px; 
+                box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+                text-align: center;
+            }
+            .stat-number { 
+                font-size: 2.5em; 
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+            .scenario { 
+                background: white; 
+                padding: 25px; 
+                margin: 25px 0; 
+                border-radius: 12px; 
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .scenario.failed { 
+                border-left: 5px solid #e74c3c; 
+            }
+            .scenario.success { 
+                border-left: 5px solid #27ae60; 
+            }
+            .step { 
+                background: #f8f9fa; 
+                padding: 20px; 
+                margin: 15px 0; 
+                border-radius: 8px; 
+                border: 1px solid #dee2e6; 
+            }
+            .user-msg { 
+                color: #2c3e50; 
+                font-weight: 600; 
+                margin-bottom: 10px;
+                padding: 10px;
+                background: #e3f2fd;
+                border-radius: 5px;
+            }
+            .assistant-msg { 
+                color: #27ae60; 
+                background: #f0f9ff; 
+                padding: 15px; 
+                border-radius: 8px; 
+                margin: 10px 0;
+                border-left: 3px solid #27ae60;
+            }
+            .metrics {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-top: 10px;
+            }
+            .metric-badge {
+                display: inline-block;
+                padding: 5px 10px;
+                border-radius: 15px;
+                font-size: 0.85em;
+                font-weight: 500;
+            }
+            .metric-success { background: #d4edda; color: #155724; }
+            .metric-warning { background: #fff3cd; color: #856404; }
+            .metric-error { background: #f8d7da; color: #721c24; }
+            .metric-info { background: #d1ecf1; color: #0c5460; }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                background: white;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            th {
+                background: #3498db;
+                color: white;
+                padding: 12px;
+                text-align: left;
+            }
+            td {
+                padding: 10px 12px;
+                border-bottom: 1px solid #ecf0f1;
+            }
+            tr:hover {
+                background: #f5f5f5;
+            }
+            .error {
+                color: #e74c3c;
+                font-weight: bold;
+            }
+            .success-icon { color: #27ae60; }
+            .error-icon { color: #e74c3c; }
+        </style>
+        
+</head>
+<body>
+    <h1>🚀 Universal Test Report</h1>
+    <p><strong>Файл:</strong> test_simple.json<br>
+    <strong>Дата:</strong> 2025-08-19 14:24:45<br>
+    <strong>Продолжительность:</strong> 15.7s</p>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number">1/1</div>
+            <div>Успешных сценариев</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">3</div>
+            <div>Всего шагов</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">5.24s</div>
+            <div>Среднее время ответа</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">100.0%</div>
+            <div>Успешность</div>
+        </div>
+    </div>
+
+    <h2>📊 Сводная таблица</h2>
+    <table>
+        <tr>
+            <th>#</th>
+            <th>Сценарий</th>
+            <th>Шагов</th>
+            <th>Время</th>
+            <th>Статус</th>
+            <th>Точность</th>
+        </tr>
+
+        <tr>
+            <td>1</td>
+            <td>Быстрый тест</td>
+            <td>3</td>
+            <td>5.2s</td>
+            <td>✅</td>
+            <td>66.7%</td>
+        </tr>
+    </table>
+    <h2>🎭 Полные диалоги</h2>
+
+    <div class="scenario success">
+        <h3>Сценарий 1: Быстрый тест</h3>
+        <p><em>Простой диалог для тестирования universal_tester</em></p>
+
+        <p>
+            <strong>Ожидаемый signal:</strong> <code>exploring_only</code><br>
+            <strong>Точность:</strong> 66.7%
+        </p>
+
+        <div class="step">
+            <h4>Шаг 1</h4>
+            <div class="user-msg">👤 Привет! Какие курсы есть для 9-летнего ребенка?</div>
+            <div class="assistant-msg">🤖 Привет. У нас есть отличный курс &quot;Эмоциональный Компас&quot; как раз для 9-12 лет. Это идеальный вариант для 9-летнего ребенка. Курс помогает детям разбираться в своих эмоциях, общаться без конфликтов и понимать других. Программа включает изучение базовых эмоций, техники &quot;Я-сообщений&quot;, навыки активного слушания и управления гневом. Занятия проходят в формате ролевых игр, арт-терапии и парных упражнений. Группы небольшие - до 6 человек, что позволяет каждому чувствовать себя комфортно. Результат - дети становятся более дружелюбными, лучше справляются со стрессом и легче находят общий язык с ровесниками. Стоимость курса - 7,000 грн в месяц. Хотите больше подробностей?.
+
+📞 Если у вас остались вопросы, можем провести бесплатную 15-минутную консультацию. Это поможет понять, подойдут ли наши курсы вашему ребенку.</div>
+            <div class="metrics">
+                <span class="metric-badge metric-success">success</span>
+                <span class="metric-badge metric-info">claude</span>
+                <span class="metric-badge metric-info">Signal: exploring_only</span>
+                <span class="metric-badge metric-info">👋 greeting</span>
+                <span class="metric-badge metric-info">⏱️ 7.85s</span>
+            </div>
+        </div>
+
+        <div class="step">
+            <h4>Шаг 2</h4>
+            <div class="user-msg">👤 Сколько стоит курс Юный Оратор?</div>
+            <div class="assistant-msg">🤖 Курс &quot;Юный Оратор&quot; для детей 7-10 лет стоит 6,000 грн в месяц. Полный курс - 3 месяца за 18,000 грн, что выгоднее разовой оплаты. Каждое занятие обходится в 750 грн, и мы проводим 2 встречи в неделю по 90 минут. Для родителей у нас есть приятные бонусы: при полной предоплате курса дадим скидку 10%, а если приведете второго ребенка - вообще 15% получите. Кстати, можно оплатить частями или даже оформить рассрочку. Инвестиция в публичные навыки ребенка окупится сторицей - уверенность в себе, умение говорить, презентовать идеи пригодятся в школе, институте, будущей работе.
+
+💰 Кстати, у нас действуют скидки: 10% при полной оплате курса, 15% для второго ребенка из семьи, и 20% для семей в сложной жизненной ситуации.</div>
+            <div class="metrics">
+                <span class="metric-badge metric-success">success</span>
+                <span class="metric-badge metric-info">claude</span>
+                <span class="metric-badge metric-info">Signal: price_sensitive</span>
+                <span class="metric-badge metric-info">⏱️ 7.58s</span>
+            </div>
+        </div>
+
+        <div class="step">
+            <h4>Шаг 3</h4>
+            <div class="user-msg">👤 Спасибо за информацию!</div>
+            <div class="assistant-msg">🤖 Пожалуйста! Всегда рады помочь.</div>
+            <div class="metrics">
+                <span class="metric-badge metric-warning">offtopic</span>
+                <span class="metric-badge metric-info">router_social</span>
+                <span class="metric-badge metric-info">Signal: exploring_only</span>
+                <span class="metric-badge metric-info">👋 thanks</span>
+                <span class="metric-badge metric-info">⏱️ 0.00s</span>
+            </div>
+        </div>
+    </div>
+
+    <h2>📈 Итоговый анализ</h2>
+    <div class="scenario">
+        ### 📊 Общая статистика<br><br>- Протестировано диалогов: 1<br>- Успешных: 1 (100.0%)<br>- Всего шагов: 3<br><br>### ⏱️ Производительность<br>- Среднее время ответа: 5.14s<br>- Максимальное время: 7.85s<br>- ⚠️ Медленных ответов (>5s): 2 (66.7%)<br><br>### 🎯 State Machine<br>- exploring_only: 66.7% точность<br>- Персонализация: 2/3 шагов (66.7%)<br><br>### 🔍 Edge Cases<br><br>### 💡 Рекомендации<br>- Оптимизировать производительность (много медленных ответов)<br>- Улучшить определение сигналов: exploring_only<br>- ✅ Все тесты прошли успешно!
+    </div>
+</body>
+</html>

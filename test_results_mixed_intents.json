@@ -1,0 +1,74 @@
+[
+  {
+    "test": "Mixed: Спасибо + готовность записаться",
+    "status": "PASS",
+    "details": {
+      "status": "success (✅)",
+      "signal": "ready_to_buy (✅)",
+      "social": "thanks (✅)"
+    }
+  },
+  {
+    "test": "Mixed: Спасибо + согласие",
+    "status": "PASS",
+    "details": {
+      "status": "success (✅)",
+      "signal": "ready_to_buy (✅)",
+      "social": "thanks (✅)"
+    }
+  },
+  {
+    "test": "Mixed: Привет + вопрос о цене",
+    "status": "PASS",
+    "details": {
+      "status": "success (✅)",
+      "signal": "price_sensitive (✅)",
+      "social": "greeting (✅)"
+    }
+  },
+  {
+    "test": "Чисто социальный: Спасибо",
+    "status": "PASS",
+    "details": {
+      "status": "offtopic (✅)",
+      "signal": "exploring_only (✅)",
+      "social": "thanks (✅)"
+    }
+  },
+  {
+    "test": "Чисто социальный: Привет",
+    "status": "PASS",
+    "details": {
+      "status": "offtopic (✅)",
+      "signal": "exploring_only (✅)",
+      "social": "greeting (✅)"
+    }
+  },
+  {
+    "test": "Ready to buy: Хочу записать ребенка",
+    "status": "PASS",
+    "details": {
+      "status": "success (✅)",
+      "signal": "ready_to_buy (✅)",
+      "social": "None (✅)"
+    }
+  },
+  {
+    "test": "Mixed: Благодарю + регистрация",
+    "status": "PASS",
+    "details": {
+      "status": "success (✅)",
+      "signal": "ready_to_buy (✅)",
+      "social": "thanks (✅)"
+    }
+  },
+  {
+    "test": "Mixed: Спасибо + действие",
+    "status": "PASS",
+    "details": {
+      "status": "success (✅)",
+      "signal": "ready_to_buy (✅)",
+      "social": "thanks (✅)"
+    }
+  }
+]

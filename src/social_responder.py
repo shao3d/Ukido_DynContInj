@@ -7,6 +7,11 @@ import random
 
 from social_intents import SocialIntent
 from social_state import SocialStateManager
+from config import Config
+
+# Устанавливаем seed для детерминированности
+config = Config()
+random.seed(config.SEED)
 
 
 def _tod_greeting(now: Optional[datetime] = None) -> str:

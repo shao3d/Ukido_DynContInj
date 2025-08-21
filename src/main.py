@@ -22,9 +22,17 @@ from social_responder import SocialResponder
 from social_state import SocialStateManager
 from config import Config
 from standard_responses import DEFAULT_FALLBACK, get_error_response
+from datetime import datetime
+from typing import Dict
+
+# === ДЕТЕРМИНИРОВАННОСТЬ ДЛЯ ВОСПРОИЗВОДИМОСТИ ===
+# Устанавливаем глобальный seed для всех random операций
+config = Config()
+random.seed(config.SEED)  # Теперь все random.choice() будут предсказуемыми
+print(f"🎲 Random seed установлен: {config.SEED}")
 
 # === ИНИЦИАЛИЗАЦИЯ ===
-app = FastAPI(title="Ukido Chatbot API", version="0.7.3")
+app = FastAPI(title="Ukido Chatbot API", version="0.8.0-state-machine")
 
 # CORS настройки
 app.add_middleware(
@@ -34,6 +42,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# === ПРОСТЫЕ МЕТРИКИ ===
+signal_stats = {
+    "price_sensitive": 0,
+    "anxiety_about_child": 0, 
+    "ready_to_buy": 0,
+    "exploring_only": 0
+}
+request_count = 0
+total_latency = 0.0
+start_time = datetime.now()
 
 # === МОДЕЛИ ДАННЫХ ===
 class ChatRequest(BaseModel):
@@ -49,6 +68,7 @@ class ChatResponse(BaseModel):
     decomposed_questions: List[str] = []
     fuzzy_matched: Optional[bool] = None
     social: Optional[str] = None
+    user_signal: Optional[str] = None  # Добавляем user_signal в ответ
 
 
 # === ГЛОБАЛЬНЫЕ КОМПОНЕНТЫ ===
@@ -63,7 +83,12 @@ config = Config()
 # === ЭНДПОИНТЫ ===
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Основной эндпоинт для общения с чатботом - ULTRA минималистичная версия"""
+    """Основной эндпоинт для общения с чатботом - версия с State Machine"""
+    global signal_stats, request_count, total_latency
+    
+    # Засекаем время для метрик
+    import time
+    start = time.time()
     
     # Получаем историю если есть
     history_messages = []
@@ -96,29 +121,68 @@ async def chat(request: ChatRequest):
     decomposed_questions = route_result.get("decomposed_questions", [])
     social_context = route_result.get("social_context")  # Новое поле от Gemini
     fuzzy_matched = route_result.get("fuzzy_matched", False)
+    user_signal = route_result.get("user_signal", "exploring_only")  # Получаем user_signal
+    
+    # Собираем метрики
+    if user_signal in signal_stats:
+        signal_stats[user_signal] += 1
     
     # Генерация ответа в зависимости от статуса
     if status == "success":
         documents_used = documents if isinstance(documents, list) else []
         try:
-            # Передаем социальный контекст в генератор
+            # Передаем социальный контекст и user_signal в генератор
             response_text = await response_generator.generate(
                 {
                     "status": status,
                     "documents": documents_used,
                     "decomposed_questions": decomposed_questions,
                     "social_context": social_context,  # Передаем контекст
+                    "user_signal": user_signal,  # Передаем user_signal для персонализации
                 },
                 history_messages,
             )
+            
+            # === ОБРАБОТКА СОЦИАЛЬНЫХ ИНТЕНТОВ ДЛЯ SUCCESS СЛУЧАЕВ ===
+            # Правило: Бизнес-интент ВСЕГДА приоритетнее социального
+            
+            # 1. Farewell для success - добавляем прощание в КОНЕЦ ответа
+            if social_context == "farewell":
+                # Проверяем, нет ли уже прощания в ответе
+                farewell_markers = ["до свидания", "до встречи", "всего доброго", "удачи", "до связи"]
+                if not any(marker in response_text.lower() for marker in farewell_markers):
+                    farewells = [
+                        "\n\nДо свидания! Будем рады видеть вас в нашей школе!",
+                        "\n\nВсего доброго! Обращайтесь, если появятся вопросы!",
+                        "\n\nДо встречи! Надеемся увидеть вашего ребенка на занятиях!",
+                        "\n\nУдачи вам! До связи!"
+                    ]
+                    response_text += random.choice(farewells)
+                    if config.LOG_LEVEL == "DEBUG":
+                        print(f"✅ Added farewell to success response")
+            
+            # 2. Thanks для success - добавляем короткий префикс
+            elif social_context == "thanks":
+                # Проверяем, нет ли уже благодарности в начале
+                thanks_markers = ["рад", "пожалуйста", "всегда пожалуйста"]
+                if not any(response_text.lower().startswith(marker) for marker in thanks_markers):
+                    thanks_prefixes = ["Рады помочь! ", "Пожалуйста! "]
+                    response_text = random.choice(thanks_prefixes) + response_text
+                    if config.LOG_LEVEL == "DEBUG":
+                        print(f"✅ Added thanks prefix to success response")
+                        
         except Exception as e:
             print(f"❌ ResponseGenerator failed: {e}")
             response_text = get_error_response("generation_failed")
     else:
         # Для offtopic и need_simplification тоже обрабатываем социальный контекст
-        # НО! Если это прощание (farewell), то игнорируем offtopic message
-        if social_context == "farewell":
-            base_message = ""  # Для прощания НЕ используем offtopic сообщение
+        # Определяем, нужно ли добавлять offtopic сообщение
+        pure_social_intents = ["greeting", "thanks", "farewell", "apology"]
+        is_pure_social = social_context in pure_social_intents and status == "offtopic"
+        
+        if is_pure_social:
+            # Для чистых социальных интентов НЕ используем offtopic сообщение
+            base_message = ""
         else:
             base_message = message if message else DEFAULT_FALLBACK
         documents_used = []
@@ -128,17 +192,47 @@ async def chat(request: ChatRequest):
             if social_context == "greeting":
                 # Проверяем, было ли уже приветствие
                 if not social_state.has_greeted(request.user_id):
-                    greetings = ["Здравствуйте!", "Добрый день!", "Приветствуем!"]
-                    response_text = f"{random.choice(greetings)} {base_message}"
+                    if is_pure_social:
+                        # Для чистого приветствия используем полноценный ответ
+                        greetings = [
+                            "Здравствуйте! Я помощник школы Ukido. Чем могу помочь?",
+                            "Добрый день! Рад помочь с вопросами о наших курсах.",
+                            "Приветствую! Готов рассказать о программах школы Ukido."
+                        ]
+                        response_text = random.choice(greetings)
+                    else:
+                        # Для mixed случаев добавляем префикс
+                        response_text = f"Здравствуйте! {base_message}"
                     social_state.mark_greeted(request.user_id)
                 else:
-                    response_text = base_message
+                    response_text = base_message if base_message else "Я на связи. Чем помочь?"
             elif social_context == "thanks":
-                thanks_responses = ["Пожалуйста!", "Рады помочь!", "Всегда пожалуйста!"]
-                response_text = f"{random.choice(thanks_responses)} {base_message}"
+                if is_pure_social:
+                    # Для чистой благодарности используем полноценный ответ
+                    thanks_responses = [
+                        "Пожалуйста! Обращайтесь, если будут вопросы.",
+                        "Рады помочь! Если нужна дополнительная информация - спрашивайте.",
+                        "Всегда пожалуйста! Готов ответить на другие вопросы."
+                    ]
+                    response_text = random.choice(thanks_responses)
+                else:
+                    # Для mixed случаев добавляем префикс
+                    response_text = f"Пожалуйста! {base_message}"
             elif social_context == "apology":
-                apology_responses = ["Ничего страшного!", "Всё в порядке!", "Не переживайте!"]
-                response_text = f"{random.choice(apology_responses)} {base_message}"
+                if is_pure_social:
+                    # Для чистого извинения используем полноценный ответ
+                    apology_responses = [
+                        "Ничего страшного! Чем могу помочь?",
+                        "Всё в порядке! Готов ответить на ваши вопросы.",
+                        "Не переживайте! Расскажите, что вас интересует."
+                    ]
+                    response_text = random.choice(apology_responses)
+                else:
+                    # Для mixed случаев добавляем префикс
+                    response_text = f"Ничего страшного! {base_message}"
+            elif social_context == "repeated_greeting":
+                # Для повторного приветствия НЕ добавляем социальный префикс
+                response_text = base_message
             elif social_context == "farewell":
                 # Для прощания используем ТОЛЬКО прощальную фразу, без offtopic сообщения
                 farewells = [
@@ -160,6 +254,14 @@ async def chat(request: ChatRequest):
         history.add_message(request.user_id, "user", request.message)
         history.add_message(request.user_id, "assistant", response_text)
     
+    # Собираем финальные метрики
+    latency = time.time() - start
+    request_count += 1
+    total_latency += latency
+    
+    if config.LOG_LEVEL == "DEBUG":
+        print(f"⏱️ Latency: {latency:.2f}s | Signal: {user_signal}")
+    
     # === ВОЗВРАТ РЕЗУЛЬТАТА ===
     return ChatResponse(
         response=response_text,
@@ -169,13 +271,38 @@ async def chat(request: ChatRequest):
         decomposed_questions=decomposed_questions,
         fuzzy_matched=fuzzy_matched,
         social=social_context,  # Социальный контекст от Gemini
+        user_signal=user_signal,  # Возвращаем user_signal в ответе
     )
+
+
+@app.get("/metrics")
+async def get_metrics():
+    """Endpoint для просмотра метрик State Machine"""
+    global signal_stats, request_count, total_latency, start_time
+    
+    uptime = (datetime.now() - start_time).total_seconds()
+    avg_latency = total_latency / request_count if request_count > 0 else 0
+    
+    # Вычисляем проценты для каждого сигнала
+    percentages = {}
+    if request_count > 0:
+        for signal, count in signal_stats.items():
+            percentages[signal] = f"{(count / request_count * 100):.1f}%"
+    
+    return {
+        "uptime_seconds": round(uptime, 2),
+        "total_requests": request_count,
+        "avg_latency": round(avg_latency, 3),
+        "signal_distribution": signal_stats,
+        "signal_percentages": percentages,
+        "most_common_signal": max(signal_stats, key=signal_stats.get) if request_count > 0 else None
+    }
 
 
 @app.get("/health")
 async def health_check():
     """Проверка состояния сервера"""
-    return {"status": "healthy", "version": "0.7.3"}
+    return {"status": "healthy", "version": "0.8.0-state-machine"}
 
 
 @app.get("/")
