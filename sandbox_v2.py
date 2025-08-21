@@ -119,6 +119,7 @@ class SandboxV2:
         documents = route_result.get("documents", [])
         questions = route_result.get("decomposed_questions", [])
         user_signal = route_result.get("user_signal", "exploring_only")  # Level 1: извлекаем user_signal
+        original_message = route_result.get("original_message", message)  # Извлекаем оригинальное сообщение
         
         # ====== ШАГ 2: ГЕНЕРАЦИЯ ОТВЕТА ======
         generator_time = 0
@@ -134,6 +135,8 @@ class SandboxV2:
                         "documents": documents,
                         "decomposed_questions": questions,
                         "social_context": social_context,
+                        "user_signal": user_signal,
+                        "original_message": original_message,
                     },
                     history_messages
                 )
@@ -150,13 +153,29 @@ class SandboxV2:
                 generator_time = time.time() - generator_start
         else:
             # Offtopic или need_simplification
-            response = route_result.get("message", "К сожалению, я могу помочь только с вопросами о нашей школе.")
+            # Проверяем, это чистый социальный интент или нет
+            pure_social_intents = ["greeting", "thanks", "farewell", "apology"]
+            is_pure_social = social_context in pure_social_intents and status == "offtopic"
             
-            # Добавляем социальный контекст если есть
-            if social_context == "greeting":
-                response = f"Здравствуйте! {response}"
-            elif social_context == "farewell":
-                response = "До свидания! Будем рады видеть вас в нашей школе!"
+            if is_pure_social:
+                # Для чистых социальных интентов используем специальные ответы
+                if social_context == "greeting":
+                    response = "Здравствуйте! Я помощник школы Ukido. Чем могу помочь?"
+                elif social_context == "thanks":
+                    response = "Пожалуйста! Обращайтесь, если будут вопросы."
+                elif social_context == "farewell":
+                    response = "До свидания! Будем рады видеть вас в нашей школе!"
+                elif social_context == "apology":
+                    response = "Ничего страшного! Чем могу помочь?"
+                else:
+                    response = route_result.get("message", "К сожалению, я могу помочь только с вопросами о нашей школе.")
+            else:
+                # Для обычных offtopic используем сообщение от Router
+                response = route_result.get("message", "К сожалению, я могу помочь только с вопросами о нашей школе.")
+                
+                # Для смешанных случаев добавляем префикс
+                if social_context == "greeting":
+                    response = f"Здравствуйте! {response}"
             
             source = "router_social" if social_context else "fallback"
         
