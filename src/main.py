@@ -5,6 +5,7 @@ main.py - FastAPI сервер чатбота для школы Ukido (верс�
 
 import os
 import random
+import time
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -22,7 +23,6 @@ from social_responder import SocialResponder
 from social_state import SocialStateManager
 from config import Config
 from standard_responses import DEFAULT_FALLBACK, get_error_response
-from zhvanetsky_humor import should_use_zhvanetsky, generate_zhvanetsky_response
 from datetime import datetime
 from typing import Dict
 
@@ -78,7 +78,35 @@ response_generator = ResponseGenerator()
 history = HistoryManager()
 social_state = SocialStateManager()
 social_responder = SocialResponder(social_state)
-config = Config()
+
+# === ГЛОБАЛЬНЫЙ СИНГЛТОН ДЛЯ ЮМОРА ЖВАНЕЦКОГО ===
+zhvanetsky_generator = None
+zhvanetsky_safety_checker = None
+
+if config.ZHVANETSKY_ENABLED:
+    try:
+        from zhvanetsky_humor import ZhvanetskyGenerator
+        from zhvanetsky_safety import SafetyChecker
+        from openrouter_client import OpenRouterClient
+        
+        # Создаём OpenRouter client для Haiku
+        zhvanetsky_client = OpenRouterClient(
+            api_key=config.OPENROUTER_API_KEY,
+            model="anthropic/claude-3.5-haiku",
+            temperature=config.ZHVANETSKY_TEMPERATURE
+        )
+        
+        # Создаём глобальные синглтоны
+        zhvanetsky_safety_checker = SafetyChecker()
+        zhvanetsky_generator = ZhvanetskyGenerator(
+            client=zhvanetsky_client,
+            config=config
+        )
+        
+        print(f"🎭 Система юмора Жванецкого инициализирована (вероятность: {config.ZHVANETSKY_PROBABILITY * 100}%)")
+    except Exception as e:
+        print(f"⚠️ Не удалось инициализировать систему юмора: {e}")
+        config.ZHVANETSKY_ENABLED = False
 
 
 # === ЭНДПОИНТЫ ===
@@ -190,31 +218,32 @@ async def chat(request: ChatRequest):
         
         # === ИНТЕГРАЦИЯ ЮМОРА ЖВАНЕЦКОГО ===
         # Проверяем возможность использования юмора для content offtopic
-        if status == "offtopic" and not is_pure_social and config.ZHVANETSKY_ENABLED:
-            can_use_humor, humor_context = await should_use_zhvanetsky(
+        if status == "offtopic" and not is_pure_social and zhvanetsky_generator and zhvanetsky_safety_checker:
+            # Используем глобальный SafetyChecker для проверки
+            can_use_humor, humor_context = zhvanetsky_safety_checker.should_use_humor(
                 message=request.message,
                 user_signal=user_signal,
                 history=history_messages,
                 user_id=request.user_id,
-                config=config,
                 is_pure_social=is_pure_social
             )
             
             if can_use_humor:
                 try:
-                    # Генерируем юмор через Claude Haiku
-                    humor_response = await generate_zhvanetsky_response(
+                    # Генерируем юмор через глобальный генератор
+                    humor_response = await zhvanetsky_generator.generate_humor(
                         message=request.message,
                         history=history_messages,
                         user_signal=user_signal,
                         user_id=request.user_id,
-                        client=response_generator.client if response_generator else None,
-                        config=config
+                        timeout=config.ZHVANETSKY_TIMEOUT
                     )
                     
                     if humor_response:
                         # Используем юмористический ответ вместо стандартного
                         base_message = humor_response
+                        # Отмечаем использование юмора для rate limiting
+                        zhvanetsky_safety_checker.mark_humor_used(request.user_id)
                         print(f"🎭 Zhvanetsky humor used for user {request.user_id}")
                     else:
                         # Fallback на стандартный offtopic
@@ -330,16 +359,10 @@ async def get_metrics():
     
     # Добавляем метрики Жванецкого если включено
     zhvanetsky_metrics = {}
-    if config.ZHVANETSKY_ENABLED:
-        try:
-            from zhvanetsky_humor import ZhvanetskyGenerator
-            # Создаём временный экземпляр для получения метрик
-            generator = ZhvanetskyGenerator()
-            zhvanetsky_metrics = generator.get_metrics()
-            zhvanetsky_metrics["enabled"] = True
-            zhvanetsky_metrics["probability"] = config.ZHVANETSKY_PROBABILITY
-        except:
-            zhvanetsky_metrics = {"enabled": True, "error": "metrics_unavailable"}
+    if zhvanetsky_generator:
+        zhvanetsky_metrics = zhvanetsky_generator.get_metrics()
+        zhvanetsky_metrics["enabled"] = True
+        zhvanetsky_metrics["probability"] = config.ZHVANETSKY_PROBABILITY
     else:
         zhvanetsky_metrics = {"enabled": False}
     
@@ -349,7 +372,7 @@ async def get_metrics():
         "avg_latency": round(avg_latency, 3),
         "signal_distribution": signal_stats,
         "signal_percentages": percentages,
-        "most_common_signal": max(signal_stats, key=signal_stats.get) if request_count > 0 else None,
+        "most_common_signal": max(signal_stats, key=signal_stats.get) if request_count > 0 and signal_stats else None,
         "zhvanetsky_humor": zhvanetsky_metrics
     }
 

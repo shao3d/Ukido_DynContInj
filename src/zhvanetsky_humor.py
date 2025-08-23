@@ -8,8 +8,13 @@ import logging
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
-from src.zhvanetsky_golden import get_mixed_examples, format_examples_for_prompt
-from src.zhvanetsky_safety import SafetyChecker, TopicClassifier
+try:
+    from zhvanetsky_golden import get_mixed_examples, format_examples_for_prompt
+    from zhvanetsky_safety import SafetyChecker, TopicClassifier
+except ImportError:
+    # Для случаев, когда модуль импортируется как часть пакета
+    from .zhvanetsky_golden import get_mixed_examples, format_examples_for_prompt
+    from .zhvanetsky_safety import SafetyChecker, TopicClassifier
 
 logger = logging.getLogger(__name__)
 
@@ -173,8 +178,7 @@ class ZhvanetskyGenerator:
                 is_valid, error_reason = self.safety_checker.validate_humor_response(response)
                 
                 if is_valid:
-                    # Отмечаем успешную генерацию
-                    self.safety_checker.mark_humor_used(user_id)
+                    # Успешная генерация (mark_humor_used вызывается в main.py)
                     self.successful_generated += 1
                     
                     # Логируем успех
@@ -215,14 +219,22 @@ class ZhvanetskyGenerator:
             # Используем температуру из конфига или дефолтную
             temperature = getattr(self.config, 'ZHVANETSKY_TEMPERATURE', 0.75)
             
-            response = await self.client.generate(
-                prompt=prompt,
+            # Вызываем OpenRouter API через наш client
+            messages = [{"role": "user", "content": prompt}]
+            
+            # Используем async метод chat (возвращает строку)
+            response = await self.client.chat(
+                messages=messages,
                 max_tokens=150,
                 temperature=temperature,
-                model="anthropic/claude-3-haiku"  # Явно указываем модель
+                model="anthropic/claude-3.5-haiku"
             )
             
-            return response.strip()
+            # response уже является строкой
+            if response:
+                return response.strip()
+            
+            return None
         except Exception as e:
             logger.error(f"Claude Haiku call failed: {e}")
             return None
@@ -270,69 +282,5 @@ class ZhvanetskyGenerator:
         }
 
 
-async def should_use_zhvanetsky(message: str,
-                               user_signal: str,
-                               history: List[Dict],
-                               user_id: str,
-                               config,
-                               is_pure_social: bool = False) -> Tuple[bool, Dict]:
-    """
-    Проверяет, нужно ли использовать юмор Жванецкого.
-    
-    Args:
-        message: Сообщение пользователя
-        user_signal: Сигнал пользователя
-        history: История диалога
-        user_id: ID пользователя
-        config: Конфигурация
-        is_pure_social: Чистый социальный интент
-        
-    Returns:
-        (use_humor, context)
-    """
-    # Проверяем, включена ли функция
-    if not getattr(config, 'ZHVANETSKY_ENABLED', False):
-        return False, {'reason': 'feature_disabled'}
-    
-    # Используем SafetyChecker для комплексной проверки
-    safety_checker = SafetyChecker()
-    return safety_checker.should_use_humor(
-        message=message,
-        user_signal=user_signal,
-        history=history,
-        user_id=user_id,
-        is_pure_social=is_pure_social
-    )
-
-
-async def generate_zhvanetsky_response(message: str,
-                                      history: List[Dict],
-                                      user_signal: str,
-                                      user_id: str,
-                                      client=None,
-                                      config=None) -> Optional[str]:
-    """
-    Главная функция для генерации юмора Жванецкого.
-    
-    Args:
-        message: Offtopic сообщение
-        history: История диалога
-        user_signal: Сигнал пользователя
-        user_id: ID пользователя
-        client: Клиент Claude
-        config: Конфигурация
-        
-    Returns:
-        Сгенерированная шутка или None
-    """
-    generator = ZhvanetskyGenerator(client=client, config=config)
-    
-    timeout = getattr(config, 'ZHVANETSKY_TIMEOUT', 3.0)
-    
-    return await generator.generate_humor(
-        message=message,
-        history=history,
-        user_signal=user_signal,
-        user_id=user_id,
-        timeout=timeout
-    )
+# Удалены устаревшие функции should_use_zhvanetsky и generate_zhvanetsky_response
+# Теперь используем глобальные синглтоны в main.py
