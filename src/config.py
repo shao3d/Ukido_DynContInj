@@ -29,3 +29,10 @@ class Config:
     
     # Уровень логирования
     LOG_LEVEL = "INFO"  # INFO для основных событий, DEBUG для детальной отладки
+    
+    # Настройки юмора Жванецкого
+    ZHVANETSKY_ENABLED = True  # Включить/выключить функцию юмора
+    ZHVANETSKY_PROBABILITY = 0.33  # Базовая вероятность использования юмора (33% от offtopic)
+    ZHVANETSKY_TIMEOUT = 3.0  # Таймаут генерации юмора в секундах
+    ZHVANETSKY_TEMPERATURE = 0.75  # Температура для Claude Haiku (креативность)
+    ZHVANETSKY_MAX_PER_HOUR = 3  # Максимум шуток на пользователя в час

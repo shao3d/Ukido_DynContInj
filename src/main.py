@@ -22,6 +22,7 @@ from social_responder import SocialResponder
 from social_state import SocialStateManager
 from config import Config
 from standard_responses import DEFAULT_FALLBACK, get_error_response
+from zhvanetsky_humor import should_use_zhvanetsky, generate_zhvanetsky_response
 from datetime import datetime
 from typing import Dict
 
@@ -187,6 +188,44 @@ async def chat(request: ChatRequest):
             base_message = message if message else DEFAULT_FALLBACK
         documents_used = []
         
+        # === ИНТЕГРАЦИЯ ЮМОРА ЖВАНЕЦКОГО ===
+        # Проверяем возможность использования юмора для content offtopic
+        if status == "offtopic" and not is_pure_social and config.ZHVANETSKY_ENABLED:
+            can_use_humor, humor_context = await should_use_zhvanetsky(
+                message=request.message,
+                user_signal=user_signal,
+                history=history_messages,
+                user_id=request.user_id,
+                config=config,
+                is_pure_social=is_pure_social
+            )
+            
+            if can_use_humor:
+                try:
+                    # Генерируем юмор через Claude Haiku
+                    humor_response = await generate_zhvanetsky_response(
+                        message=request.message,
+                        history=history_messages,
+                        user_signal=user_signal,
+                        user_id=request.user_id,
+                        client=response_generator.client if response_generator else None,
+                        config=config
+                    )
+                    
+                    if humor_response:
+                        # Используем юмористический ответ вместо стандартного
+                        base_message = humor_response
+                        print(f"🎭 Zhvanetsky humor used for user {request.user_id}")
+                    else:
+                        # Fallback на стандартный offtopic
+                        from standard_responses import get_offtopic_response
+                        base_message = get_offtopic_response()
+                        
+                except Exception as e:
+                    print(f"❌ Zhvanetsky generation failed: {e}")
+                    from standard_responses import get_offtopic_response
+                    base_message = get_offtopic_response()
+        
         # Добавляем социальные элементы к offtopic/need_simplification ответам
         if social_context:
             if social_context == "greeting":
@@ -289,13 +328,29 @@ async def get_metrics():
         for signal, count in signal_stats.items():
             percentages[signal] = f"{(count / request_count * 100):.1f}%"
     
+    # Добавляем метрики Жванецкого если включено
+    zhvanetsky_metrics = {}
+    if config.ZHVANETSKY_ENABLED:
+        try:
+            from zhvanetsky_humor import ZhvanetskyGenerator
+            # Создаём временный экземпляр для получения метрик
+            generator = ZhvanetskyGenerator()
+            zhvanetsky_metrics = generator.get_metrics()
+            zhvanetsky_metrics["enabled"] = True
+            zhvanetsky_metrics["probability"] = config.ZHVANETSKY_PROBABILITY
+        except:
+            zhvanetsky_metrics = {"enabled": True, "error": "metrics_unavailable"}
+    else:
+        zhvanetsky_metrics = {"enabled": False}
+    
     return {
         "uptime_seconds": round(uptime, 2),
         "total_requests": request_count,
         "avg_latency": round(avg_latency, 3),
         "signal_distribution": signal_stats,
         "signal_percentages": percentages,
-        "most_common_signal": max(signal_stats, key=signal_stats.get) if request_count > 0 else None
+        "most_common_signal": max(signal_stats, key=signal_stats.get) if request_count > 0 else None,
+        "zhvanetsky_humor": zhvanetsky_metrics
     }
 
 
