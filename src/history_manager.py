@@ -49,3 +49,9 @@ class HistoryManager:
     def get_history(self, user_id: str) -> List[Dict[str, str]]:
         """Возвращает историю пользователя"""
         return self.storage.get(user_id, [])
+    
+    def clear_user_history(self, user_id: str):
+        """Очищает историю конкретного пользователя"""
+        if user_id in self.storage:
+            del self.storage[user_id]
+            print(f"🧹 История пользователя {user_id} очищена")

@@ -24,6 +24,10 @@ class Config:
     MAX_TOKENS_ANSWER = 1200
     SEED = 42          # Фиксированный seed для воспроизводимости результатов
     
+    # Управление детерминированностью (для тестирования vs production)
+    # Установите в "false" для production, чтобы юмор работал с истинной случайностью
+    DETERMINISTIC_MODE = os.getenv("DETERMINISTIC_MODE", "false").lower() == "true"
+    
     # Настройки истории диалогов
     HISTORY_LIMIT = 10  # Количество последних сообщений для хранения и использования
     
@@ -33,6 +37,6 @@ class Config:
     # Настройки юмора Жванецкого
     ZHVANETSKY_ENABLED = True  # Включить/выключить функцию юмора
     ZHVANETSKY_PROBABILITY = 0.33  # Базовая вероятность использования юмора (33% от offtopic)
-    ZHVANETSKY_TIMEOUT = 3.0  # Таймаут генерации юмора в секундах
-    ZHVANETSKY_TEMPERATURE = 0.75  # Температура для Claude Haiku (креативность)
+    ZHVANETSKY_TIMEOUT = 5.0  # Таймаут генерации юмора в секундах (увеличено с 3.0 для надёжности)
+    ZHVANETSKY_TEMPERATURE = 1.0  # Температура для Claude Haiku (максимальная для креативности)
     ZHVANETSKY_MAX_PER_HOUR = 3  # Максимум шуток на пользователя в час

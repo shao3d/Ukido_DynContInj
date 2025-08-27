@@ -29,16 +29,35 @@ class ZhvanetskyGenerator:
 
 Родитель спросил не по теме школы: "{message}"
 
-Используя стиль Михаила Жванецкого из примеров ниже, создай ОДНУ короткую шутку-ответ (максимум 2 предложения), которая:
-1. Мягко и доброжелательно отвечает на вопрос с юмором
-2. Содержит неожиданный поворот мысли в стиле Жванецкого
-3. Обязательно связывает тему с пользой обучения soft skills в нашей школе
-4. НЕ содержит негатива, сарказма или обидных слов
+ДВУХЭТАПНЫЙ ПРОЦЕСС СОЗДАНИЯ ШУТКИ:
 
-Примеры стиля Жванецкого для вдохновения:
+ШАГ 1: Найди парадокс или абсурд в теме "{message}":
+- Какое противоречие есть в этой теме?
+- Что в ней неожиданного с точки зрения ребёнка или родителя?
+- Какая бытовая ситуация с этим связана?
+
+ШАГ 2: Обыграй через конкретную жизненную ситуацию в школе:
+- Представь реальную сценку с детьми
+- Используй конкретные детали (автобус, перемена, домашка)
+- Говори от лица родителя или ребёнка, НЕ от лица школы
+
+СТРОГО ЗАПРЕЩЕНО:
+❌ Структура "X? У нас Y - тоже X, только..."
+❌ Фразы "Мы учим/развиваем/готовим"
+❌ Прямое упоминание "soft skills", "лидерство", "коммуникация"
+❌ Философские обобщения и абстракции
+❌ Копирование метафор из примеров
+
+ТРЕБУЕТСЯ:
+✅ Конкретная бытовая ситуация (уроки, перемена, родительское собрание)
+✅ Неожиданный поворот через детскую логику
+✅ Максимум 2 предложения
+✅ Юмор БЕЗ назидательности
+
+Примеры ТОЛЬКО для понимания стиля абсурда (НЕ копировать):
 {examples}
 
-ВАЖНО: Ответ должен быть ТОЛЬКО шуткой, без дополнительных объяснений.
+Ответь ТОЛЬКО готовой шуткой, без объяснений процесса.
 
 Твой ответ в стиле Жванецкого:"""
 
@@ -116,6 +135,26 @@ class ZhvanetskyGenerator:
         
         return ". ".join(context_parts) + "."
     
+    def _extract_key_words(self, message: str) -> str:
+        """Извлекает ключевые слова из сообщения для контекста."""
+        # Простое извлечение существительных и глаголов
+        import re
+        words = re.findall(r'\b[а-яА-ЯёЁa-zA-Z]{3,}\b', message)
+        return ', '.join(words[:3]) if words else message[:20]
+    
+    def _get_time_context(self) -> str:
+        """Определяет временной контекст."""
+        from datetime import datetime
+        hour = datetime.now().hour
+        if 6 <= hour < 12:
+            return "утро"
+        elif 12 <= hour < 18:
+            return "день"
+        elif 18 <= hour < 23:
+            return "вечер"
+        else:
+            return "ночь"
+    
     async def generate_humor(self, 
                            message: str,
                            history: List[Dict],
@@ -148,13 +187,21 @@ class ZhvanetskyGenerator:
             # Извлекаем контекст диалога
             dialogue_context = self._extract_dialogue_context(history)
             
-            # Добавляем информацию о user_signal в контекст
+            # Добавляем расширенный контекст
+            key_words = self._extract_key_words(message)
+            time_context = self._get_time_context()
+            message_number = len(history)
+            
+            # Добавляем информацию о user_signal и контексте
             signal_context = {
                 'exploring_only': ", родитель изучает варианты",
                 'ready_to_buy': ", родитель готов к действию",
                 'neutral': ""
             }
             dialogue_context += signal_context.get(user_signal, "")
+            dialogue_context += f", время: {time_context}"
+            dialogue_context += f", сообщение №{message_number + 1}"
+            dialogue_context += f", ключевые слова: {key_words}"
             
             # Формируем промпт
             prompt = self.HUMOR_PROMPT_TEMPLATE.format(
@@ -216,17 +263,20 @@ class ZhvanetskyGenerator:
             return None
         
         try:
-            # Используем температуру из конфига или дефолтную
-            temperature = getattr(self.config, 'ZHVANETSKY_TEMPERATURE', 0.75)
+            # Увеличиваем температуру для большей креативности
+            temperature = getattr(self.config, 'ZHVANETSKY_TEMPERATURE', 1.0)
             
             # Вызываем OpenRouter API через наш client
             messages = [{"role": "user", "content": prompt}]
             
-            # Используем async метод chat (возвращает строку)
+            # Используем async метод chat с параметрами для креативности
             response = await self.client.chat(
                 messages=messages,
                 max_tokens=150,
                 temperature=temperature,
+                top_p=0.95,  # Добавляем top_p для большей вариативности
+                frequency_penalty=0.5,  # Штраф за повторение слов
+                presence_penalty=0.3,   # Поощрение новых тем
                 model="anthropic/claude-3.5-haiku"
             )
             

@@ -29,8 +29,12 @@ from typing import Dict
 # === ДЕТЕРМИНИРОВАННОСТЬ ДЛЯ ВОСПРОИЗВОДИМОСТИ ===
 # Устанавливаем глобальный seed для всех random операций
 config = Config()
-random.seed(config.SEED)  # Теперь все random.choice() будут предсказуемыми
-print(f"🎲 Random seed установлен: {config.SEED}")
+if config.DETERMINISTIC_MODE:
+    random.seed(config.SEED)  # Теперь все random.choice() будут предсказуемыми
+    print(f"🎲 Random seed установлен: {config.SEED} (детерминированный режим)")
+else:
+    # Используем системную энтропию для настоящей случайности
+    print("🎲 Случайный режим активен (системная энтропия)")
 
 # === ИНИЦИАЛИЗАЦИЯ ===
 app = FastAPI(title="Ukido Chatbot API", version="0.8.0-state-machine")
@@ -152,6 +156,31 @@ async def chat(request: ChatRequest):
     fuzzy_matched = route_result.get("fuzzy_matched", False)
     user_signal = route_result.get("user_signal", "exploring_only")  # Получаем user_signal
     
+    # HOTFIX: Восстанавливаем user_signal для offtopic из предыдущих успешных запросов
+    # Проблема: Gemini 2.5 Flash игнорирует инструкцию сохранять user_signal для offtopic
+    if status == "offtopic" and user_signal == "exploring_only":
+        # Храним историю сигналов в глобальной переменной для каждого пользователя
+        if not hasattr(chat, 'user_signals_history'):
+            chat.user_signals_history = {}
+        
+        # Получаем последний известный сигнал для этого пользователя
+        if request.user_id in chat.user_signals_history:
+            last_signal = chat.user_signals_history[request.user_id]
+            if last_signal != "exploring_only":
+                original_signal = user_signal
+                user_signal = last_signal
+                print(f"🔧 HOTFIX: Восстановлен user_signal='{user_signal}' из истории (Router вернул '{original_signal}')")
+    
+    # Сохраняем текущий сигнал для будущих offtopic
+    if status == "success" and user_signal != "exploring_only":
+        if not hasattr(chat, 'user_signals_history'):
+            chat.user_signals_history = {}
+        chat.user_signals_history[request.user_id] = user_signal
+        print(f"💾 Сохранён user_signal='{user_signal}' для user_id='{request.user_id}'")
+    
+    # Отладочный вывод
+    print(f"🔍 DEBUG: Router returned user_signal='{user_signal}', status='{status}'")
+    
     # Собираем метрики
     if user_signal in signal_stats:
         signal_stats[user_signal] += 1
@@ -168,8 +197,10 @@ async def chat(request: ChatRequest):
                     "decomposed_questions": decomposed_questions,
                     "social_context": social_context,  # Передаем контекст
                     "user_signal": user_signal,  # Передаем user_signal для персонализации
+                    "original_message": request.message,  # Добавляем оригинальное сообщение
                 },
                 history_messages,
+                request.message,  # Передаём текущее сообщение отдельно для корректной проверки CTA
             )
             
             # === ОБРАБОТКА СОЦИАЛЬНЫХ ИНТЕНТОВ ДЛЯ SUCCESS СЛУЧАЕВ ===
@@ -219,6 +250,9 @@ async def chat(request: ChatRequest):
         # === ИНТЕГРАЦИЯ ЮМОРА ЖВАНЕЦКОГО ===
         # Проверяем возможность использования юмора для content offtopic
         if status == "offtopic" and not is_pure_social and zhvanetsky_generator and zhvanetsky_safety_checker:
+            # Отладочный вывод
+            print(f"🔍 DEBUG main.py: Checking humor for offtopic. user_signal='{user_signal}', is_pure_social={is_pure_social}")
+            
             # Используем глобальный SafetyChecker для проверки
             can_use_humor, humor_context = zhvanetsky_safety_checker.should_use_humor(
                 message=request.message,
@@ -381,6 +415,16 @@ async def get_metrics():
 async def health_check():
     """Проверка состояния сервера"""
     return {"status": "healthy", "version": "0.8.0-state-machine"}
+
+
+@app.post("/clear_history/{user_id}")
+async def clear_history(user_id: str):
+    """Очищает историю конкретного пользователя"""
+    global history
+    if history:
+        history.clear_user_history(user_id)
+        return {"status": "success", "message": f"History cleared for user {user_id}"}
+    return {"status": "error", "message": "History manager not available"}
 
 
 @app.get("/")

@@ -91,7 +91,12 @@ class SafetyChecker:
         """
         # Никогда не шутим при тревоге или чувствительности к цене
         forbidden_signals = ["anxiety_about_child", "price_sensitive"]
-        return user_signal not in forbidden_signals
+        result = user_signal not in forbidden_signals
+        
+        # Отладочный вывод
+        print(f"🔍 DEBUG check_user_signal: signal='{user_signal}', forbidden={forbidden_signals}, can_use_humor={result}")
+        
+        return result
     
     def analyze_dialogue_mood(self, history: List[Dict]) -> str:
         """
@@ -197,9 +202,9 @@ class SafetyChecker:
         elif mood == 'negative':
             probability = 0.0  # Никогда при негативе
         
-        # Осторожнее в начале диалога
+        # Осторожнее в начале диалога (но не слишком)
         if is_first_message:
-            probability *= 0.5
+            probability *= 0.9  # Изменено с 0.5 → 0.8 → 0.9 для достижения ~30% вероятности
         
         # Ограничиваем максимум
         return min(probability, 0.5)  # Не больше 50%
@@ -222,16 +227,17 @@ class SafetyChecker:
         if sentences > 3:
             return False, "too_many_sentences"
         
-        # Проверка на связь со школой
-        school_keywords = ['навык', 'учим', 'учат', 'развив', 'ребен', 'ребёнок',
-                          'дети', 'детей', 'школ', 'ukido', 'курс', 'заняти',
-                          'soft skills', 'софт скилл']
-        
+        # Проверка на связь со школой (ОСЛАБЛЕНА для MVP)
+        # Закомментировано: слишком строгая проверка отклоняет хорошие шутки
+        # school_keywords = ['навык', 'учим', 'учат', 'развив', 'ребен', 'ребёнок',
+        #                   'дети', 'детей', 'школ', 'ukido', 'курс', 'заняти',
+        #                   'soft skills', 'софт скилл']
+        # 
         response_lower = response.lower()
-        has_school_reference = any(keyword in response_lower for keyword in school_keywords)
-        
-        if not has_school_reference:
-            return False, "no_school_reference"
+        # has_school_reference = any(keyword in response_lower for keyword in school_keywords)
+        # 
+        # if not has_school_reference:
+        #     return False, "no_school_reference"
         
         # Проверка на негативные слова
         negative_words = ['плохо', 'ужасно', 'кошмар', 'идиот', 'дурак', 'тупой']
