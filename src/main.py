@@ -18,6 +18,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from router import Router
 from response_generator import ResponseGenerator
 from history_manager import HistoryManager
+from persistence_manager import (
+    PersistenceManager, 
+    create_state_snapshot, 
+    restore_state_snapshot
+)
 from social_intents import SocialIntent
 from social_responder import SocialResponder
 from social_state import SocialStateManager
@@ -25,6 +30,9 @@ from config import Config
 from standard_responses import DEFAULT_FALLBACK, get_error_response
 from datetime import datetime
 from typing import Dict
+from completed_actions_handler import CompletedActionsHandler
+import signal
+import atexit
 
 # === ДЕТЕРМИНИРОВАННОСТЬ ДЛЯ ВОСПРОИЗВОДИМОСТИ ===
 # Устанавливаем глобальный seed для всех random операций
@@ -82,6 +90,63 @@ response_generator = ResponseGenerator()
 history = HistoryManager()
 social_state = SocialStateManager()
 social_responder = SocialResponder(social_state)
+completed_actions_handler = CompletedActionsHandler()  # Инициализируем обработчик завершённых действий
+
+# === МЕНЕДЖЕР ПЕРСИСТЕНТНОСТИ ===
+persistence_manager = PersistenceManager(base_path="data/persistent_states")
+
+# Глобальный словарь для user_signals_history (для HOTFIX)
+user_signals_history = {}
+
+# Загружаем сохранённые состояния при старте
+print("📂 Загрузка сохранённых состояний...")
+saved_states = persistence_manager.load_all_states()
+for user_id, state_data in saved_states.items():
+    restore_state_snapshot(
+        state_data, history, user_signals_history, 
+        social_state, user_id
+    )
+print(f"✅ Восстановлено {len(saved_states)} диалогов")
+
+# === GRACEFUL SHUTDOWN ===
+def save_all_states_on_shutdown():
+    """Сохраняет все активные состояния при остановке сервера"""
+    print("\n🛑 Получен сигнал остановки, сохраняю состояния...")
+    
+    try:
+        # Собираем все активные состояния
+        all_states = {}
+        
+        # Получаем список всех пользователей из истории
+        if hasattr(history, 'storage'):
+            for user_id in history.storage.keys():
+                try:
+                    state_snapshot = create_state_snapshot(
+                        history, user_signals_history, social_state, user_id
+                    )
+                    all_states[user_id] = state_snapshot
+                except Exception as e:
+                    print(f"⚠️ Ошибка создания снимка для {user_id}: {e}")
+        
+        # Массово сохраняем все состояния
+        saved_count = persistence_manager.save_all_states(all_states)
+        print(f"✅ Сохранено {saved_count} состояний перед остановкой")
+        
+    except Exception as e:
+        print(f"❌ Ошибка при сохранении состояний: {e}")
+
+# Регистрируем обработчики сигналов
+def signal_handler(signum, frame):
+    """Обработчик системных сигналов"""
+    save_all_states_on_shutdown()
+    sys.exit(0)
+
+# Регистрируем обработчики для различных сигналов
+signal.signal(signal.SIGTERM, signal_handler)  # Для graceful shutdown в Docker/Kubernetes
+signal.signal(signal.SIGINT, signal_handler)   # Для Ctrl+C
+atexit.register(save_all_states_on_shutdown)   # На всякий случай при нормальном завершении
+
+print("🔐 Обработчики graceful shutdown зарегистрированы")
 
 # === ГЛОБАЛЬНЫЙ СИНГЛТОН ДЛЯ ЮМОРА ЖВАНЕЦКОГО ===
 zhvanetsky_generator = None
@@ -147,6 +212,19 @@ async def chat(request: ChatRequest):
             "decomposed_questions": []
         }
     
+    # === ОБРАБОТКА ЗАВЕРШЁННЫХ ДЕЙСТВИЙ ===
+    # Проверяем и корректируем offtopic для завершённых действий о школе
+    if config.ENABLE_COMPLETED_ACTIONS_HANDLER:
+        original_status = route_result.get("status")
+        route_result = completed_actions_handler.detect_completed_action(
+            request.message,
+            route_result,
+            history_messages
+        )
+        # Логируем если была корректировка
+        if route_result.get("_correction_applied") == "completed_action":
+            print(f"✅ Completed action corrected: {original_status} → {route_result.get('status')}")
+    
     # Обрабатываем результат роутера
     status = route_result.get("status", "offtopic")
     message = route_result.get("message", "")
@@ -159,13 +237,9 @@ async def chat(request: ChatRequest):
     # HOTFIX: Восстанавливаем user_signal для offtopic из предыдущих успешных запросов
     # Проблема: Gemini 2.5 Flash игнорирует инструкцию сохранять user_signal для offtopic
     if status == "offtopic" and user_signal == "exploring_only":
-        # Храним историю сигналов в глобальной переменной для каждого пользователя
-        if not hasattr(chat, 'user_signals_history'):
-            chat.user_signals_history = {}
-        
         # Получаем последний известный сигнал для этого пользователя
-        if request.user_id in chat.user_signals_history:
-            last_signal = chat.user_signals_history[request.user_id]
+        if request.user_id in user_signals_history:
+            last_signal = user_signals_history[request.user_id]
             if last_signal != "exploring_only":
                 original_signal = user_signal
                 user_signal = last_signal
@@ -173,9 +247,7 @@ async def chat(request: ChatRequest):
     
     # Сохраняем текущий сигнал для будущих offtopic
     if status == "success" and user_signal != "exploring_only":
-        if not hasattr(chat, 'user_signals_history'):
-            chat.user_signals_history = {}
-        chat.user_signals_history[request.user_id] = user_signal
+        user_signals_history[request.user_id] = user_signal
         print(f"💾 Сохранён user_signal='{user_signal}' для user_id='{request.user_id}'")
     
     # Отладочный вывод
@@ -185,23 +257,74 @@ async def chat(request: ChatRequest):
     if user_signal in signal_stats:
         signal_stats[user_signal] += 1
     
+    # Функция фильтрации offtopic из истории
+    def filter_offtopic_from_history(history_messages):
+        """Убирает пары сообщений (user+assistant), где assistant отвечал на offtopic"""
+        filtered = []
+        offtopic_markers = [
+            "Давайте сосредоточимся на",
+            "Это не связано с нашими курсами",
+            "футбольной секции",
+            "парковка",
+            "пробки",
+            "погода",
+            "перемена в школе",  # Часть юмора про парковку
+            "У нас парковка",    # Начало шутки про парковку
+        ]
+        
+        i = 0
+        while i < len(history_messages):
+            # Проверяем пару user+assistant сообщений
+            if i + 1 < len(history_messages):
+                user_msg = history_messages[i]
+                assistant_msg = history_messages[i + 1]
+                
+                # Если в ответе ассистента есть маркеры offtopic - пропускаем оба сообщения
+                if assistant_msg.get("role") == "assistant":
+                    is_offtopic = any(marker in assistant_msg.get("content", "") for marker in offtopic_markers)
+                    if not is_offtopic:
+                        filtered.append(user_msg)
+                        filtered.append(assistant_msg)
+                    else:
+                        print(f"🔍 Фильтруем offtopic из истории: {user_msg.get('content', '')[:30]}...")
+                    i += 2
+                else:
+                    # Если структура нарушена, добавляем как есть
+                    filtered.append(history_messages[i])
+                    i += 1
+            else:
+                # Последнее сообщение без пары
+                filtered.append(history_messages[i])
+                i += 1
+        
+        return filtered
+    
     # Генерация ответа в зависимости от статуса
     if status == "success":
         documents_used = documents if isinstance(documents, list) else []
         try:
-            # Передаем социальный контекст и user_signal в генератор
-            response_text = await response_generator.generate(
-                {
-                    "status": status,
-                    "documents": documents_used,
-                    "decomposed_questions": decomposed_questions,
-                    "social_context": social_context,  # Передаем контекст
-                    "user_signal": user_signal,  # Передаем user_signal для персонализации
-                    "original_message": request.message,  # Добавляем оригинальное сообщение
-                },
-                history_messages,
-                request.message,  # Передаём текущее сообщение отдельно для корректной проверки CTA
-            )
+            # Проверяем, есть ли готовый ответ для завершённого действия
+            if route_result.get("completed_action_response"):
+                # Используем готовый ответ вместо генерации через Claude
+                response_text = route_result["completed_action_response"]
+                print(f"📝 Using pre-generated response for completed action")
+            else:
+                # Фильтруем offtopic из истории перед передачей в генератор
+                filtered_history = filter_offtopic_from_history(history_messages)
+                
+                # Передаем социальный контекст и user_signal в генератор
+                response_text = await response_generator.generate(
+                    {
+                        "status": status,
+                        "documents": documents_used,
+                        "decomposed_questions": decomposed_questions,
+                        "social_context": social_context,  # Передаем контекст
+                        "user_signal": user_signal,  # Передаем user_signal для персонализации
+                        "original_message": request.message,  # Добавляем оригинальное сообщение
+                    },
+                    filtered_history,  # Используем отфильтрованную историю
+                    request.message,  # Передаём текущее сообщение отдельно для корректной проверки CTA
+                )
             
             # === ОБРАБОТКА СОЦИАЛЬНЫХ ИНТЕНТОВ ДЛЯ SUCCESS СЛУЧАЕВ ===
             # Правило: Бизнес-интент ВСЕГДА приоритетнее социального
@@ -355,6 +478,16 @@ async def chat(request: ChatRequest):
     if history:
         history.add_message(request.user_id, "user", request.message)
         history.add_message(request.user_id, "assistant", response_text)
+        
+        # === СОХРАНЕНИЕ ПЕРСИСТЕНТНОГО СОСТОЯНИЯ ===
+        # Создаём снимок текущего состояния и сохраняем в файл
+        try:
+            state_snapshot = create_state_snapshot(
+                history, user_signals_history, social_state, request.user_id
+            )
+            persistence_manager.save_state(request.user_id, state_snapshot)
+        except Exception as e:
+            print(f"⚠️ Ошибка сохранения состояния для {request.user_id}: {e}")
     
     # Собираем финальные метрики
     latency = time.time() - start
@@ -400,6 +533,9 @@ async def get_metrics():
     else:
         zhvanetsky_metrics = {"enabled": False}
     
+    # Добавляем метрики персистентности
+    persistence_metrics = persistence_manager.get_stats()
+    
     return {
         "uptime_seconds": round(uptime, 2),
         "total_requests": request_count,
@@ -407,7 +543,8 @@ async def get_metrics():
         "signal_distribution": signal_stats,
         "signal_percentages": percentages,
         "most_common_signal": max(signal_stats, key=signal_stats.get) if request_count > 0 and signal_stats else None,
-        "zhvanetsky_humor": zhvanetsky_metrics
+        "zhvanetsky_humor": zhvanetsky_metrics,
+        "persistence": persistence_metrics
     }
 
 

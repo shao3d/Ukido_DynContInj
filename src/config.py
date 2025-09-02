@@ -40,3 +40,6 @@ class Config:
     ZHVANETSKY_TIMEOUT = 5.0  # Таймаут генерации юмора в секундах (увеличено с 3.0 для надёжности)
     ZHVANETSKY_TEMPERATURE = 1.0  # Температура для Claude Haiku (максимальная для креативности)
     ZHVANETSKY_MAX_PER_HOUR = 3  # Максимум шуток на пользователя в час
+    
+    # Настройки обработчика завершённых действий
+    ENABLE_COMPLETED_ACTIONS_HANDLER = True  # Включить/выключить обработку завершённых действий
