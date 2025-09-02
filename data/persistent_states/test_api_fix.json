@@ -1,0 +1,17 @@
+{
+  "history": [
+    {
+      "role": "user",
+      "content": "У вас есть система трекинга прогресса? Дашборды для родителей? API для интеграции?"
+    },
+    {
+      "role": "assistant",
+      "content": "У нас продвинутая система мониторинга пр..."
+    }
+  ],
+  "user_signal": "exploring_only",
+  "greeting_exchanged": false,
+  "message_count": 2,
+  "user_id": "test_api_fix",
+  "last_updated": "2025-09-03T01:02:49.323323"
+}
