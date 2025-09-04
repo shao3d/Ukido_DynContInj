@@ -16,12 +16,15 @@ from typing import Dict, List, Any, Optional
 TEST_FILES = {
     'v1': 'test_humor_dialogues.json',
     'v2': 'test_dialogues_v2.json',
-    'scenarios': 'tests/test_scenarios_state_machine.json'
+    'scenarios': 'tests/test_scenarios_state_machine.json',
+    'cta': 'test_cta_blocker_dialogues.json'  # Новые тесты для CTA блокировки
 }
 
 def detect_test_file(dialogue_id: str) -> str:
     """Автоматически определяет файл теста по ID диалога"""
-    if dialogue_id.startswith('dialog_v2_'):
+    if dialogue_id.startswith('cta_test_'):
+        return TEST_FILES['cta']
+    elif dialogue_id.startswith('dialog_v2_'):
         return TEST_FILES['v2']
     elif dialogue_id.startswith('dialog_'):
         return TEST_FILES['v1']
@@ -338,6 +341,12 @@ def save_results(results: Dict) -> None:
 - Юмор: {'✅' if msg.get('has_humor') else '❌'}
 - Время ответа: {msg.get('response_time', 0):.2f}с
 """
+        
+        # Добавляем информацию о CTA если есть metadata
+        metadata = msg.get('metadata', {})
+        if metadata and metadata.get('cta_added'):
+            cta_type = metadata.get('cta_type', 'unknown')
+            md_content += f"- **CTA:** {cta_type} (органично интегрирован)\n"
         
         # Добавляем переход если был
         for transition in results['signal_transitions']:

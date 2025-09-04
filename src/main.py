@@ -31,6 +31,7 @@ from standard_responses import DEFAULT_FALLBACK, get_error_response
 from datetime import datetime
 from typing import Dict
 from completed_actions_handler import CompletedActionsHandler
+from simple_cta_blocker import SimpleCTABlocker  # Новый импорт для блокировки CTA
 import signal
 import atexit
 
@@ -82,6 +83,7 @@ class ChatResponse(BaseModel):
     fuzzy_matched: Optional[bool] = None
     social: Optional[str] = None
     user_signal: Optional[str] = None  # Добавляем user_signal в ответ
+    metadata: Optional[dict] = None  # Добавляем metadata с информацией о CTA
 
 
 # === ГЛОБАЛЬНЫЕ КОМПОНЕНТЫ ===
@@ -91,6 +93,7 @@ history = HistoryManager()
 social_state = SocialStateManager()
 social_responder = SocialResponder(social_state)
 completed_actions_handler = CompletedActionsHandler()  # Инициализируем обработчик завершённых действий
+simple_cta_blocker = SimpleCTABlocker()  # Инициализируем блокировщик CTA
 
 # === МЕНЕДЖЕР ПЕРСИСТЕНТНОСТИ ===
 persistence_manager = PersistenceManager(base_path="data/persistent_states")
@@ -257,6 +260,33 @@ async def chat(request: ChatRequest):
     if user_signal in signal_stats:
         signal_stats[user_signal] += 1
     
+    # === SIMPLE CTA BLOCKER - Проверка завершённых действий и отказов ===
+    # Подсчитываем количество сообщений для текущего пользователя
+    current_message_count = len(history_messages) + 1
+    
+    # Проверяем завершённые действия
+    completed_action = simple_cta_blocker.check_completed_action(request.user_id, request.message)
+    if completed_action:
+        print(f"✅ SimpleCTABlocker: обнаружено завершённое действие '{completed_action}'")
+    
+    # Проверяем отказы
+    refusal_type = simple_cta_blocker.check_refusal(request.user_id, request.message, current_message_count)
+    if refusal_type:
+        print(f"🚫 SimpleCTABlocker: обнаружен отказ типа '{refusal_type}'")
+    
+    # Определяем, нужно ли блокировать CTA
+    should_block_cta, block_reason = simple_cta_blocker.should_block_cta(
+        request.user_id, 
+        current_message_count, 
+        user_signal
+    )
+    
+    # Получаем модификатор частоты CTA
+    cta_frequency_modifier = simple_cta_blocker.get_cta_frequency_modifier(request.user_id)
+    
+    if should_block_cta:
+        print(f"🔒 SimpleCTABlocker: CTA заблокированы (причина: {block_reason})")
+    
     # Функция фильтрации offtopic из истории
     def filter_offtopic_from_history(history_messages):
         """Убирает пары сообщений (user+assistant), где assistant отвечал на offtopic"""
@@ -307,13 +337,22 @@ async def chat(request: ChatRequest):
             if route_result.get("completed_action_response"):
                 # Используем готовый ответ вместо генерации через Claude
                 response_text = route_result["completed_action_response"]
+                # Создаём metadata для pre-generated ответа
+                response_metadata = {
+                    "intent": status,
+                    "user_signal": user_signal,
+                    "cta_added": False,  # Pre-generated ответы не содержат CTA
+                    "cta_type": None,
+                    "humor_generated": False
+                }
                 print(f"📝 Using pre-generated response for completed action")
             else:
                 # Фильтруем offtopic из истории перед передачей в генератор
                 filtered_history = filter_offtopic_from_history(history_messages)
                 
-                # Передаем социальный контекст и user_signal в генератор
-                response_text = await response_generator.generate(
+                # Передаем социальный контекст, user_signal и параметры блокировки CTA
+                # Теперь generate() возвращает tuple (text, metadata)
+                response_text, response_metadata = await response_generator.generate(
                     {
                         "status": status,
                         "documents": documents_used,
@@ -321,6 +360,9 @@ async def chat(request: ChatRequest):
                         "social_context": social_context,  # Передаем контекст
                         "user_signal": user_signal,  # Передаем user_signal для персонализации
                         "original_message": request.message,  # Добавляем оригинальное сообщение
+                        "cta_blocked": should_block_cta,  # Передаем флаг блокировки CTA
+                        "cta_frequency_modifier": cta_frequency_modifier,  # Передаем модификатор частоты
+                        "block_reason": block_reason if should_block_cta else None,  # Причина блокировки
                     },
                     filtered_history,  # Используем отфильтрованную историю
                     request.message,  # Передаём текущее сообщение отдельно для корректной проверки CTA
@@ -357,6 +399,14 @@ async def chat(request: ChatRequest):
         except Exception as e:
             print(f"❌ ResponseGenerator failed: {e}")
             response_text = get_error_response("generation_failed")
+            # Создаём metadata для случая ошибки
+            response_metadata = {
+                "intent": status,
+                "user_signal": user_signal,
+                "cta_added": False,
+                "cta_type": None,
+                "humor_generated": False
+            }
     else:
         # Для offtopic и need_simplification тоже обрабатываем социальный контекст
         # Определяем, нужно ли добавлять offtopic сообщение
@@ -369,6 +419,15 @@ async def chat(request: ChatRequest):
         else:
             base_message = message if message else DEFAULT_FALLBACK
         documents_used = []
+        
+        # Инициализируем metadata для offtopic случаев
+        response_metadata = {
+            "intent": status,
+            "user_signal": user_signal,
+            "cta_added": False,
+            "cta_type": None,
+            "humor_generated": False
+        }
         
         # === ИНТЕГРАЦИЯ ЮМОРА ЖВАНЕЦКОГО ===
         # Проверяем возможность использования юмора для content offtopic
@@ -401,6 +460,8 @@ async def chat(request: ChatRequest):
                         base_message = humor_response
                         # Отмечаем использование юмора для rate limiting
                         zhvanetsky_safety_checker.mark_humor_used(request.user_id)
+                        # Помечаем в metadata что юмор был использован
+                        response_metadata["humor_generated"] = True
                         print(f"🎭 Zhvanetsky humor used for user {request.user_id}")
                     else:
                         # Fallback на стандартный offtopic
@@ -477,7 +538,8 @@ async def chat(request: ChatRequest):
     # === СОХРАНЕНИЕ В ИСТОРИЮ ===
     if history:
         history.add_message(request.user_id, "user", request.message)
-        history.add_message(request.user_id, "assistant", response_text)
+        # Передаём metadata при сохранении ответа ассистента
+        history.add_message(request.user_id, "assistant", response_text, response_metadata)
         
         # === СОХРАНЕНИЕ ПЕРСИСТЕНТНОГО СОСТОЯНИЯ ===
         # Создаём снимок текущего состояния и сохраняем в файл
@@ -507,6 +569,7 @@ async def chat(request: ChatRequest):
         fuzzy_matched=fuzzy_matched,
         social=social_context,  # Социальный контекст от Gemini
         user_signal=user_signal,  # Возвращаем user_signal в ответе
+        metadata=response_metadata if 'response_metadata' in locals() else None  # Возвращаем metadata с CTA информацией
     )
 
 

@@ -1,0 +1,176 @@
+{
+  "test_payment_blocking": {
+    "name": "Тест блокировки CTA после оплаты",
+    "description": "Проверяем, что после оплаты система не предлагает скидки и запись",
+    "messages": [
+      {
+        "user": "Здравствуйте! У меня дочь 11 лет, очень стеснительная. Подойдут ли ваши курсы?",
+        "expected_signal": "anxiety_about_child",
+        "expected_cta": true,
+        "cta_type": "trial_or_guarantee"
+      },
+      {
+        "user": "А сколько это стоит? Не слишком ли дорого?",
+        "expected_signal": "price_sensitive", 
+        "expected_cta": true,
+        "cta_type": "discount_or_value"
+      },
+      {
+        "user": "Хорошо, я только что оплатила курс через ваш сайт. Что дальше?",
+        "expected_signal": "ready_to_buy",
+        "expected_cta": false,
+        "note": "После оплаты CTA должны быть заблокированы"
+      },
+      {
+        "user": "Какие материалы нужны для занятий?",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "CTA всё ещё заблокированы - пользователь уже оплатил"
+      },
+      {
+        "user": "У вас есть курсы для младшего ребёнка 7 лет? Может быть скидка для второго?",
+        "expected_signal": "price_sensitive",
+        "expected_cta": false,
+        "note": "Даже при price_sensitive не должно быть CTA про оплату"
+      }
+    ]
+  },
+  "test_refusal_blocking": {
+    "name": "Тест блокировки CTA после отказа",
+    "description": "Проверяем блокировку после жёсткого и мягкого отказов",
+    "messages": [
+      {
+        "user": "Добрый день! Расскажите о вашей школе",
+        "expected_signal": "exploring_only",
+        "expected_cta": true,
+        "cta_type": "soft_info"
+      },
+      {
+        "user": "Не надо мне ничего предлагать! Я просто смотрю",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "Жёсткий отказ - блокировка на 7 сообщений"
+      },
+      {
+        "user": "Какая у вас методика обучения?",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "CTA заблокирован (1/7)"
+      },
+      {
+        "user": "Сколько детей в группе?",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "CTA заблокирован (2/7)"
+      },
+      {
+        "user": "Какие навыки развиваете?",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "CTA заблокирован (3/7)"
+      }
+    ]
+  },
+  "test_soft_refusal": {
+    "name": "Тест мягкого отказа",
+    "description": "Проверяем блокировку на 3 сообщения после 'подумаю'",
+    "messages": [
+      {
+        "user": "Сколько стоят ваши курсы?",
+        "expected_signal": "exploring_only",
+        "expected_cta": true
+      },
+      {
+        "user": "Спасибо, я подумаю и решу позже",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "Мягкий отказ - блокировка на 3 сообщения"
+      },
+      {
+        "user": "А есть пробное занятие?",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "CTA заблокирован (1/3)"
+      },
+      {
+        "user": "Какое расписание?",
+        "expected_signal": "exploring_only", 
+        "expected_cta": false,
+        "note": "CTA заблокирован (2/3)"
+      },
+      {
+        "user": "Где проходят занятия?",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "CTA заблокирован (3/3)"
+      },
+      {
+        "user": "Хочу записаться на пробное",
+        "expected_signal": "ready_to_buy",
+        "expected_cta": true,
+        "note": "Блокировка истекла, CTA снова доступен"
+      }
+    ]
+  },
+  "test_cta_variety": {
+    "name": "Тест вариативности CTA",
+    "description": "Проверяем, что CTA не повторяются",
+    "messages": [
+      {
+        "user": "Это дорого для нас",
+        "expected_signal": "price_sensitive",
+        "expected_cta": true,
+        "collect_cta": true
+      },
+      {
+        "user": "Всё равно дорого, есть ещё скидки?",
+        "expected_signal": "price_sensitive",
+        "expected_cta": false,
+        "note": "Прямой вопрос про скидки - CTA не нужен"
+      },
+      {
+        "user": "А если двоих детей записать?",
+        "expected_signal": "price_sensitive",
+        "expected_cta": true,
+        "collect_cta": true
+      },
+      {
+        "user": "Надо посчитать бюджет",
+        "expected_signal": "price_sensitive",
+        "expected_cta": true,
+        "collect_cta": true
+      },
+      {
+        "user": "Дороговато выходит",
+        "expected_signal": "price_sensitive",
+        "expected_cta": true,
+        "collect_cta": true,
+        "note": "Должны быть разные варианты CTA"
+      }
+    ]
+  },
+  "test_completed_actions": {
+    "name": "Тест различных завершённых действий",
+    "description": "Проверяем детекцию разных типов действий",
+    "messages": [
+      {
+        "user": "Мы уже записались на пробное занятие вчера",
+        "expected_signal": "ready_to_buy",
+        "expected_cta": false,
+        "note": "Уже записан - не предлагаем запись снова"
+      },
+      {
+        "user": "Когда начинаются занятия?",
+        "expected_signal": "exploring_only",
+        "expected_cta": false,
+        "note": "CTA про запись заблокирован"
+      },
+      {
+        "user": "Какие курсы подойдут после пробного?",
+        "expected_signal": "exploring_only",
+        "expected_cta": true,
+        "note": "Можем предложить полный курс после пробного"
+      }
+    ]
+  }
+}
