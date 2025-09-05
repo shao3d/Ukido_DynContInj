@@ -1,0 +1,53 @@
+# Multi-stage build для оптимизации размера
+FROM python:3.11-slim as builder
+
+# Установка системных зависимостей для компиляции
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Рабочая директория
+WORKDIR /app
+
+# Копируем requirements и устанавливаем зависимости
+COPY requirements-chainlit.txt .
+RUN pip install --no-cache-dir --user -r requirements-chainlit.txt
+
+# Production образ
+FROM python:3.11-slim
+
+# Копируем установленные пакеты из builder
+COPY --from=builder /root/.local /root/.local
+
+# Убеждаемся что пакеты в PATH
+ENV PATH=/root/.local/bin:$PATH
+
+# Рабочая директория
+WORKDIR /app
+
+# Копируем код приложения
+COPY src/ ./src/
+COPY data/ ./data/
+COPY chainlit_app/ ./chainlit_app/
+
+# Копируем .env файлы (если есть)
+COPY .env* ./
+
+# Создаём директорию для персистентных данных если её нет
+RUN mkdir -p data/persistent_states
+
+# Переменные окружения
+ENV PYTHONUNBUFFERED=1
+ENV CHAINLIT_HOST=0.0.0.0
+ENV CHAINLIT_PORT=8000
+ENV PYTHONPATH=/app:$PYTHONPATH
+
+# Открываем порт
+EXPOSE 8000
+
+# Переходим в директорию chainlit_app
+WORKDIR /app/chainlit_app
+
+# Запуск Chainlit
+CMD ["chainlit", "run", "app.py", "--host", "0.0.0.0", "--port", "8000"]

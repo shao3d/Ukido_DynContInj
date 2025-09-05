@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  chainlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.chainlit
+    container_name: ukido-chainlit
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - MODEL_ANSWER=${MODEL_ANSWER:-openai/gpt-4o-mini}
+      - DETERMINISTIC_MODE=${DETERMINISTIC_MODE:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Монтируем директорию для персистентных данных
+      - ./data/persistent_states:/app/data/persistent_states:rw
+      # Опционально: для разработки можно монтировать код
+      # - ./src:/app/src:ro
+      # - ./chainlit_app:/app/chainlit_app:ro
+    restart: unless-stopped
+    networks:
+      - ukido-network
+
+networks:
+  ukido-network:
+    driver: bridge
+
+# Опционально: volume для данных
+volumes:
+  persistent_data:
+    driver: local

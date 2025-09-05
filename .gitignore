@@ -178,3 +178,16 @@ data/persistent_states/detail_test_*.json
 # Archive and cache
 archive/
 .serena/
+
+# Chainlit specific
+.chainlit/
+chainlit_app/.chainlit/
+*.db
+chainlit.md
+
+# Backups
+backup_chainlit*/
+
+# Additional IDE files  
+*.swp
+*.swo
