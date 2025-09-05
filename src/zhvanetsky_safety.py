@@ -192,22 +192,22 @@ class SafetyChecker:
         
         # Модификаторы по user_signal
         if user_signal == "exploring_only":
-            probability *= 1.2  # Увеличиваем для исследователей
+            probability *= 1.25  # Увеличиваем для исследователей (было 1.2)
         elif user_signal == "ready_to_buy":
-            probability *= 0.8  # Уменьшаем для готовых купить
+            probability *= 0.9  # Чуть уменьшаем для готовых купить (было 0.8)
         
         # Модификаторы по настроению
         if mood == 'positive':
-            probability *= 1.1
+            probability *= 1.2  # Увеличено с 1.1 для демо
         elif mood == 'negative':
             probability = 0.0  # Никогда при негативе
         
         # Осторожнее в начале диалога (но не слишком)
         if is_first_message:
-            probability *= 0.9  # Изменено с 0.5 → 0.8 → 0.9 для достижения ~30% вероятности
+            probability *= 0.95  # Изменено с 0.9 → 0.95 для MVP демонстраций
         
-        # Ограничиваем максимум
-        return min(probability, 0.5)  # Не больше 50%
+        # Ограничиваем максимум до 90% для MVP демонстраций
+        return min(probability, 0.90)  # Увеличено до 90% для достижения 50% юмора в offtopic
     
     def validate_humor_response(self, response: str) -> Tuple[bool, Optional[str]]:
         """
@@ -219,12 +219,12 @@ class SafetyChecker:
         Returns:
             (is_valid, error_reason)
         """
-        # Проверка длины
-        if len(response) > 300:
+        # Проверка длины (увеличено для более философских размышлений)
+        if len(response) > 600:  # Увеличено с 400 для парадоксов Жванецкого
             return False, "too_long"
         
         sentences = response.count('.') + response.count('!') + response.count('?')
-        if sentences > 3:
+        if sentences > 5:  # Увеличено с 3 для развёрнутых парадоксов
             return False, "too_many_sentences"
         
         # Проверка на связь со школой (ОСЛАБЛЕНА для MVP)
@@ -253,7 +253,8 @@ class SafetyChecker:
                          user_signal: str,
                          history: List[Dict],
                          user_id: str,
-                         is_pure_social: bool = False) -> Tuple[bool, Dict]:
+                         is_pure_social: bool = False,
+                         base_probability: float = 0.33) -> Tuple[bool, Dict]:
         """
         Комплексная проверка - можно ли использовать юмор.
         
@@ -308,7 +309,7 @@ class SafetyChecker:
         
         # Рассчитываем вероятность
         is_first = len(history) <= 2
-        probability = self.calculate_probability(user_signal, mood, is_first)
+        probability = self.calculate_probability(user_signal, mood, is_first, base_probability)
         context['probability'] = probability
         context['mood'] = mood
         

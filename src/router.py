@@ -146,20 +146,21 @@ class Router:
         # Gemini сам определит social_context, user_signal и status
         # Это решает проблему с фразами типа "Спасибо, запишите нас"
         
-        # Строим промпт согласно новой архитектуре (разделяем роли)
-        prompts = self._build_router_prompts(user_message, history)
-        
         try:
-            # Получаем ответ от Gemini с кешированием если включено
+            # Получаем ответ от Gemini с ПРАВИЛЬНЫМ кешированием
             if self.use_cache and isinstance(self.client, GeminiCachedClient):
-                # Используем кешированный метод для Gemini
-                response = await self.client.chat_with_cache(
-                    system_content=prompts["system"],
-                    user_message=prompts["user"],
-                    history=None  # История уже включена в user_message
+                # Используем разделение на статичную и динамическую части
+                static_prompt = self._build_static_prompt()  # Кешируется
+                dynamic_prompt = self._build_dynamic_prompt(user_message, history)  # Не кешируется
+                
+                response = await self.client.chat_with_prefix_cache(
+                    static_prefix=static_prompt,
+                    dynamic_suffix=dynamic_prompt,
+                    model_params={"temperature": 0.3, "max_tokens": 500}
                 )
             else:
-                # Обычный метод
+                # Обычный метод (для обратной совместимости)
+                prompts = self._build_router_prompts(user_message, history)
                 messages = [
                     {"role": "system", "content": prompts["system"]},
                     {"role": "user", "content": prompts["user"]},
@@ -351,6 +352,30 @@ class Router:
         except Exception as e:
             print(f"❌ Ошибка при вызове Gemini: {e}")
             return self._fallback_response()
+    
+    def _build_static_prompt(self) -> str:
+        """Статичная часть промпта для кеширования (без истории и текущего сообщения)"""
+        static_content = ""
+        # Роль и правила
+        static_content += self._get_role_section()
+        # База знаний (summaries)
+        static_content += self._get_summaries_section()
+        # Инструкции по декомпозиции и классификации
+        static_content += self._get_decomposition_section()
+        static_content += self._get_classification_section()
+        # Формат ответа
+        static_content += self._get_response_format_section()
+        return static_content
+    
+    def _build_dynamic_prompt(self, user_message: str, history: List[Dict[str, str]]) -> str:
+        """Динамическая часть промпта (история и текущий запрос)"""
+        dynamic_content = ""
+        # История диалога
+        dynamic_content += self._get_history_section(history)
+        # Текущий запрос
+        dynamic_content += f"\n=== ТЕКУЩИЙ ЗАПРОС ===\nUser: {user_message}\n\n"
+        dynamic_content += "Теперь проанализируйте этот запрос согласно инструкциям выше и верните JSON-ответ.\n"
+        return dynamic_content
     
     def _build_router_prompts(self, user_message: str, history: List[Dict[str, str]], extra_hint: Optional[str] = None) -> Dict[str, str]:
         """

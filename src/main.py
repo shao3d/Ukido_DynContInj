@@ -6,9 +6,10 @@ main.py - FastAPI сервер чатбота для школы Ukido (верс�
 import os
 import random
 import time
+import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 import sys
 
@@ -30,6 +31,7 @@ from config import Config
 from standard_responses import DEFAULT_FALLBACK, get_error_response
 from datetime import datetime
 from typing import Dict
+from collections import defaultdict, deque
 from completed_actions_handler import CompletedActionsHandler
 from simple_cta_blocker import SimpleCTABlocker  # Новый импорт для блокировки CTA
 import signal
@@ -38,6 +40,15 @@ import atexit
 # === ДЕТЕРМИНИРОВАННОСТЬ ДЛЯ ВОСПРОИЗВОДИМОСТИ ===
 # Устанавливаем глобальный seed для всех random операций
 config = Config()
+
+# === КРИТИЧЕСКАЯ ПРОВЕРКА API КЛЮЧА ===
+if not config.OPENROUTER_API_KEY:
+    print("❌ КРИТИЧЕСКАЯ ОШИБКА: Не установлен OPENROUTER_API_KEY!")
+    print("📝 Установите переменную окружения или добавьте в .env файл")
+    sys.exit(1)
+
+print(f"✅ OpenRouter API key загружен (длина: {len(config.OPENROUTER_API_KEY)})")
+
 if config.DETERMINISTIC_MODE:
     random.seed(config.SEED)  # Теперь все random.choice() будут предсказуемыми
     print(f"🎲 Random seed установлен: {config.SEED} (детерминированный режим)")
@@ -70,8 +81,23 @@ start_time = datetime.now()
 
 # === МОДЕЛИ ДАННЫХ ===
 class ChatRequest(BaseModel):
-    user_id: str
-    message: str
+    user_id: str = Field(..., min_length=1, max_length=50)
+    message: str = Field(..., min_length=1, max_length=1000)
+    
+    @validator('user_id')
+    def validate_user_id(cls, v):
+        # Только буквы, цифры, подчёркивания, дефисы
+        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
+            raise ValueError('Invalid user_id format. Only alphanumeric characters, underscores and hyphens allowed.')
+        return v
+    
+    @validator('message')
+    def validate_message(cls, v):
+        # Убираем лишние пробелы
+        v = v.strip()
+        if not v:
+            raise ValueError('Message cannot be empty')
+        return v
 
 
 class ChatResponse(BaseModel):
@@ -180,12 +206,54 @@ if config.ZHVANETSKY_ENABLED:
         print(f"⚠️ Не удалось инициализировать систему юмора: {e}")
         config.ZHVANETSKY_ENABLED = False
 
+# === RATE LIMITING ===
+# Глобальные счётчики для защиты от DDoS и перерасхода
+user_request_times = defaultdict(lambda: deque(maxlen=100))
+user_daily_counts = defaultdict(lambda: {"count": 0, "date": ""})
+
+def check_rate_limits(user_id: str) -> None:
+    """Проверка rate limits для защиты от DDoS и перерасхода бюджета"""
+    now = time.time()
+    today = datetime.now().strftime("%Y-%m-%d")
+    
+    # Проверка частоты (10 запросов в минуту)
+    recent_requests = user_request_times[user_id]
+    recent_requests.append(now)
+    
+    # Считаем запросы за последнюю минуту
+    minute_ago = now - 60
+    recent_count = sum(1 for t in recent_requests if t > minute_ago)
+    
+    if recent_count > 10:
+        print(f"⚠️ Rate limit exceeded for user {user_id}: {recent_count} requests/min")
+        raise HTTPException(
+            status_code=429, 
+            detail="Too many requests. Please wait a minute."
+        )
+    
+    # Проверка дневного лимита (100 запросов в день)
+    daily = user_daily_counts[user_id]
+    if daily["date"] != today:
+        daily["count"] = 0
+        daily["date"] = today
+    
+    daily["count"] += 1
+    if daily["count"] > 100:
+        print(f"⚠️ Daily limit exceeded for user {user_id}: {daily['count']} requests")
+        raise HTTPException(
+            status_code=429, 
+            detail="Daily limit exceeded. Try again tomorrow."
+        )
+
 
 # === ЭНДПОИНТЫ ===
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Основной эндпоинт для общения с чатботом - версия с State Machine"""
     global signal_stats, request_count, total_latency
+    
+    # RATE LIMITING: Проверка лимитов перед обработкой
+    check_rate_limits(request.user_id)
     
     # Засекаем время для метрик
     import time
@@ -441,7 +509,8 @@ async def chat(request: ChatRequest):
                 user_signal=user_signal,
                 history=history_messages,
                 user_id=request.user_id,
-                is_pure_social=is_pure_social
+                is_pure_social=is_pure_social,
+                base_probability=config.ZHVANETSKY_PROBABILITY
             )
             
             if can_use_humor:

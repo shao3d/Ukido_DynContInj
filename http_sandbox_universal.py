@@ -17,12 +17,15 @@ TEST_FILES = {
     'v1': 'test_humor_dialogues.json',
     'v2': 'test_dialogues_v2.json',
     'scenarios': 'tests/test_scenarios_state_machine.json',
-    'cta': 'test_cta_blocker_dialogues.json'  # Новые тесты для CTA блокировки
+    'cta': 'test_cta_blocker_dialogues.json',  # Новые тесты для CTA блокировки
+    'funny_dad': 'test_funny_it_dad.json'  # Папа-программист с юмором
 }
 
 def detect_test_file(dialogue_id: str) -> str:
     """Автоматически определяет файл теста по ID диалога"""
-    if dialogue_id.startswith('cta_test_'):
+    if dialogue_id == 'funny_it_dad' or dialogue_id.startswith('test_funny'):
+        return TEST_FILES['funny_dad']
+    elif dialogue_id.startswith('cta_test_'):
         return TEST_FILES['cta']
     elif dialogue_id.startswith('dialog_v2_'):
         return TEST_FILES['v2']

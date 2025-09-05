@@ -5,6 +5,7 @@ from openrouter_client import OpenRouterClient
 from standard_responses import DEFAULT_FALLBACK
 from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
 import re
+import asyncio
 
 class ResponseGenerator:
     """
@@ -253,26 +254,41 @@ class ResponseGenerator:
                 "humor_generated": False
             }
 
+    def _load_doc(self, doc_name: str) -> str:
+        """Синхронная загрузка документа - ОТКАТ асинхронности"""
+        try:
+            path = self.docs_dir / doc_name
+            if not path.exists():
+                print(f"⚠️ Документ не найден: {doc_name}")
+                return ""
+            
+            with open(path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            print(f"⚠️ Ошибка чтения {doc_name}: {e}")
+            return ""
+    
     def _load_docs(self, docs: List[str]) -> Dict[str, str]:
-        """Читает документы целиком из data/documents_compressed.
-        Загружаем ВСЕ уникальные документы, выбранные Router (до 4 штук)."""
-        texts: Dict[str, str] = {}
-        
+        """Синхронная загрузка всех документов - простая и надёжная"""
         # Дедупликация - убираем повторы
         unique_docs = list(dict.fromkeys(docs))  # Сохраняем порядок
         
-        # Загружаем ВСЕ уникальные документы (Router уже ограничил до 4)
-        docs_to_load = unique_docs
+        texts = {}
+        for doc_name in unique_docs:
+            content = self._load_doc(doc_name)
+            if content:
+                texts[doc_name] = content
         
-        for name in docs_to_load:
-            try:
-                path = self.docs_dir / name
-                content = path.read_text(encoding="utf-8")
-                texts[name] = content
-            except FileNotFoundError:
-                print(f"⚠️ Документ не найден: {name} ({self.docs_dir})")
-            except Exception as e:
-                print(f"⚠️ Ошибка чтения {name}: {e}")
+        return texts
+    
+    def _load_docs(self, docs: List[str]) -> Dict[str, str]:
+        """Синхронная загрузка всех документов - простая и надёжная"""
+        unique_docs = list(dict.fromkeys(docs))
+        texts = {}
+        for doc_name in unique_docs:
+            content = self._load_doc(doc_name)
+            if content:
+                texts[doc_name] = content
         return texts
 
     def _build_messages(
@@ -730,8 +746,20 @@ class ResponseGenerator:
                 # Если весь текст - одно неполное предложение, добавляем многоточие
                 out = out.rstrip() + '...'
         
-        # Убираем артефакты типа "30-секундное00", "5-минутное00"
-        out = re.sub(r'(\d+)-([а-яё]+)00\b', r'\1-\2', out, flags=re.IGNORECASE)
+        # ИСПРАВЛЕНИЕ: Убираем артефакты "00" БЕЗ удаления нулей из чисел
+        # 1. Убираем артефакты типа "30-секундное00", "5-минутное00"
+        out = re.sub(r'(\d+)-([\u0430-\u044f\u0451]+)00\b', r'\1-\2', out, flags=re.IGNORECASE)
+        
+        # 2. ИСПРАВЛЕНО: Убираем "00" только после БУКВ, не после цифр!
+        # Это предотвратит удаление нулей из "7000", "2800" и т.д.
+        out = re.sub(r'([а-яА-ЯёЁa-zA-Z]+)00\s+', r'\1 ', out)  # Только после букв!
+        
+        # 3. Убираем отдельно стоящие "00" (но не внутри чисел)
+        # Используем negative lookbehind и lookahead чтобы не трогать числа
+        out = re.sub(r'(?<!\d)00(?!\d)', '', out)  # "00" не окружённые цифрами
+        
+        # 4. Убираем множественные пробелы после очистки
+        out = re.sub(r'\s{2,}', ' ', out)
         
         # Убираем восклицания
         out = out.replace("!", ".")

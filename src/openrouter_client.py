@@ -58,7 +58,7 @@ class OpenRouterClient:
             data["presence_penalty"] = presence_penalty
         
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:  # 30 секунд таймаут для предотвращения зависания
                 print(f"🔍 Отправляю запрос к OpenRouter: {data.get('model')}")
                 print(f"🔍 Размер промпта: {len(str(data))} символов")
                 
