@@ -1,0 +1,88 @@
+{
+  "name": "CTA Blocker Test Suite",
+  "description": "Тестирование SimpleCTABlocker - блокировка после оплаты/отказов, вариативность",
+  "scenarios": [
+    {
+      "id": "cta_test_payment",
+      "name": "Блокировка после оплаты",
+      "category": "cta_blocking",
+      "user_id": "test_payment_block",
+      "description": "Проверка блокировки CTA после сообщения об оплате",
+      "expected_signal_transition": "anxiety → price_sensitive → ready_to_buy → exploring",
+      "expected_cta_blocking": "После оплаты CTA должны быть заблокированы",
+      "messages": [
+        "Здравствуйте! У меня дочь 11 лет, очень стеснительная. Подойдут ли ваши курсы?",
+        "А сколько это стоит? Не слишком ли дорого?",
+        "Хорошо, я только что оплатила курс через ваш сайт. Что дальше?",
+        "Какие материалы нужны для занятий?",
+        "У вас есть курсы для младшего ребёнка 7 лет? Может быть скидка для второго?"
+      ]
+    },
+    {
+      "id": "cta_test_hard_refusal",
+      "name": "Блокировка после жёсткого отказа",
+      "category": "cta_blocking", 
+      "user_id": "test_hard_refusal",
+      "description": "Блокировка на 7 сообщений после жёсткого отказа",
+      "expected_signal_transition": "exploring_only",
+      "expected_cta_blocking": "CTA заблокированы на 7 сообщений",
+      "messages": [
+        "Добрый день! Расскажите о вашей школе",
+        "Не надо мне ничего предлагать! Я просто смотрю",
+        "Какая у вас методика обучения?",
+        "Сколько детей в группе?",
+        "Какие навыки развиваете?",
+        "Есть ли домашние задания?",
+        "Как проходят занятия онлайн?"
+      ]
+    },
+    {
+      "id": "cta_test_soft_refusal",
+      "name": "Блокировка после мягкого отказа",
+      "category": "cta_blocking",
+      "user_id": "test_soft_refusal",
+      "description": "Блокировка на 3 сообщения после 'подумаю'",
+      "expected_signal_transition": "exploring → exploring → ready_to_buy",
+      "expected_cta_blocking": "CTA заблокированы на 3 сообщения, потом снова доступны",
+      "messages": [
+        "Сколько стоят ваши курсы?",
+        "Спасибо, я подумаю и решу позже",
+        "А есть пробное занятие?",
+        "Какое расписание?",
+        "Где проходят занятия?",
+        "Хочу записаться на пробное"
+      ]
+    },
+    {
+      "id": "cta_test_variety",
+      "name": "Вариативность CTA",
+      "category": "cta_variety",
+      "user_id": "test_cta_variety",
+      "description": "Проверка разных вариантов CTA для price_sensitive",
+      "expected_signal_transition": "price_sensitive (постоянный)",
+      "expected_cta_variety": "Должны быть разные формулировки CTA",
+      "messages": [
+        "Это дорого для нас",
+        "А можно в рассрочку?",
+        "Всё равно дороговато",
+        "Надо подумать о бюджете",
+        "Сложно сразу такую сумму"
+      ]
+    },
+    {
+      "id": "cta_test_registered",
+      "name": "Блокировка после регистрации",
+      "category": "cta_blocking",
+      "user_id": "test_registered",
+      "description": "После регистрации не предлагаем записаться снова",
+      "expected_signal_transition": "ready_to_buy → exploring",
+      "expected_cta_blocking": "CTA про запись заблокированы",
+      "messages": [
+        "Мы уже записались на пробное занятие вчера",
+        "Когда начинаются занятия?",
+        "Какие материалы нужно подготовить?",
+        "После пробного можно сразу в группу?"
+      ]
+    }
+  ]
+}

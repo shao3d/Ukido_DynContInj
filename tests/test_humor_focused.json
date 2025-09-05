@@ -1,0 +1,133 @@
+{
+  "name": "Humor System Test Suite",
+  "description": "Фокусированное тестирование системы юмора Жванецкого",
+  "version": "1.0",
+  "scenarios": [
+    {
+      "id": "humor_1",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_1",
+      "message": "Какая сегодня погода?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_2",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_2",
+      "message": "Что думаете про футбол?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_3",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_3",
+      "message": "Как приготовить борщ?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_4",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_4",
+      "message": "Кто выиграет выборы?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_5",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_5",
+      "message": "Что делать если скучно?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_6",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_6",
+      "message": "Как заработать миллион?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_7",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_7",
+      "message": "Почему небо голубое?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_8",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_8",
+      "message": "Что подарить на день рождения?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_9",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_9",
+      "message": "Как похудеть быстро?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "humor_10",
+      "category": "pure_offtopic",
+      "user_id": "humor_test_10",
+      "message": "Где лучше отдохнуть?",
+      "note": "33% chance of humor"
+    },
+    {
+      "id": "no_humor_1",
+      "category": "social_offtopic",
+      "user_id": "social_1",
+      "message": "Привет!",
+      "note": "Should NOT trigger humor (pure social)"
+    },
+    {
+      "id": "no_humor_2",
+      "category": "social_offtopic",
+      "user_id": "social_2",
+      "message": "Спасибо за информацию",
+      "note": "Should NOT trigger humor (pure social)"
+    },
+    {
+      "id": "no_humor_3",
+      "category": "price_sensitive_blocker",
+      "user_id": "price_angry",
+      "message": "Это грабёж! Почему так дорого?!",
+      "note": "Should NOT trigger humor (price_sensitive blocks humor)"
+    },
+    {
+      "id": "no_humor_4",
+      "category": "anxiety_blocker",
+      "user_id": "anxious_parent",
+      "message": "Я так переживаю, что случилось?",
+      "note": "Should NOT trigger humor (anxiety blocks humor)"
+    },
+    {
+      "id": "humor_rate_1",
+      "category": "rate_limit_test",
+      "user_id": "rate_test_user",
+      "message": "Тест 1: Что нового?",
+      "note": "First message - can trigger humor"
+    },
+    {
+      "id": "humor_rate_2",
+      "category": "rate_limit_test",
+      "user_id": "rate_test_user",
+      "message": "Тест 2: Как дела?",
+      "note": "Second message - can trigger humor"
+    },
+    {
+      "id": "humor_rate_3",
+      "category": "rate_limit_test",
+      "user_id": "rate_test_user",
+      "message": "Тест 3: Что происходит?",
+      "note": "Third message - can trigger humor"
+    },
+    {
+      "id": "humor_rate_4",
+      "category": "rate_limit_test",
+      "user_id": "rate_test_user",
+      "message": "Тест 4: Что скажете?",
+      "note": "Fourth message - should be rate limited if 3 humors already triggered"
+    }
+  ]
+}

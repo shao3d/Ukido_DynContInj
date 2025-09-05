@@ -166,3 +166,15 @@ tmp/
 # Local development
 sandbox_results.txt
 local_test_*
+
+# Test data and temporary states
+data/persistent_states/test_*.json
+data/persistent_states/*_test_*.json
+data/persistent_states/temp_*.json
+data/persistent_states/final_test_*.json
+data/persistent_states/humor_test_*.json
+data/persistent_states/detail_test_*.json
+
+# Archive and cache
+archive/
+.serena/

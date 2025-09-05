@@ -9,9 +9,10 @@ from social_intents import SocialIntent
 from social_state import SocialStateManager
 from config import Config
 
-# Устанавливаем seed для детерминированности
+# Устанавливаем seed для детерминированности (только если включен детерминированный режим)
 config = Config()
-random.seed(config.SEED)
+if config.DETERMINISTIC_MODE:
+    random.seed(config.SEED)
 
 
 def _tod_greeting(now: Optional[datetime] = None) -> str:

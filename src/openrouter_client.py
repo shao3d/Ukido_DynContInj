@@ -18,7 +18,7 @@ class OpenRouterClient:
         self.max_tokens = max_tokens
         self.temperature = temperature
     
-    async def chat(self, messages: List[Dict[str, str]], *, model: Optional[str] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, seed: Optional[int] = None, response_format: Optional[Dict[str, Any]] = None) -> str:
+    async def chat(self, messages: List[Dict[str, str]], *, model: Optional[str] = None, temperature: Optional[float] = None, max_tokens: Optional[int] = None, seed: Optional[int] = None, response_format: Optional[Dict[str, Any]] = None, top_p: Optional[float] = None, frequency_penalty: Optional[float] = None, presence_penalty: Optional[float] = None) -> str:
         """
         Отправляет сообщения в API и получает ответ
         
@@ -49,9 +49,16 @@ class OpenRouterClient:
             data["max_tokens"] = self.max_tokens
         if response_format is not None:
             data["response_format"] = response_format
+        # Добавляем параметры для креативности
+        if top_p is not None:
+            data["top_p"] = top_p
+        if frequency_penalty is not None:
+            data["frequency_penalty"] = frequency_penalty
+        if presence_penalty is not None:
+            data["presence_penalty"] = presence_penalty
         
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:  # 30 секунд таймаут для предотвращения зависания
                 print(f"🔍 Отправляю запрос к OpenRouter: {data.get('model')}")
                 print(f"🔍 Размер промпта: {len(str(data))} символов")
                 

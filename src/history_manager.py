@@ -19,8 +19,8 @@ class HistoryManager:
         # Максимальное количество пользователей в памяти
         self.max_users = 1000  # Достаточно для MVP, ~10MB памяти
     
-    def add_message(self, user_id: str, role: str, content: str):
-        """Добавляет сообщение в историю с LRU механизмом"""
+    def add_message(self, user_id: str, role: str, content: str, metadata: dict = None):
+        """Добавляет сообщение в историю с LRU механизмом и опциональными метаданными"""
         
         # Если пользователь уже есть - перемещаем в конец (он активный)
         if user_id in self.storage:
@@ -36,11 +36,15 @@ class HistoryManager:
             # Создаём список для нового пользователя
             self.storage[user_id] = []
         
-        # Добавляем сообщение
-        self.storage[user_id].append({
+        # Добавляем сообщение с опциональными метаданными
+        message = {
             "role": role,
             "content": content
-        })
+        }
+        if metadata:
+            message["metadata"] = metadata
+        
+        self.storage[user_id].append(message)
         
         # Обрезаем если больше лимита сообщений (HISTORY_LIMIT из конфига)
         if len(self.storage[user_id]) > self.max_messages:
@@ -49,3 +53,21 @@ class HistoryManager:
     def get_history(self, user_id: str) -> List[Dict[str, str]]:
         """Возвращает историю пользователя"""
         return self.storage.get(user_id, [])
+    
+    def get_message_metadata(self, msg: dict) -> dict:
+        """Helper для получения metadata из сообщения с обратной совместимостью"""
+        if "metadata" in msg:
+            return msg["metadata"]
+        
+        # Fallback для старых сообщений без metadata
+        return {
+            "cta_added": False,
+            "cta_type": None,
+            "user_signal": "exploring_only"
+        }
+    
+    def clear_user_history(self, user_id: str):
+        """Очищает историю конкретного пользователя"""
+        if user_id in self.storage:
+            del self.storage[user_id]
+            print(f"🧹 История пользователя {user_id} очищена")
