@@ -152,7 +152,7 @@ async def main(message: cl.Message):
             user_signal = new_signal  # Обновляем локальную переменную
         
         # Очищаем индикатор
-        await msg.update(content="")
+        await msg.update("")
         
         # === ЭТАП 2: ГЕНЕРАЦИЯ ОТВЕТА ===
         response_text = ""
@@ -218,7 +218,7 @@ async def main(message: cl.Message):
             )
         
         # === ЭТАП 3: СТРИМИНГ ОТВЕТА ===
-        await msg.update(content="")
+        await msg.update("")
         
         # Разбиваем текст на слова для плавного стриминга
         words = response_text.split()
@@ -228,7 +228,7 @@ async def main(message: cl.Message):
         for i in range(0, len(words), 2):
             chunk = " ".join(words[i:min(i+2, len(words))])
             streamed_text += chunk + " "
-            await msg.update(content=streamed_text.strip())
+            await msg.update(streamed_text.strip())
             await asyncio.sleep(0.03)  # Задержка для эффекта печати
         
         # === ЭТАП 4: СОХРАНЕНИЕ СОСТОЯНИЯ ===
@@ -252,7 +252,7 @@ async def main(message: cl.Message):
         
     except Exception as e:
         error_msg = f"😔 Извините, произошла ошибка: {str(e)}"
-        await msg.update(content=error_msg)
+        await msg.update(error_msg)
         print(f"❌ Ошибка в Chainlit: {e}")
         import traceback
         traceback.print_exc()
