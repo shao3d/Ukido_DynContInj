@@ -50,4 +50,4 @@ EXPOSE 8000
 WORKDIR /app/chainlit_app
 
 # Запуск Chainlit с переменной PORT от Railway
-CMD chainlit run app.py --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["sh", "-c", "chainlit run app.py --host 0.0.0.0 --port ${PORT:-8000}"]
