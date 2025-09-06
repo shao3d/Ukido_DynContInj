@@ -21,6 +21,7 @@ from src.response_generator import ResponseGenerator
 from src.history_manager import HistoryManager
 from src.persistence_manager import PersistenceManager, create_state_snapshot, restore_state_snapshot
 from src.social_state import SocialStateManager
+from src.social_intents import detect_social_intent, SocialIntent
 from src.simple_cta_blocker import SimpleCTABlocker
 from src.config import Config
 from src.standard_responses import get_offtopic_response
@@ -235,7 +236,8 @@ async def main(message: cl.Message):
         history_manager.add_message(user_id, "assistant", response_text)
         
         # Обновляем greeting status
-        if social_state.is_greeting(message.content):
+        social_detection = detect_social_intent(message.content)
+        if social_detection.intent == SocialIntent.GREETING:
             cl.user_session.set("greeting_exchanged", True)
             social_state.mark_greeted(user_id)
         
