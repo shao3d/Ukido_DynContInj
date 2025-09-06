@@ -205,7 +205,7 @@ async def main(message: cl.Message):
                 "user_signal": new_signal,
                 "cta_blocked": False,  # Упрощаем для MVP
                 "cta_frequency_modifier": 1.0,
-                "social_context": {"greeting_exchanged": greeting_exchanged}
+                "social_context": None  # Router сам определяет social_context
             }
             
             # Генерация ответа
