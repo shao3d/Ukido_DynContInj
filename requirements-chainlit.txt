@@ -9,7 +9,7 @@ markdown==3.6
 # Chainlit и необходимые зависимости
 chainlit==1.3.0
 watchfiles==0.24.0
-aiofiles==24.1.0
+aiofiles==23.2.1
 python-multipart==0.0.12
 
 # Опционально для логирования
