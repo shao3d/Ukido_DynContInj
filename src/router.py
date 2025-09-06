@@ -6,15 +6,15 @@ router.py - Псевдо-двухэтапный LLM роутер для выбо
 import json
 from pathlib import Path
 from typing import List, Dict, Optional
-from openrouter_client import OpenRouterClient
-from gemini_cached_client import GeminiCachedClient
-from config import Config
-from social_intents import has_business_signals_extended
-from social_state import SocialStateManager  # Нужен для отслеживания повторных приветствий
+from src.openrouter_client import OpenRouterClient
+from src.gemini_cached_client import GeminiCachedClient
+from src.config import Config
+from src.social_intents import has_business_signals_extended
+from src.social_state import SocialStateManager  # Нужен для отслеживания повторных приветствий
 # Удалены неиспользуемые импорты после рефакторинга:
 # detect_social_intent, SocialIntent - больше не нужны (Gemini обрабатывает)
 # SocialResponder - больше не нужен (обработка в main.py)
-from standard_responses import get_offtopic_response, DEFAULT_FALLBACK, NEED_SIMPLIFICATION_MESSAGE
+from src.standard_responses import get_offtopic_response, DEFAULT_FALLBACK, NEED_SIMPLIFICATION_MESSAGE
 
 
 class Router:

@@ -5,7 +5,7 @@ MVP версия: с LRU Cache для предотвращения memory leak
 
 from typing import List, Dict
 from collections import OrderedDict
-from config import Config
+from src.config import Config
 
 class HistoryManager:
     """Менеджер истории диалогов с ограничением количества пользователей"""

@@ -5,9 +5,9 @@ from datetime import datetime
 from typing import Optional
 import random
 
-from social_intents import SocialIntent
-from social_state import SocialStateManager
-from config import Config
+from src.social_intents import SocialIntent
+from src.social_state import SocialStateManager
+from src.config import Config
 
 # Устанавливаем seed для детерминированности (только если включен детерминированный режим)
 config = Config()

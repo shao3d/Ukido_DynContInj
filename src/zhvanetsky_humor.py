@@ -8,19 +8,13 @@ import logging
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
+from src.zhvanetsky_golden import get_mixed_examples, format_examples_for_prompt
+from src.zhvanetsky_safety import SafetyChecker, TopicClassifier
 try:
-    from zhvanetsky_golden import get_mixed_examples, format_examples_for_prompt
-    from zhvanetsky_safety import SafetyChecker, TopicClassifier
-    from zhvanetsky_online_examples import get_online_examples
+    from src.zhvanetsky_online_examples import get_online_examples
 except ImportError:
-    # Для случаев, когда модуль импортируется как часть пакета
-    from .zhvanetsky_golden import get_mixed_examples, format_examples_for_prompt
-    from .zhvanetsky_safety import SafetyChecker, TopicClassifier
-    try:
-        from .zhvanetsky_online_examples import get_online_examples
-    except ImportError:
-        def get_online_examples(count=3):
-            return []
+    def get_online_examples(count=3):
+        return []
 
 logger = logging.getLogger(__name__)
 

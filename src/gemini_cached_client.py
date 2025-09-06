@@ -6,7 +6,7 @@ gemini_cached_client.py - Клиент с поддержкой Context Caching �
 import hashlib
 import json
 from typing import List, Dict, Optional, Any
-from openrouter_client import OpenRouterClient
+from src.openrouter_client import OpenRouterClient
 
 
 class GeminiCachedClient(OpenRouterClient):

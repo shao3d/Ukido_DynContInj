@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import List, Dict, Optional
-from config import Config
-from openrouter_client import OpenRouterClient
-from standard_responses import DEFAULT_FALLBACK
-from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
+from src.config import Config
+from src.openrouter_client import OpenRouterClient
+from src.standard_responses import DEFAULT_FALLBACK
+from src.offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
 import re
 import asyncio
 

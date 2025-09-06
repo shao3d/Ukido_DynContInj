@@ -16,24 +16,24 @@ import sys
 # Добавляем путь к src для импортов
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from router import Router
-from response_generator import ResponseGenerator
-from history_manager import HistoryManager
-from persistence_manager import (
+from src.router import Router
+from src.response_generator import ResponseGenerator
+from src.history_manager import HistoryManager
+from src.persistence_manager import (
     PersistenceManager, 
     create_state_snapshot, 
     restore_state_snapshot
 )
-from social_intents import SocialIntent
-from social_responder import SocialResponder
-from social_state import SocialStateManager
-from config import Config
-from standard_responses import DEFAULT_FALLBACK, get_error_response
+from src.social_intents import SocialIntent
+from src.social_responder import SocialResponder
+from src.social_state import SocialStateManager
+from src.config import Config
+from src.standard_responses import DEFAULT_FALLBACK, get_error_response
 from datetime import datetime
 from typing import Dict
 from collections import defaultdict, deque
-from completed_actions_handler import CompletedActionsHandler
-from simple_cta_blocker import SimpleCTABlocker  # Новый импорт для блокировки CTA
+from src.completed_actions_handler import CompletedActionsHandler
+from src.simple_cta_blocker import SimpleCTABlocker  # Новый импорт для блокировки CTA
 import signal
 import atexit
 

@@ -3,7 +3,7 @@ standard_responses.py - Единое место для всех заготовл
 """
 
 import random
-from config import Config
+from src.config import Config
 
 # Устанавливаем seed для детерминированности (только если включен детерминированный режим)
 config = Config()
