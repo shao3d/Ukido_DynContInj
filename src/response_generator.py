@@ -504,7 +504,14 @@ class ResponseGenerator:
         # История: только последние сообщения согласно настройке (по умолчанию 10)
         trimmed_history = history[-self.history_limit :] if len(history) > self.history_limit else history
         if trimmed_history:
-            messages.extend(trimmed_history)
+            # Очищаем историю от метаданных, оставляем только role и content
+            clean_history = []
+            for msg in trimmed_history:
+                if isinstance(msg, dict):
+                    clean_msg = {"role": msg.get("role", "user"), "content": msg.get("content", "")}
+                    # Пропускаем метаданные и другие поля
+                    clean_history.append(clean_msg)
+            messages.extend(clean_history)
 
         # Добавляем социальный контекст если есть
         social_context = router_result.get("social_context")
