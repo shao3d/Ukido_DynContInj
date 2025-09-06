@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ukido AI Assistant - Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .chat-container {
+            width: 90%;
+            max-width: 600px;
+            height: 80vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: #5a67d8;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .chat-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .chat-header p {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f7fafc;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.user {
+            text-align: right;
+        }
+        
+        .message.bot {
+            text-align: left;
+        }
+        
+        .message-bubble {
+            display: inline-block;
+            padding: 12px 18px;
+            border-radius: 18px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-bubble {
+            background: #5a67d8;
+            color: white;
+        }
+        
+        .message.bot .message-bubble {
+            background: white;
+            color: #2d3748;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .message.bot .message-bubble.streaming {
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 15px;
+            text-align: left;
+        }
+        
+        .typing-indicator.active {
+            display: block;
+        }
+        
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #a0aec0;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+        
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .input-form {
+            display: flex;
+            gap: 10px;
+        }
+        
+        #messageInput {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        #messageInput:focus {
+            border-color: #5a67d8;
+        }
+        
+        #sendButton {
+            padding: 12px 24px;
+            background: #5a67d8;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #sendButton:hover:not(:disabled) {
+            background: #4c51bf;
+            transform: scale(1.05);
+        }
+        
+        #sendButton:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+        
+        .metadata {
+            font-size: 11px;
+            color: #718096;
+            margin-top: 5px;
+            padding: 0 5px;
+        }
+        
+        .error-message {
+            background: #feb2b2;
+            color: #742a2a;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px;
+            text-align: center;
+        }
+        
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 3px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🎓 Ukido AI Assistant</h1>
+            <p>Онлайн-школа soft skills для детей</p>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-bubble">
+                    Здравствуйте! Я помощник онлайн-школы Ukido. Расскажите, чем могу помочь? 
+                    Интересуетесь нашими курсами для детей?
+                </div>
+            </div>
+        </div>
+        
+        <div class="typing-indicator" id="typingIndicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        
+        <div class="chat-input">
+            <form class="input-form" onsubmit="sendMessage(event)">
+                <input 
+                    type="text" 
+                    id="messageInput" 
+                    placeholder="Напишите сообщение..." 
+                    autocomplete="off"
+                    maxlength="500"
+                    required
+                >
+                <button type="submit" id="sendButton">Отправить</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Генерация уникального user_id для сессии
+        const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        let eventSource = null;
+        let isStreaming = false;
+        
+        function scrollToBottom() {
+            const messages = document.getElementById('chatMessages');
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        function addMessage(content, isUser = false, metadata = null) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            let html = `<div class="message-bubble">${content}</div>`;
+            
+            // Добавляем метаданные для сообщений бота
+            if (!isUser && metadata) {
+                let metaText = [];
+                if (metadata.intent) metaText.push(`intent: ${metadata.intent}`);
+                if (metadata.user_signal) metaText.push(`signal: ${metadata.user_signal}`);
+                if (metadata.humor_generated) metaText.push('🎭 юмор');
+                
+                if (metaText.length > 0) {
+                    html += `<div class="metadata">${metaText.join(' | ')}</div>`;
+                }
+            }
+            
+            messageDiv.innerHTML = html;
+            messagesDiv.appendChild(messageDiv);
+            scrollToBottom();
+            
+            return messageDiv;
+        }
+        
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').classList.add('active');
+            scrollToBottom();
+        }
+        
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').classList.remove('active');
+        }
+        
+        function showError(message) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = `Ошибка: ${message}`;
+            messagesDiv.appendChild(errorDiv);
+            scrollToBottom();
+        }
+        
+        async function sendMessage(event) {
+            event.preventDefault();
+            
+            const input = document.getElementById('messageInput');
+            const button = document.getElementById('sendButton');
+            const message = input.value.trim();
+            
+            if (!message || isStreaming) return;
+            
+            // Добавляем сообщение пользователя
+            addMessage(message, true);
+            
+            // Очищаем поле и блокируем отправку
+            input.value = '';
+            button.disabled = true;
+            isStreaming = true;
+            
+            // Показываем индикатор загрузки
+            showTypingIndicator();
+            
+            // Создаём элемент для ответа бота
+            let botMessageDiv = null;
+            let botBubble = null;
+            let currentMetadata = null;
+            
+            try {
+                // Создаём SSE подключение
+                const url = `/chat/stream?user_id=${encodeURIComponent(userId)}&message=${encodeURIComponent(message)}`;
+                eventSource = new EventSource(url);
+                
+                eventSource.addEventListener('metadata', (event) => {
+                    currentMetadata = JSON.parse(event.data);
+                    console.log('Metadata received:', currentMetadata);
+                });
+                
+                eventSource.addEventListener('message', (event) => {
+                    hideTypingIndicator();
+                    
+                    // Создаём элемент для сообщения бота если ещё не создан
+                    if (!botMessageDiv) {
+                        const messagesDiv = document.getElementById('chatMessages');
+                        botMessageDiv = document.createElement('div');
+                        botMessageDiv.className = 'message bot';
+                        
+                        botBubble = document.createElement('div');
+                        botBubble.className = 'message-bubble streaming';
+                        botBubble.textContent = '';
+                        
+                        botMessageDiv.appendChild(botBubble);
+                        messagesDiv.appendChild(botMessageDiv);
+                    }
+                    
+                    // Добавляем текст к сообщению
+                    botBubble.textContent += event.data;
+                    scrollToBottom();
+                });
+                
+                eventSource.addEventListener('done', (event) => {
+                    console.log('Stream completed');
+                    
+                    // Убираем класс streaming
+                    if (botBubble) {
+                        botBubble.classList.remove('streaming');
+                    }
+                    
+                    // Добавляем метаданные
+                    if (currentMetadata && botMessageDiv) {
+                        let metaText = [];
+                        if (currentMetadata.intent) metaText.push(`intent: ${currentMetadata.intent}`);
+                        if (currentMetadata.user_signal) metaText.push(`signal: ${currentMetadata.user_signal}`);
+                        if (currentMetadata.humor_generated) metaText.push('🎭 юмор');
+                        
+                        if (metaText.length > 0) {
+                            const metaDiv = document.createElement('div');
+                            metaDiv.className = 'metadata';
+                            metaDiv.textContent = metaText.join(' | ');
+                            botMessageDiv.appendChild(metaDiv);
+                        }
+                    }
+                    
+                    // Закрываем соединение
+                    eventSource.close();
+                    eventSource = null;
+                    isStreaming = false;
+                    button.disabled = false;
+                    input.focus();
+                });
+                
+                eventSource.addEventListener('error', (event) => {
+                    console.error('SSE Error:', event);
+                    hideTypingIndicator();
+                    
+                    if (event.data) {
+                        showError(event.data);
+                    } else {
+                        showError('Не удалось получить ответ от сервера');
+                    }
+                    
+                    if (eventSource) {
+                        eventSource.close();
+                        eventSource = null;
+                    }
+                    
+                    isStreaming = false;
+                    button.disabled = false;
+                });
+                
+                eventSource.onerror = (error) => {
+                    console.error('EventSource error:', error);
+                    hideTypingIndicator();
+                    showError('Соединение прервано. Проверьте подключение к интернету.');
+                    
+                    if (eventSource) {
+                        eventSource.close();
+                        eventSource = null;
+                    }
+                    
+                    isStreaming = false;
+                    button.disabled = false;
+                };
+                
+            } catch (error) {
+                console.error('Error sending message:', error);
+                hideTypingIndicator();
+                showError('Произошла ошибка при отправке сообщения');
+                isStreaming = false;
+                button.disabled = false;
+            }
+        }
+        
+        // Автофокус на поле ввода при загрузке
+        window.addEventListener('load', () => {
+            document.getElementById('messageInput').focus();
+        });
+        
+        // Отправка по Enter
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage(e);
+            }
+        });
+    </script>
+</body>
+</html>

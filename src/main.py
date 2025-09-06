@@ -9,9 +9,14 @@ import time
 import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 import sys
+# SSE streaming support
+from sse_starlette.sse import EventSourceResponse
+import asyncio
+import json
 
 # Добавляем путь к src для импортов
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -642,6 +647,85 @@ async def chat(request: ChatRequest):
     )
 
 
+async def process_chat_message(user_id: str, message: str) -> dict:
+    """
+    Извлечённая логика обработки сообщения из /chat endpoint
+    Возвращает полный результат с response, intent, user_signal
+    """
+    # Создаём ChatRequest для валидации и обработки
+    chat_request = ChatRequest(user_id=user_id, message=message)
+    
+    # Вызываем существующий endpoint через внутренний вызов
+    # Реиспользуем всю логику /chat endpoint
+    response = await chat(chat_request)
+    
+    # Преобразуем response в словарь
+    return response.dict()
+
+
+@app.get("/chat/stream")
+async def chat_stream(user_id: str, message: str):
+    """
+    SSE endpoint для стриминга ответов чата
+    КРИТИЧНО: headers для отключения буферизации на Railway!
+    """
+    async def generate():
+        try:
+            # Получаем полный ответ через существующую логику
+            result = await process_chat_message(user_id, message)
+            
+            # Метаданные для отладки (MVP - показываем intent)
+            metadata = {
+                "intent": result.get("intent", "unknown"),
+                "user_signal": result.get("user_signal", "exploring_only"),
+                "humor_generated": result.get("metadata", {}).get("humor_generated", False) if result.get("metadata") else False
+            }
+            
+            # Отправляем метаданные
+            yield {
+                "event": "metadata",
+                "data": json.dumps(metadata)
+            }
+            
+            # Стримим ответ по словам
+            response_text = result.get("response", "")
+            words = response_text.split()
+            
+            for i, word in enumerate(words):
+                if i > 0:
+                    word = " " + word
+                    
+                yield {
+                    "event": "message",
+                    "data": word
+                }
+                
+                # 50ms между словами для эффекта печати
+                await asyncio.sleep(0.05)
+            
+            # Завершение стрима
+            yield {
+                "event": "done",
+                "data": "completed"
+            }
+            
+        except Exception as e:
+            print(f"❌ SSE Error: {e}")
+            yield {
+                "event": "error",
+                "data": "Ошибка при обработке сообщения"
+            }
+    
+    # КРИТИЧЕСКИ ВАЖНО: Headers для отключения буферизации!
+    headers = {
+        'X-Accel-Buffering': 'no',      # Отключает буферизацию nginx/proxy
+        'Cache-Control': 'no-cache',     # Предотвращает кеширование  
+        'Connection': 'keep-alive'       # Держит соединение
+    }
+    
+    return EventSourceResponse(generate(), headers=headers)
+
+
 @app.get("/metrics")
 async def get_metrics():
     """Endpoint для просмотра метрик State Machine"""
@@ -696,10 +780,17 @@ async def clear_history(user_id: str):
     return {"status": "error", "message": "History manager not available"}
 
 
-@app.get("/")
-async def root():
-    """Корневой эндпоинт"""
+@app.get("/api-info")
+async def api_info():
+    """API info эндпоинт"""
     return {"service": "Ukido Chatbot API", "version": "0.7.3"}
+
+
+# Монтируем статические файлы
+# ВАЖНО: Это должно быть последним, после всех API endpoints
+# Создаем папку static если её нет
+os.makedirs("static", exist_ok=True)
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 
 # === ЗАПУСК ===
