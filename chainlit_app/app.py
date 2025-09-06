@@ -210,10 +210,8 @@ async def main(message: cl.Message):
             # Генерация ответа
             response_text, response_metadata = await response_generator.generate(
                 router_data,
-                message.content,
-                history_messages,
-                new_signal,
-                user_id
+                history=history_messages,
+                current_message=message.content
             )
         
         # === ЭТАП 3: СТРИМИНГ ОТВЕТА ===
