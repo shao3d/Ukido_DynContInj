@@ -27,11 +27,6 @@ class OpenRouterClient:
         Returns:
             Текст ответа от модели
         """
-        # Отладка API ключа для Railway
-        masked_key = f"{self.api_key[:15]}...{self.api_key[-10:]}" if len(self.api_key) > 25 else "KEY_TOO_SHORT"
-        print(f"🔑 Используется ключ: {masked_key} (длина: {len(self.api_key)})")
-        print(f"🔑 Начало ключа: '{self.api_key[:5]}' (должно быть 'sk-or')")
-        
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"

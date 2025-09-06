@@ -1,0 +1,39 @@
+{
+  "history": [
+    {
+      "role": "user",
+      "content": "Привет"
+    },
+    {
+      "role": "assistant",
+      "content": "Интересный вопрос! Но давайте вернёмся к теме школы Ukido. Чем могу помочь?",
+      "metadata": {
+        "intent": "offtopic",
+        "user_signal": "exploring_only",
+        "cta_added": false,
+        "cta_type": null,
+        "humor_generated": false
+      }
+    },
+    {
+      "role": "user",
+      "content": "Расскажите о курсах школы"
+    },
+    {
+      "role": "assistant",
+      "content": "Интересный вопрос! Но давайте вернёмся к теме школы Ukido. Чем могу помочь?",
+      "metadata": {
+        "intent": "offtopic",
+        "user_signal": "exploring_only",
+        "cta_added": false,
+        "cta_type": null,
+        "humor_generated": false
+      }
+    }
+  ],
+  "user_signal": "exploring_only",
+  "greeting_exchanged": false,
+  "message_count": 4,
+  "user_id": "test",
+  "last_updated": "2025-09-06T17:50:08.362737"
+}
