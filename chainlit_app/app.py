@@ -151,8 +151,7 @@ async def main(message: cl.Message):
             cl.user_session.set("user_signal", new_signal)
             user_signal = new_signal  # Обновляем локальную переменную
         
-        # Очищаем индикатор
-        await msg.update("")
+        # Начинаем стриминг (пока без токенов)
         
         # === ЭТАП 2: ГЕНЕРАЦИЯ ОТВЕТА ===
         response_text = ""
@@ -218,18 +217,19 @@ async def main(message: cl.Message):
             )
         
         # === ЭТАП 3: СТРИМИНГ ОТВЕТА ===
-        await msg.update("")
-        
         # Разбиваем текст на слова для плавного стриминга
         words = response_text.split()
-        streamed_text = ""
         
         # Стримим по 2-3 слова за раз для плавности
         for i in range(0, len(words), 2):
             chunk = " ".join(words[i:min(i+2, len(words))])
-            streamed_text += chunk + " "
-            await msg.update(streamed_text.strip())
+            if i > 0:
+                chunk = " " + chunk  # Добавляем пробел между чанками
+            await msg.stream_token(chunk)
             await asyncio.sleep(0.03)  # Задержка для эффекта печати
+        
+        # Завершаем стриминг
+        await msg.update()
         
         # === ЭТАП 4: СОХРАНЕНИЕ СОСТОЯНИЯ ===
         # Добавляем в историю
@@ -252,7 +252,8 @@ async def main(message: cl.Message):
         
     except Exception as e:
         error_msg = f"😔 Извините, произошла ошибка: {str(e)}"
-        await msg.update(error_msg)
+        # Для ошибок создаём новое сообщение
+        await cl.Message(content=error_msg).send()
         print(f"❌ Ошибка в Chainlit: {e}")
         import traceback
         traceback.print_exc()
