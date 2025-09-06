@@ -7,8 +7,8 @@
   "deploy": {
     "numReplicas": 1,
     "startCommand": null,
-    "healthcheckPath": "/",
-    "healthcheckTimeout": 60,
+    "healthcheckPath": null,
+    "healthcheckTimeout": 300,
     "sleepApplication": false,
     "sleepDelay": 10,
     "restartPolicyType": "ON_FAILURE",
