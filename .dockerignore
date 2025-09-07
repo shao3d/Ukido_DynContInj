@@ -32,9 +32,11 @@ tools/
 backup_*/
 chainlit_app/
 
-# Development files
-*.md
+# Development files  
+# НЕ исключаем .md файлы из data/documents_compressed - это база знаний!
+/*.md
 !README.md
+!data/documents_compressed/*.md
 .DS_Store
 SSE_DEPLOYMENT_PLAN.md
 test_*.json
