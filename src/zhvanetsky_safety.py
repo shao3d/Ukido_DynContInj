@@ -4,9 +4,12 @@
 """
 
 import re
+import logging
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 class SafetyChecker:
     """Проверка безопасности и уместности юмора."""
@@ -219,6 +222,24 @@ class SafetyChecker:
         Returns:
             (is_valid, error_reason)
         """
+        # КРИТИЧЕСКАЯ ПРОВЕРКА: блокируем метаданные
+        if "Этот ответ:" in response:
+            logger.error("🚫 Обнаружены метаданные 'Этот ответ:' в ответе юмора")
+            return False, "metadata_detected"
+        
+        if "✅" in response or "❌" in response or "✓" in response:
+            logger.error("🚫 Обнаружены галочки/крестики в ответе юмора")
+            return False, "checkmarks_detected"
+        
+        # Проверка на аналитические фразы
+        analytical_phrases = ["Отражает парадокс", "Показывает абсурд", "Легко и с юмором", 
+                            "Не упоминает напрямую", "В стиле Жванецкого", "Короткий и емкий"]
+        response_lower = response.lower()
+        for phrase in analytical_phrases:
+            if phrase.lower() in response_lower:
+                logger.error(f"🚫 Обнаружена аналитическая фраза: '{phrase}'")
+                return False, "analytical_metadata"
+        
         # Проверка длины (увеличено для более философских размышлений)
         if len(response) > 600:  # Увеличено с 400 для парадоксов Жванецкого
             return False, "too_long"
