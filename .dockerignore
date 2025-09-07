@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Project specific
+.env
+.env.local
+*.log
+test_results/
+tests/
+archive/
+docs/
+tools/
+backup_*/
+chainlit_app/
+
+# Development files
+*.md
+!README.md
+.DS_Store
+SSE_DEPLOYMENT_PLAN.md
+test_*.json
+run_*.py
+http_sandbox*.py
+
+# Cache
+.pytest_cache/
+.serena/
+.claude/
+.mcp.json
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

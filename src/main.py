@@ -797,12 +797,16 @@ app.mount("/", StaticFiles(directory="static", html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
     
+    # Получаем порт из окружения (для Railway) или используем 8000 по умолчанию
+    port = int(os.getenv("PORT", 8000))
+    
     # Логирование конфигурации при старте
     print("=" * 50)
     print("🚀 Ukido AI Assistant v0.7.3")
     print("📝 Архитектура: Router → Generator")
     print(f"📝 Уровень логирования: {config.LOG_LEVEL}")
     print(f"💾 Лимит истории: {config.HISTORY_LIMIT} сообщений")
+    print(f"🌐 Запуск на порту: {port}")
     print("=" * 50)
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=port)
