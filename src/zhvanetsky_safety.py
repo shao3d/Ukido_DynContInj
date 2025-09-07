@@ -282,6 +282,12 @@ class SafetyChecker:
             context['reason'] = 'pure_social_intent'
             return False, context
         
+        # Блокируем юмор для коротких сообщений (acknowledgments)
+        clean_msg = message.strip()
+        if len(clean_msg) < 10 and "?" not in clean_msg:
+            context['reason'] = 'short_acknowledgment_message'
+            return False, context
+        
         # Проверка темы
         if not self.is_safe_topic(message):
             context['safe_topic'] = False

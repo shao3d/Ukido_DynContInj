@@ -342,6 +342,21 @@ class Router:
                         self._social_state.mark_greeted(user_id)
                         print(f"ℹ️ Router: Первое приветствие в mixed запросе от {user_id[:8]}...")
                 
+                # Проверка на acknowledgment (соглашательские ответы и смайлики)
+                if result.get("status") == "offtopic" and not result.get("social_context"):
+                    # Паттерны для acknowledgment
+                    acknowledgment_patterns = [
+                        "ок", "окей", "okay", "ok", "хорошо", "ладно", "понял", "поняла",
+                        "понятно", "ясно", "спасибо", "спс", "благодарю", "принято",
+                        "согласен", "согласна", "да", "угу", "ага", "👍", "👌", "✅",
+                        ":)", ";)", ":-))", ")", "))", "😊", "🙂", "👍🏻", "💯"
+                    ]
+                    
+                    # Проверяем, является ли сообщение acknowledgment
+                    clean_msg = user_message.strip().lower().replace("!", "").replace(".", "")
+                    if clean_msg in acknowledgment_patterns or (len(clean_msg) < 10 and not "?" in clean_msg):
+                        result["social_context"] = "acknowledgment"
+                        print(f"ℹ️ Router: Определен acknowledgment для сообщения '{user_message}'")
                 
                 return result
                 

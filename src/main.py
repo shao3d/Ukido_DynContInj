@@ -593,6 +593,17 @@ async def chat(request: ChatRequest):
             elif social_context == "repeated_greeting":
                 # Для повторного приветствия НЕ добавляем социальный префикс
                 response_text = base_message
+            elif social_context == "acknowledgment":
+                # Для соглашательских ответов и смайликов используем продолжающие фразы
+                acknowledgment_responses = [
+                    "Отлично! Что ещё вас интересует о наших курсах?",
+                    "Хорошо! Есть ещё вопросы по школе Ukido?",
+                    "Понял вас! Какая информация ещё нужна?",
+                    "Супер! Чем ещё могу помочь?",
+                    "Рада, что понятно! Что ещё рассказать?"
+                ]
+                response_text = random.choice(acknowledgment_responses)
+                print(f"ℹ️ Using acknowledgment response for '{request.message}'")
             elif social_context == "farewell":
                 # Для прощания используем ТОЛЬКО прощальную фразу, без offtopic сообщения
                 farewells = [
