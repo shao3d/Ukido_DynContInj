@@ -795,6 +795,32 @@ class ResponseGenerator:
         text_out = text_out.replace("т_д", "т.д.").replace("т_п", "т.п.")
         text_out = "\n".join(line.rstrip() for line in text_out.splitlines())
         text_out = re.sub(r"\n{3,}", "\n\n", text_out)
+        
+        # КРИТИЧЕСКОЕ: Принудительное добавление абзацев, если их нет
+        if '\n' not in text_out and len(text_out) > 200:
+            # Разбиваем длинный текст на абзацы по предложениям
+            sentences = re.split(r'(?<=[.!?])\s+', text_out)
+            
+            if len(sentences) >= 3:
+                # Группируем предложения в абзацы (по 2-3 предложения)
+                paragraphs = []
+                current_para = []
+                
+                for i, sentence in enumerate(sentences):
+                    current_para.append(sentence)
+                    # Создаём новый абзац после каждых 2-3 предложений
+                    if len(current_para) >= 2 and (i == len(sentences) - 1 or len(current_para) >= 3):
+                        paragraphs.append(' '.join(current_para))
+                        current_para = []
+                
+                # Оставшиеся предложения
+                if current_para:
+                    paragraphs.append(' '.join(current_para))
+                
+                # Объединяем абзацы с двойным переводом строки
+                text_out = '\n\n'.join(paragraphs)
+                print(f"📝 Принудительно добавлены абзацы: {len(paragraphs)} абзацев")
+        
         # Важно: strip() удаляет ВСЕ переводы строк, включая абзацы!
         # Удаляем только лишние пробелы в начале/конце, сохраняя структуру
         return text_out.strip()

@@ -732,9 +732,9 @@ async def chat_stream(user_id: str, message: str):
                         "event": "message",
                         "data": word
                     }
-                
-                # 50ms между словами для эффекта печати
-                await asyncio.sleep(0.05)
+                    
+                    # 50ms между СЛОВАМИ для эффекта печати
+                    await asyncio.sleep(0.05)
             
             # Завершение стрима
             yield {
