@@ -698,18 +698,31 @@ async def chat_stream(user_id: str, message: str):
                 "data": json.dumps(metadata)
             }
             
-            # Стримим ответ по словам
+            # Стримим ответ по словам, СОХРАНЯЯ ПЕРЕВОДЫ СТРОК
             response_text = result.get("response", "")
-            words = response_text.split()
             
-            for i, word in enumerate(words):
-                if i > 0:
-                    word = " " + word
-                    
-                yield {
-                    "event": "message",
-                    "data": word
-                }
+            # Разбиваем текст на строки, чтобы сохранить структуру абзацев
+            lines = response_text.split('\n')
+            
+            for line_idx, line in enumerate(lines):
+                # Добавляем перевод строки между абзацами (кроме первой строки)
+                if line_idx > 0:
+                    yield {
+                        "event": "message", 
+                        "data": "\n"  # Отправляем перевод строки
+                    }
+                
+                # Разбиваем строку на слова
+                words = line.split()
+                
+                for i, word in enumerate(words):
+                    if i > 0:
+                        word = " " + word
+                        
+                    yield {
+                        "event": "message",
+                        "data": word
+                    }
                 
                 # 50ms между словами для эффекта печати
                 await asyncio.sleep(0.05)
