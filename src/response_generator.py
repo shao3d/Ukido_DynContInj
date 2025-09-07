@@ -595,6 +595,8 @@ class ResponseGenerator:
                     price_instruction +
                     "Ответь на вопросы естественным живым языком. "
                     "ВАЖНО: Объём СТРОГО 100-150 слов (не больше!). Не повторяй то, что уже было сказано.\n"
+                    "СТРУКТУРА: Раздели ответ на 2-3 коротких абзаца для удобства чтения. "
+                    "Используй пустую строку между абзацами (двойной перевод строки).\n"
                     "НЕ ИСПОЛЬЗУЙ ЭМОДЗИ.\n"
                     "Аспекты для учёта:\n" + questions_block +
                     cta_final_instruction  # CTA инструкция теперь в самом конце!
@@ -790,6 +792,8 @@ class ResponseGenerator:
         text_out = text_out.replace("т_д", "т.д.").replace("т_п", "т.п.")
         text_out = "\n".join(line.rstrip() for line in text_out.splitlines())
         text_out = re.sub(r"\n{3,}", "\n\n", text_out)
+        # Важно: strip() удаляет ВСЕ переводы строк, включая абзацы!
+        # Удаляем только лишние пробелы в начале/конце, сохраняя структуру
         return text_out.strip()
     
     def _sanitize_style(self, text: str) -> str:
