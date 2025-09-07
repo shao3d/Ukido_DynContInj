@@ -794,7 +794,7 @@ class ResponseGenerator:
         text_out = " ".join(deduped)
         text_out = text_out.replace("т_д", "т.д.").replace("т_п", "т.п.")
         text_out = "\n".join(line.rstrip() for line in text_out.splitlines())
-        text_out = re.sub(r"\n{3,}", "\n\n", text_out)
+        text_out = re.sub(r"\n{3,}", "\n", text_out)
         
         # КРИТИЧЕСКОЕ: Принудительное добавление абзацев, если их нет
         if '\n' not in text_out and len(text_out) > 200:
@@ -817,8 +817,8 @@ class ResponseGenerator:
                 if current_para:
                     paragraphs.append(' '.join(current_para))
                 
-                # Объединяем абзацы с двойным переводом строки
-                text_out = '\n\n'.join(paragraphs)
+                # Объединяем абзацы с одинарным переводом строки
+                text_out = '\n'.join(paragraphs)
                 print(f"📝 Принудительно добавлены абзацы: {len(paragraphs)} абзацев")
         
         # Важно: strip() удаляет ВСЕ переводы строк, включая абзацы!
