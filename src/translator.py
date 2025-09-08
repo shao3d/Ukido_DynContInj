@@ -122,8 +122,8 @@ Context: This is a response from an AI assistant for a children's soft skills sc
             
             logger.debug(f"Получен ответ от API: {response[:100]}...")
             
-            # Нормализуем двойные переводы строк для единообразия с русским форматированием
-            translated = response.replace('\n\n', '\n')
+            # Сохраняем форматирование абзацев
+            translated = response
             
             # Сохраняем в кеш (только короткие фразы)
             if len(text) < 200:
@@ -279,11 +279,9 @@ Context: This is a response from an AI assistant for a children's soft skills sc
                 temperature=0.3,
                 max_tokens=3000  # Увеличено для полных переводов
             ):
-                # Нормализуем двойные переводы строк в одинарные для единообразия
+                # Сохраняем форматирование абзацев
                 if chunk:
-                    # Заменяем двойные переводы строк на одинарные
-                    normalized_chunk = chunk.replace('\n\n', '\n')
-                    yield normalized_chunk
+                    yield chunk
                 
             logger.info(f"✅ Успешный стриминг перевода на {target_language}")
             self.translation_count += 1
