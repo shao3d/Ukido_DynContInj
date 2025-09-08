@@ -178,3 +178,12 @@ data/persistent_states/detail_test_*.json
 # Archive and cache
 archive/
 .serena/
+
+# Virtual environments (IMPORTANT!)
+venv/
+chainlit_venv/
+*_venv/
+
+# Backup folders
+backup_chainlit_*/
+backup_*/

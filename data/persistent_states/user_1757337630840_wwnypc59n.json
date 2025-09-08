@@ -1,0 +1,41 @@
+{
+  "history": [
+    {
+      "role": "user",
+      "content": "В чём уникальность вашей школы?"
+    },
+    {
+      "role": "assistant",
+      "content": "Наша уникальность в том, что мы развиваем не знания, а личность ребенка. В Ukido мы не гонимся за оценками или жестким результатом, а помогаем детям раскрыть свой внутренний потенциал через soft skills. Мы учим детей быть собой, принимать свои эмоции и уверенно их выражать.\nНаша методика - это не просто занятия, а целая философия, где ошибки - это не повод для стыда, а возможность для роста и развития. Мы создаем безопасное пространство, где каждый ребенок может экспериментировать, пробовать и становиться увереннее. Ключевое отличие - мы работаем с индивидуальностью каждого ребенка.\nНаши курсы \"Юный Оратор\", \"Эмоциональный Компас\" и \"Капитан Проектов\" адаптированы под возраст и особенности восприятия детей."
+    },
+    {
+      "role": "user",
+      "content": "А як ви працюєте за проблемними дітками?"
+    },
+    {
+      "role": "assistant",
+      "content": "В Ukido ми не боїмося складних дітей - навпаки, вважаємо їх найцікавішими. У нас є спеціальні методики для сором'язливих, гіперактивних, тривожних та дітей з особливостями розвитку. Кожна дитина отримує індивідуальний план адаптації.  \nНаші викладачі проходять спеціальну підготовку з роботи з різними типами дитячої психіки. Ми використовуємо ігрові техніки, які дозволяють розкритися навіть найзакритішим дітям. Наприклад, для сором'язливих - поступове включення через парні вправи, для гіперактивних - часта зміна активностей.  \nВажливий момент - ми завжди консультуємося з батьками і при необхідності залучаємо психологів. Наша мета - не просто провести заняття, а створити комфортний розвивальний простір для кожної дитини."
+    },
+    {
+      "role": "user",
+      "content": "Alright. Tell me why you are so special school?"
+    },
+    {
+      "role": "assistant",
+      "content": "At Ukido, we focus on developing not just knowledge, but the personality of each child. Our philosophy is to help children unlock their potential through soft skills, creating a safe space for experimentation and growth. We fundamentally differ from traditional education: we don’t give grades, we don’t compare children, and we work with the individuality of each child.\nOur courses \"Young Orator,\" \"Emotional Compass,\" and \"Project Captain\" are tailored to age-specific needs. What makes us unique is that we teach children to be themselves, to accept their emotions, and to express them confidently. Mistakes are not a reason for shame for us; they are an opportunity for growth and real maturity."
+    },
+    {
+      "role": "user",
+      "content": "But what we missed the lesson? And how to make a squared wheel??"
+    },
+    {
+      "role": "assistant",
+      "content": "If you miss a lesson, we have several options for compensation. For up to two absences a month, we offer free make-up: you can receive a personalized 30-minute consultation or a video recording of the lesson along with additional materials. As for the \"squared wheel\" – that's our favorite metaphorical technique in teaching soft skills. \nWe show kids that failures are perfectly normal, and they can learn valuable lessons from them. In our courses \"Young Orator\" and \"Project Captain,\" children learn to turn their \"crooked wheels\" into effective tools for development. The main rule of Ukido: there are no wrong decisions, only opportunities for growth and experimentation. \nWe create an environment where kids can try things out, helping them analyze their experiences and become more confident."
+    }
+  ],
+  "user_signal": "exploring_only",
+  "greeting_exchanged": false,
+  "message_count": 8,
+  "user_id": "user_1757337630840_wwnypc59n",
+  "last_updated": "2025-09-08T17:37:13.018030"
+}

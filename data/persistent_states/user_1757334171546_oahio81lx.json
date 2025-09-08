@@ -1,0 +1,33 @@
+{
+  "history": [
+    {
+      "role": "user",
+      "content": "Как вы учите детей?"
+    },
+    {
+      "role": "assistant",
+      "content": "В Ukido мы развиваем soft skills через активное погружение. Наша методика - это 90-минутные занятия, где теория занимает всего 10%, а основное время уделяется практике, играм и рефлексии. Мы используем научно обоснованные подходы: игровые технологии, ролевые сценарии и индивидуальный подход к каждому ребенку.\nВходная диагностика помогает нам понять тип темперамента, модальность восприятия и личные особенности каждого ученика. Наши курсы построены по возрастным группам: \"Юный Оратор\" для 7-10 лет, \"Эмоциональный Компас\" для 9-12 лет и \"Капитан Проектов\" для 11-14 лет. В каждой программе мы делаем акцент на практических навыках коммуникации, эмоционального интеллекта и лидерства."
+    },
+    {
+      "role": "user",
+      "content": "Які вимого до дитини при зарахуванні у вашу школу?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ми не висуваємо строгих вимог до дітей при зарахуванні. Головне - бажання дитини вчитися та інтерес батьків до розвитку soft skills. Кожна дитина унікальна, тому ми підберемо підходящий курс і темп навчання.  \nПеред стартом проводимо безкоштовну вхідну діагностику, яка допомагає зрозуміти індивідуальні особливості дитини. Перше заняття - пробне, щоб дитина могла оцінити атмосферу та формат навчання без зобов'язань. Наші викладачі вміють знаходити підхід до дітей з різними характерами - від сором'язливих до гіперактивних.  \nМи створюємо безпечне середовище, де кожен почувається комфортно і може розкритися."
+    },
+    {
+      "role": "user",
+      "content": "Do you have offices somewhere so I could come and have a live talk?"
+    },
+    {
+      "role": "assistant",
+      "content": "We have an office in Kyiv at 121 Saksahanskoho Street, Office 305. Here, you can have a personal consultation, meet our team, and get detailed information about our soft skills courses. Our office is open on weekdays from 10:00 AM to 6:00 PM, and on Saturday from 11:00 AM to 3:00 PM. \n\nYou can easily reach us by metro to the \"Universytet\" station, and there are also bus and trolleybus stops nearby. For the convenience of parents, we offer free parking in the courtyard. However, we recommend scheduling an appointment in advance.\n\nMost of our consultations are conducted online via zoom to save parents time and ensure maximum convenience."
+    }
+  ],
+  "user_signal": "exploring_only",
+  "greeting_exchanged": false,
+  "message_count": 6,
+  "user_id": "user_1757334171546_oahio81lx",
+  "last_updated": "2025-09-08T17:37:13.194996"
+}

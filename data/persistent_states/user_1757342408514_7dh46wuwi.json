@@ -1,0 +1,17 @@
+{
+  "history": [
+    {
+      "role": "user",
+      "content": "Какие-то новые курсы планируете запускать?"
+    },
+    {
+      "role": "assistant",
+      "content": "Новые курсы? Мы новые миры создаём. Ребёнок в пижаме перед экраном - и весь мир у его ног. Онлайн-революция в действии."
+    }
+  ],
+  "user_signal": "exploring_only",
+  "greeting_exchanged": false,
+  "message_count": 2,
+  "user_id": "user_1757342408514_7dh46wuwi",
+  "last_updated": "2025-09-08T17:37:12.985526"
+}
