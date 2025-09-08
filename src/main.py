@@ -115,6 +115,7 @@ class ChatResponse(BaseModel):
     social: Optional[str] = None
     user_signal: Optional[str] = None  # Добавляем user_signal в ответ
     metadata: Optional[dict] = None  # Добавляем metadata с информацией о CTA
+    detected_language: Optional[str] = None  # Добавляем detected_language для мультиязычности
 
 
 # === ГЛОБАЛЬНЫЕ КОМПОНЕНТЫ ===
@@ -309,6 +310,7 @@ async def chat(request: ChatRequest):
     social_context = route_result.get("social_context")  # Новое поле от Gemini
     fuzzy_matched = route_result.get("fuzzy_matched", False)
     user_signal = route_result.get("user_signal", "exploring_only")  # Получаем user_signal
+    detected_language = route_result.get("detected_language", "ru")  # Получаем detected_language для мультиязычности
     
     # HOTFIX: Восстанавливаем user_signal для offtopic из предыдущих успешных запросов
     # Проблема: Gemini 2.5 Flash игнорирует инструкцию сохранять user_signal для offtopic
@@ -435,6 +437,7 @@ async def chat(request: ChatRequest):
                         "original_message": request.message,  # Добавляем оригинальное сообщение
                         "cta_blocked": should_block_cta,  # Передаем флаг блокировки CTA
                         "cta_frequency_modifier": cta_frequency_modifier,  # Передаем модификатор частоты
+                        "detected_language": detected_language,  # Передаем detected_language для перевода
                         "block_reason": block_reason if should_block_cta else None,  # Причина блокировки
                     },
                     filtered_history,  # Используем отфильтрованную историю
@@ -654,7 +657,8 @@ async def chat(request: ChatRequest):
         fuzzy_matched=fuzzy_matched,
         social=social_context,  # Социальный контекст от Gemini
         user_signal=user_signal,  # Возвращаем user_signal в ответе
-        metadata=response_metadata if 'response_metadata' in locals() else None  # Возвращаем metadata с CTA информацией
+        metadata=response_metadata if 'response_metadata' in locals() else None,  # Возвращаем metadata с CTA информацией
+        detected_language=detected_language  # Возвращаем detected_language для мультиязычности
     )
 
 
@@ -692,49 +696,84 @@ async def chat_stream(user_id: str, message: str):
                 "humor_generated": result.get("metadata", {}).get("humor_generated", False) if result.get("metadata") else False
             }
             
+            # Добавляем язык в метаданные
+            detected_language = result.get("detected_language", "ru")
+            metadata["detected_language"] = detected_language
+            
             # Отправляем метаданные
             yield {
                 "event": "metadata",
                 "data": json.dumps(metadata)
             }
             
-            # Стримим ответ по словам, СОХРАНЯЯ ПЕРЕВОДЫ СТРОК
+            # ВАЖНО: Две разные ветки для стриминга!
             response_text = result.get("response", "")
             
-            # DEBUG: Логируем, есть ли переводы строк в ответе
-            newline_count = response_text.count('\n')
-            print(f"🔍 DEBUG: В ответе {newline_count} переводов строк")
-            print(f"🔍 DEBUG: Первые 200 символов с экранированием: {repr(response_text[:200])}")
-            
-            # Разбиваем текст на строки, чтобы сохранить структуру абзацев
-            lines = response_text.split('\n')
-            
-            for line_idx, line in enumerate(lines):
-                # Добавляем перевод строки между строками
-                if line_idx > 0:
-                    yield {
-                        "event": "message", 
-                        "data": "\n"  # Отправляем перевод строки
-                    }
+            # ВЕТКА 1: Для русского языка - псевдо-стриминг (НЕ ТРОГАЕМ!)
+            if detected_language == "ru":
+                # DEBUG: Логируем, есть ли переводы строк в ответе
+                newline_count = response_text.count('\n')
+                print(f"🔍 DEBUG: В ответе {newline_count} переводов строк")
+                print(f"🔍 DEBUG: Первые 200 символов с экранированием: {repr(response_text[:200])}")
                 
-                # Если строка пустая (был двойной перевод), отправляем ещё один перевод
-                if not line.strip():
-                    continue  # Пропускаем пустые строки, но перевод уже отправлен
+                # Разбиваем текст на строки, чтобы сохранить структуру абзацев
+                lines = response_text.split('\n')
                 
-                # Разбиваем строку на слова
-                words = line.split()
-                
-                for i, word in enumerate(words):
-                    if i > 0:
-                        word = " " + word
-                        
-                    yield {
-                        "event": "message",
-                        "data": word
-                    }
+                for line_idx, line in enumerate(lines):
+                    # Добавляем перевод строки между строками
+                    if line_idx > 0:
+                        yield {
+                            "event": "message", 
+                            "data": "\n"  # Отправляем перевод строки
+                        }
                     
-                    # 50ms между СЛОВАМИ для эффекта печати
-                    await asyncio.sleep(0.05)
+                    # Если строка пустая (был двойной перевод), отправляем ещё один перевод
+                    if not line.strip():
+                        continue  # Пропускаем пустые строки, но перевод уже отправлен
+                    
+                    # Разбиваем строку на слова
+                    words = line.split()
+                    
+                    for i, word in enumerate(words):
+                        if i > 0:
+                            word = " " + word
+                            
+                        yield {
+                            "event": "message",
+                            "data": word
+                        }
+                        
+                        # 50ms между СЛОВАМИ для эффекта печати
+                        await asyncio.sleep(0.05)
+            
+            # ВЕТКА 2: Для украинского/английского - РЕАЛЬНЫЙ стриминг перевода!
+            else:
+                print(f"🚀 Запускаем РЕАЛЬНЫЙ стриминг перевода на {detected_language}")
+                
+                # Импортируем транслятор
+                from translator import SmartTranslator
+                from openrouter_client import OpenRouterClient
+                
+                # Создаём клиента и транслятор
+                translator_client = OpenRouterClient(
+                    api_key=config.OPENROUTER_API_KEY,
+                    model=config.TRANSLATION_MODEL
+                )
+                translator = SmartTranslator(translator_client)
+                
+                # Стримим перевод напрямую!
+                async for chunk in translator.translate_stream(
+                    text=response_text,
+                    target_language=detected_language,
+                    user_context=message
+                ):
+                    if chunk:
+                        yield {
+                            "event": "message",
+                            "data": chunk
+                        }
+                
+                print(f"✅ Стриминг перевода на {detected_language} завершён")
             
             # Завершение стрима
             yield {

@@ -117,7 +117,8 @@
             display: block;
         }
         
-        .typing-indicator span {
+        .typing-indicator span,
+        #dotsContainer span {
             display: inline-block;
             width: 8px;
             height: 8px;
@@ -127,11 +128,13 @@
             animation: typing 1.4s infinite;
         }
         
-        .typing-indicator span:nth-child(2) {
+        .typing-indicator span:nth-child(2),
+        #dotsContainer span:nth-child(2) {
             animation-delay: 0.2s;
         }
         
-        .typing-indicator span:nth-child(3) {
+        .typing-indicator span:nth-child(3),
+        #dotsContainer span:nth-child(3) {
             animation-delay: 0.4s;
         }
         
@@ -161,8 +164,14 @@
             border: 2px solid #e2e8f0;
             border-radius: 25px;
             font-size: 16px;
+            font-family: inherit;
             outline: none;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, height 0.2s ease;
+            resize: none;
+            overflow-y: hidden;
+            min-height: 44px;
+            max-height: 120px;
+            line-height: 1.4;
         }
         
         #messageInput:focus {
@@ -243,21 +252,23 @@
         </div>
         
         <div class="typing-indicator" id="typingIndicator">
-            <span></span>
-            <span></span>
-            <span></span>
+            <div id="statusText" style="color: #718096; font-size: 14px; font-style: italic; margin-bottom: 8px;">Analyzing...</div>
+            <div id="dotsContainer">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
         </div>
         
         <div class="chat-input">
             <form class="input-form" onsubmit="sendMessage(event)">
-                <input 
-                    type="text" 
+                <textarea 
                     id="messageInput" 
                     placeholder="Напишите сообщение..." 
-                    autocomplete="off"
+                    rows="1"
                     maxlength="500"
                     required
-                >
+                ></textarea>
                 <button type="submit" id="sendButton">Отправить</button>
             </form>
         </div>
@@ -300,13 +311,41 @@
             return messageDiv;
         }
         
+        let statusInterval = null;
+        
         function showTypingIndicator() {
-            document.getElementById('typingIndicator').classList.add('active');
+            const indicator = document.getElementById('typingIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.classList.add('active');
             scrollToBottom();
+            
+            // Статусы для циклической смены
+            const statuses = ['Analyzing...', 'Searching...', 'Generating...'];
+            let statusIndex = 0;
+            
+            // Устанавливаем начальный статус
+            statusText.textContent = statuses[0];
+            
+            // Запускаем цикл смены статусов
+            statusInterval = setInterval(() => {
+                statusIndex = (statusIndex + 1) % statuses.length;
+                statusText.textContent = statuses[statusIndex];
+            }, 3000); // Меняем каждые 3 секунды
         }
         
         function hideTypingIndicator() {
-            document.getElementById('typingIndicator').classList.remove('active');
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.remove('active');
+            
+            // Останавливаем цикл смены статусов
+            if (statusInterval) {
+                clearInterval(statusInterval);
+                statusInterval = null;
+            }
+            
+            // Сбрасываем на начальный статус
+            document.getElementById('statusText').textContent = 'Analyzing...';
         }
         
         function showError(message) {
@@ -332,6 +371,7 @@
             
             // Очищаем поле и блокируем отправку
             input.value = '';
+            input.style.height = '44px'; // Сбрасываем высоту на минимальную
             button.disabled = true;
             isStreaming = true;
             
@@ -383,20 +423,20 @@
                         botBubble.classList.remove('streaming');
                     }
                     
-                    // Добавляем метаданные
-                    if (currentMetadata && botMessageDiv) {
-                        let metaText = [];
-                        if (currentMetadata.intent) metaText.push(`intent: ${currentMetadata.intent}`);
-                        if (currentMetadata.user_signal) metaText.push(`signal: ${currentMetadata.user_signal}`);
-                        if (currentMetadata.humor_generated) metaText.push('🎭 юмор');
-                        
-                        if (metaText.length > 0) {
-                            const metaDiv = document.createElement('div');
-                            metaDiv.className = 'metadata';
-                            metaDiv.textContent = metaText.join(' | ');
-                            botMessageDiv.appendChild(metaDiv);
-                        }
-                    }
+                    // Метаданные отключены по запросу пользователя
+                    // if (currentMetadata && botMessageDiv) {
+                    //     let metaText = [];
+                    //     if (currentMetadata.intent) metaText.push(`intent: ${currentMetadata.intent}`);
+                    //     if (currentMetadata.user_signal) metaText.push(`signal: ${currentMetadata.user_signal}`);
+                    //     if (currentMetadata.humor_generated) metaText.push('🎭 юмор');
+                    //     
+                    //     if (metaText.length > 0) {
+                    //         const metaDiv = document.createElement('div');
+                    //         metaDiv.className = 'metadata';
+                    //         metaDiv.textContent = metaText.join(' | ');
+                    //         botMessageDiv.appendChild(metaDiv);
+                    //     }
+                    // }
                     
                     // Закрываем соединение
                     eventSource.close();
@@ -448,17 +488,37 @@
             }
         }
         
+        // Функция автоматической подстройки высоты textarea
+        function autoResizeTextarea() {
+            const textarea = document.getElementById('messageInput');
+            
+            // Сбрасываем высоту для пересчета
+            textarea.style.height = 'auto';
+            
+            // Устанавливаем новую высоту по содержимому (но не больше максимума)
+            const newHeight = Math.min(textarea.scrollHeight, 120); // max 120px
+            textarea.style.height = newHeight + 'px';
+        }
+        
         // Автофокус на поле ввода при загрузке
         window.addEventListener('load', () => {
-            document.getElementById('messageInput').focus();
+            const messageInput = document.getElementById('messageInput');
+            messageInput.focus();
+            
+            // Привязываем автоматическое изменение высоты
+            messageInput.addEventListener('input', autoResizeTextarea);
+            
+            // Устанавливаем начальную высоту
+            autoResizeTextarea();
         });
         
-        // Отправка по Enter
+        // Отправка по Enter (Shift+Enter для новой строки)
         document.getElementById('messageInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage(e);
+                e.preventDefault(); // Предотвращаем перевод строки
+                sendMessage(e);     // Отправляем сообщение
             }
+            // Если Shift+Enter - позволяем создать новую строку (стандартное поведение)
         });
     </script>
 </body>

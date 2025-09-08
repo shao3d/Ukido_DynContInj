@@ -43,3 +43,10 @@ class Config:
     
     # Настройки обработчика завершённых действий
     ENABLE_COMPLETED_ACTIONS_HANDLER = True  # Включить/выключить обработку завершённых действий
+    
+    # Настройки мультиязычности
+    TRANSLATION_MODEL = os.getenv("TRANSLATION_MODEL", "openai/gpt-4o-mini")
+    TRANSLATION_ENABLED = os.getenv("TRANSLATION_ENABLED", "true").lower() == "true"
+    TRANSLATION_CACHE_SIZE = 1000  # Количество кешированных переводов
+    SUPPORTED_LANGUAGES = ["ru", "uk", "en"]
+    DEFAULT_LANGUAGE = "ru"

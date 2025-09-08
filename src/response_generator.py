@@ -4,6 +4,7 @@ from config import Config
 from openrouter_client import OpenRouterClient
 from standard_responses import DEFAULT_FALLBACK
 from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
+from translator import SmartTranslator
 import re
 import asyncio
 
@@ -28,6 +29,7 @@ class ResponseGenerator:
         )
         self.docs_dir = docs_dir or (Path(__file__).parent.parent / "data" / "documents_compressed")
         self.history_limit = self.cfg.HISTORY_LIMIT  # Используем настройку из конфига
+        self.translator = SmartTranslator(self.client)  # Инициализируем переводчик
 
     async def generate(
         self,
@@ -241,6 +243,21 @@ class ResponseGenerator:
                 "cta_type": user_signal if cta_was_added else None,
                 "humor_generated": False
             }
+            
+            # НОВОЕ: Перевод перед возвратом
+            detected_language = router_result.get("detected_language", "ru")
+            
+            if detected_language != "ru":
+                # Переводим финальный текст
+                final_text = await self.translator.translate(
+                    text=final_text,
+                    target_language=detected_language,
+                    user_context=current_message
+                )
+                
+                # Добавляем информацию о переводе в metadata
+                metadata["translated_to"] = detected_language
+                metadata["detected_language"] = detected_language
             
             return final_text, metadata
         except Exception as e:

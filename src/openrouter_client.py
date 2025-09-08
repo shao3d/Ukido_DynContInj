@@ -4,6 +4,7 @@ MVP версия: минимум кода для работы
 """
 
 import httpx
+import json
 from typing import List, Dict, Optional, Any
 
 class OpenRouterClient:

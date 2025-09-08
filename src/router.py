@@ -198,6 +198,12 @@ class Router:
                 # Проверяем корректность статуса
                 valid_statuses = ["success", "offtopic", "need_simplification"]
                 valid_signals = ["price_sensitive", "anxiety_about_child", "ready_to_buy", "exploring_only"]
+                valid_languages = ["ru", "uk", "en"]
+                
+                # Проверяем и добавляем detected_language если отсутствует
+                if "detected_language" not in result or result.get("detected_language") not in valid_languages:
+                    result["detected_language"] = "ru"  # По умолчанию русский
+                    print(f"⚠️ Добавлен detected_language по умолчанию: ru")
                 
                 # Обработка случая, когда Gemini путает status и user_signal
                 if result["status"] in valid_signals and result["status"] not in valid_statuses:
@@ -417,9 +423,10 @@ class Router:
         """Секция с ролью и основными правилами"""
         return """Ты - представитель детской школы soft skills Ukido.
 
-ДВА ЭТАПА АНАЛИЗА:
-1. ДЕКОМПОЗИЦИЯ - извлечь все вопросы
-2. КЛАССИФИКАЦИЯ - статус и документы
+ТРИ ЭТАПА АНАЛИЗА:
+1. ОПРЕДЕЛЕНИЕ ЯЗЫКА - определить язык сообщения пользователя
+2. ДЕКОМПОЗИЦИЯ - извлечь все вопросы
+3. КЛАССИФИКАЦИЯ - статус и документы
 
 ПРАВИЛА:
 - Максимум 3 вопроса для success
@@ -427,6 +434,16 @@ class Router:
 - Максимум 4 документа
 - ВАЖНО: Будь толерантен к вопросам о школе
 - Критика = вопрос → success (см. правило КРИТИКА в декомпозиции)
+
+ОПРЕДЕЛЕНИЕ ЯЗЫКА (КРИТИЧЕСКИ ВАЖНО!):
+Определи основной язык сообщения пользователя и ОБЯЗАТЕЛЬНО верни в поле "detected_language":
+- 'uk' если есть хотя бы ОДНА из букв: і, ї, є, ґ (это украинский!)
+- 'en' если текст полностью на латинице без кириллицы
+- 'ru' только если это чистая кириллица БЕЗ украинских букв
+Примеры:
+- "Привіт" → detected_language: "uk" (есть буква і)
+- "Hello" → detected_language: "en" (латиница)
+- "Привет" → detected_language: "ru" (чистая кириллица без укр. букв)
 
 """
     
@@ -796,11 +813,12 @@ Ukido - это онлайн-школа, работающая через Zoom. В
         """Минимальный формат JSON-ответа"""
         return (
             "=== ФОРМАТ JSON ОТВЕТА (МИНИМАЛЬНЫЙ) ===\n\n"
-            "1) success:\n{\n  \"status\": \"success\",\n  \"documents\": [\"doc1.md\", ...],\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"user_signal\": \"price_sensitive\",  // ОБЯЗАТЕЛЬНО: один из 4 сигналов\n  \"social_context\": \"greeting\"  // опционально, если был социальный контекст\n}\n\n"
-            "2) offtopic:\n{\n  \"status\": \"offtopic\",\n  \"decomposed_questions\": [],\n  \"user_signal\": \"anxiety_about_child\",  // СОХРАНЯЙ сигнал из истории! НЕ всегда exploring_only!\n  \"social_context\": \"farewell\"  // опционально\n}\n"
+            "1) success:\n{\n  \"status\": \"success\",\n  \"detected_language\": \"uk\",  // ОБЯЗАТЕЛЬНО: ru, uk или en\n  \"documents\": [\"doc1.md\", ...],\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"user_signal\": \"price_sensitive\",  // ОБЯЗАТЕЛЬНО: один из 4 сигналов\n  \"social_context\": \"greeting\"  // опционально, если был социальный контекст\n}\n\n"
+            "2) offtopic:\n{\n  \"status\": \"offtopic\",\n  \"detected_language\": \"ru\",  // ОБЯЗАТЕЛЬНО: ru, uk или en\n  \"decomposed_questions\": [],\n  \"user_signal\": \"anxiety_about_child\",  // СОХРАНЯЙ сигнал из истории! НЕ всегда exploring_only!\n  \"social_context\": \"farewell\"  // опционально\n}\n"
             "ВАЖНО: для offtopic НЕ генерируй message - используется заготовленная фраза\n\n"
-            "3) need_simplification:\n{\n  \"status\": \"need_simplification\",\n  \"message\": \"Пожалуйста, задавайте не более трёх вопросов за раз. Например, начните с самого важного для вас.\",\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"user_signal\": \"exploring_only\",  // определи сигнал даже для need_simplification\n  \"social_context\": \"apology\"  // опционально\n}\n\n"
+            "3) need_simplification:\n{\n  \"status\": \"need_simplification\",\n  \"detected_language\": \"en\",  // ОБЯЗАТЕЛЬНО: ru, uk или en\n  \"message\": \"Пожалуйста, задавайте не более трёх вопросов за раз. Например, начните с самого важного для вас.\",\n  \"decomposed_questions\": [\"Вопрос 1?\", ...],\n  \"user_signal\": \"exploring_only\",  // определи сигнал даже для need_simplification\n  \"social_context\": \"apology\"  // опционально\n}\n\n"
             "Только валидный JSON, без markdown и комментариев. Поле decomposed_questions всегда присутствует.\n"
+            "Поле detected_language ОБЯЗАТЕЛЬНО (ru|uk|en).\n"
             "Поле user_signal ОБЯЗАТЕЛЬНО (price_sensitive|anxiety_about_child|ready_to_buy|exploring_only).\n"
             "Поле social_context добавляй ТОЛЬКО если был социальный контекст (greeting/thanks/apology/farewell).\n"
         )
@@ -811,5 +829,6 @@ Ukido - это онлайн-школа, работающая через Zoom. В
             "status": "offtopic",
             "message": DEFAULT_FALLBACK,
             "decomposed_questions": [],
-            "user_signal": "exploring_only"
+            "user_signal": "exploring_only",
+            "detected_language": "ru"
         }
