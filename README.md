@@ -2,18 +2,27 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-green.svg)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-AI-powered chatbot for Ukido soft skills school. Built with FastAPI, Gemini Router, and Claude Generator for dynamic context-aware responses to parent inquiries.
+Production-ready AI chatbot for Ukido soft skills school with multilingual support and real-time streaming interface.
 
-## 🎯 Features
+## 🎯 Key Features
 
-- **Two-stage AI Architecture**: Gemini for routing + Claude for generation
+### Core Capabilities
+- **🌐 Multilingual Support**: Russian, Ukrainian, and English with real-time translation
+- **💬 Web Chat Interface**: Beautiful SSE-powered chat with live streaming responses
+- **🤖 Two-stage AI Architecture**: Gemini for routing + Claude for generation
+- **😄 Zhvanetsky Humor Engine**: Context-aware humor for offtopic queries (80% probability)
+- **💾 State Persistence**: Full conversation history and user state preservation
+- **🐳 Docker Ready**: One-click deployment with Railway support
+
+### Technical Features
 - **Smart Intent Classification**: Business, social, and mixed intents handling
-- **Context-Aware Responses**: Maintains conversation history (last 10 messages)
-- **Fuzzy Matching**: Handles typos and variations (85% threshold)
-- **Social Intelligence**: Tracks greetings, detects repeated social intents
-- **Ultra-brief Query Expansion**: Contextualizes queries like "А?" from history
+- **Adaptive Tone System**: 4 user emotional states (ready_to_buy, anxiety, price_sensitive, exploring)
+- **CTA Intelligence**: Smart call-to-action blocking based on user behavior
+- **Context Memory**: Maintains last 10 messages with offtopic filtering
+- **Protected Terms**: Preserves brand names during translation (Ukido, soft skills, Zoom)
 - **Optimized Performance**: 5-7 seconds response time, ~$0.0015 per query
 
 ## 🏗️ Architecture
@@ -100,7 +109,7 @@ sequenceDiagram
 ### Prerequisites
 
 - Python 3.11+
-- API Keys for OpenRouter (Claude) and Google AI (Gemini)
+- API Key for OpenRouter (required)
 
 ### Installation
 
@@ -112,15 +121,16 @@ cd Ukido_DynContInj
 
 2. Install dependencies:
 ```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
 3. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your API keys:
-# OPENROUTER_API_KEY=your_key
-# GOOGLE_API_KEY=your_key (optional, for Gemini)
+# Edit .env and add your OpenRouter API key:
+# OPENROUTER_API_KEY=sk-or-v1-xxxxx
 ```
 
 4. Run the server:
@@ -128,7 +138,17 @@ cp .env.example .env
 python src/main.py
 ```
 
-The API will be available at `http://localhost:8000`
+5. Open the web interface:
+- **Web Chat**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+
+### 🐳 Docker Deployment
+
+```bash
+# Build and run with Docker
+docker build -t ukido-assistant .
+docker run -p 8000:8000 --env-file .env ukido-assistant
+```
 
 ## 🧪 Testing
 
@@ -248,11 +268,18 @@ Key settings in `src/config.py`:
 
 ## 📝 Version History
 
-- **v0.7.6** (2025-08-17): Complete project reorganization
-- **v0.7.5**: First 2 sentences rule implementation
-- **v0.7.4**: Simplified repetition handling
-- **v0.7.0-0.7.3**: Architecture optimizations
-- **v0.6.x**: Initial implementation
+- **v0.16.1** (2025-01-10): Full multilingual support (RU/UK/EN) with streaming translation
+- **v0.15.0** (2025-01-07): SSE web interface and Docker deployment
+- **v0.14.x**: Production optimizations and bug fixes
+- **v0.13.x**: Zhvanetsky humor engine integration
+- **v0.12.x**: State persistence and advanced CTA blocking
+- Earlier versions: Initial architecture and core features
+
+## 🌿 Branch Structure
+
+- **main**: Latest stable version with all features
+- **feature/multilingual-v2**: Active development (merged)
+- **archive/***: Historical feature branches for reference
 
 ## 🏫 About Ukido
 
