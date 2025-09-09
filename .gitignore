@@ -175,6 +175,9 @@ data/persistent_states/final_test_*.json
 data/persistent_states/humor_test_*.json
 data/persistent_states/detail_test_*.json
 
+# Test results (auto-generated)
+test_results/
+
 # Archive and cache
 archive/
 
