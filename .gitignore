@@ -177,7 +177,12 @@ data/persistent_states/detail_test_*.json
 
 # Archive and cache
 archive/
+
+# AI tools local configurations (personal settings)
 .serena/
+.claude/
+.mcp.json
+*.pkl  # Cache files from AI tools
 
 # Virtual environments (IMPORTANT!)
 venv/
