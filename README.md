@@ -27,15 +27,16 @@ Production-ready AI chatbot for Ukido soft skills school with multilingual suppo
 
 ## 🏗️ Architecture
 
-### System Architecture
+### System Architecture (v0.16.1)
 ```mermaid
 graph TB
     subgraph "Frontend"
-        U[👤 Parent User]
+        U[👤 Parent User<br/>RU/UK/EN]
+        W[🌐 Web Interface<br/>SSE Streaming]
     end
     
     subgraph "API Layer"
-        API[FastAPI Server<br/>localhost:8000]
+        API[FastAPI Server<br/>localhost:8000<br/>SSE + REST]
     end
     
     subgraph "AI Processing"
@@ -45,63 +46,102 @@ graph TB
     
     subgraph "Core Components"
         SD[Social Detector<br/>50+ patterns]
-        HM[History Manager<br/>10 messages]
-        SS[Social State<br/>Greetings]
-        SR[Social Responder]
+        HM[History Manager<br/>10 messages context]
+        SS[Social State<br/>User tracking]
+        SR[Social Responder<br/>Local generation]
+        ZH[🎭 Zhvanetsky Humor<br/>80% probability]
+        TR[🌍 Translator<br/>RU/UK/EN support]
+        CB[CTA Blocker<br/>Smart filtering]
     end
     
-    subgraph "Knowledge"
-        KB[(Documents<br/>9 MD files)]
+    subgraph "Knowledge Base"
+        KB[(Documents<br/>9 MD files<br/>Fuzzy matching 85%)]
+        SM[Summaries.json<br/>Quick search]
     end
     
-    U -->|POST /chat| API
-    API -->|Process| R
+    subgraph "Persistence"
+        PM[State Manager<br/>User sessions]
+    end
+    
+    U -->|SSE/REST| W
+    W -->|POST /chat| API
+    API -->|Route| R
     
     R --> SD
     R --> HM
     R --> SS
     R --> KB
+    R --> SM
     
-    R -->|Generate| G
+    R -->|Business query| G
+    R -->|Social only| SR
+    R -->|Offtopic| ZH
+    
     G --> HM
-    G --> SR
+    G --> TR
+    G --> CB
+    G --> PM
     
-    API -->|JSON Response| U
+    API -->|Stream/JSON| W
+    W -->|Real-time| U
     
     style U fill:#e1f5fe
+    style W fill:#c5e1a5
     style API fill:#fff3e0
     style R fill:#f3e5f5
     style G fill:#f3e5f5
     style KB fill:#e8f5e9
+    style ZH fill:#ffecb3
+    style TR fill:#b3e5fc
 ```
 
-### Request Flow
+### Request Flow (v0.16.1)
 ```mermaid
 sequenceDiagram
     participant U as 👤 Parent
-    participant API as FastAPI
+    participant W as 🌐 Web UI
+    participant API as FastAPI Server
+    participant T as 🌍 Translator
     participant R as Gemini Router
+    participant SR as Social Responder
+    participant ZH as 🎭 Zhvanetsky
     participant G as Claude Generator
-    participant DB as Knowledge Base
+    participant KB as Knowledge Base
 
-    U->>+API: POST /chat {"message": "..."}
-    API->>+R: Process message
+    U->>+W: Type message (RU/UK/EN)
+    W->>+API: POST /chat (SSE stream)
+    API->>+T: Detect language
+    T-->>API: Language detected
     
-    Note over R: Check social intent<br/>Get history context
+    API->>+R: Route message
     
-    R->>DB: Search relevant docs
-    DB-->>R: Return documents
+    alt Pure Social (30-40% queries)
+        Note over R: Social intent ≥0.7<br/>No business signals
+        R->>SR: Generate local response
+        SR-->>R: Social response (1-2 sec)
+        R-->>API: {"status": "offtopic", "message": "..."}
+    else Mixed/Business Query
+        R->>KB: Search documents
+        KB-->>R: Relevant docs + summaries
+        
+        alt Business query
+            R-->>API: RouterResponse (success)
+            API->>+G: Generate with context
+            Note over G: - History: 10 messages<br/>- Emotional state<br/>- CTA blocking<br/>- 100-150 words
+            G-->>-API: Generated response
+        else Offtopic (non-social)
+            R->>ZH: Generate humor (80%)
+            ZH-->>R: Zhvanetsky response
+            R-->>API: {"status": "offtopic", "message": "..."}
+        end
+    end
     
-    R-->>API: RouterResponse
+    API->>T: Translate if needed
+    T-->>API: Final language
+    API-->>-W: Stream response (SSE)
+    W-->>-U: Display real-time
     
-    API->>+G: Generate response
-    
-    Note over G: Generate with:<br/>- Social context<br/>- Course info<br/>- 100-150 words
-    
-    G-->>-API: Final response
-    API-->>-U: {"response": "..."}
-    
-    Note over U: Time: 5-7 sec<br/>Cost: ~$0.0015
+    Note over U: Pure Social: 1-2 sec, ~$0.00003<br/>Business: 5-7 sec, ~$0.0015<br/>Savings: 40% on API costs
 ```
 
 ## 🚀 Quick Start
@@ -183,42 +223,98 @@ python collaborative_test.py "Забывчивая бабушка"  # By name
 - **[Интерактивные диаграммы](https://shao3d.github.io/Ukido_DynContInj/)** - с zoom и навигацией (экспериментальная)
 - **[GitDiagram](https://gitdiagram.com/shao3d/Ukido_DynContInj)** - автоматическая визуализация структуры репозитория
 
-### Processing States
+### Processing States (v0.16.1)
 ```mermaid
 stateDiagram-v2
     [*] --> Initial: User sends message
-    Initial --> SocialCheck: Check patterns
-    SocialCheck --> PureSocial: Social only
-    SocialCheck --> BusinessCheck: Has business intent
-    PureSocial --> QuickResponse: Generate social response
-    QuickResponse --> [*]: Return immediately
-    BusinessCheck --> RouterProcessing: Send to Gemini
-    RouterProcessing --> Success: Valid business query
-    RouterProcessing --> Offtopic: Not about school
-    RouterProcessing --> NeedSimplification: Too complex
-    Success --> GenerateResponse: Send to Claude
-    GenerateResponse --> [*]: Return to user
+    Initial --> LanguageDetection: Detect RU/UK/EN
+    LanguageDetection --> SocialCheck: Analyze intent
+    
+    SocialCheck --> PureSocial: Confidence ≥0.7 & No business
+    SocialCheck --> MixedIntent: Social + Business signals
+    SocialCheck --> BusinessIntent: Pure business query
+    
+    PureSocial --> LocalResponse: Social Responder
+    LocalResponse --> Translation: Check language
+    Translation --> [*]: Stream response (1-2 sec)
+    
+    MixedIntent --> RouterProcessing: Gemini Router
+    BusinessIntent --> RouterProcessing: Gemini Router
+    
+    RouterProcessing --> DocumentSearch: Find relevant docs
+    DocumentSearch --> Classification: Classify query type
+    
+    Classification --> Success: Valid business query
+    Classification --> Offtopic: Non-school topic
+    Classification --> Simplification: Too complex
+    
+    Success --> GenerateResponse: Claude Generator
+    GenerateResponse --> EmotionalState: Apply user state
+    EmotionalState --> CTABlocking: Check CTA rules
+    CTABlocking --> Translation2: Translate if needed
+    Translation2 --> [*]: Stream response (5-7 sec)
+    
+    Offtopic --> ZhvanetskyCheck: 80% probability
+    ZhvanetskyCheck --> HumorGeneration: Generate humor
+    ZhvanetskyCheck --> StandardResponse: Use template
+    HumorGeneration --> [*]: Return humor response
+    StandardResponse --> [*]: Return standard message
+    
+    Simplification --> GenerateResponse: Simplified context
 ```
 
-### Query Distribution
+### Query Distribution (v0.16.1)
 ```mermaid
-pie title "Query Types Distribution"
-    "Questions about courses" : 35
-    "Pricing and discounts" : 25
-    "Schedule" : 15
-    "Teachers" : 10
-    "Social (hello/thanks)" : 10
-    "Offtopic" : 5
+pie title "Query Types Distribution (Based on Testing)"
+    "Business queries (courses/prices)" : 30
+    "Social intents (greetings/thanks)" : 35
+    "Mixed (social + business)" : 15
+    "Schedule & timing questions" : 8
+    "Teacher information" : 5
+    "Offtopic with humor" : 5
+    "Complex multi-questions" : 2
 ```
 
-### Data Structure
+### Data Structure (v0.16.1)
 ```mermaid
 erDiagram
     USER ||--o{ MESSAGE : sends
-    MESSAGE ||--|| RESPONSE : generates
-    MESSAGE ||--|| ROUTER_RESULT : processes
-    USER ||--|| HISTORY : has
-    RESPONSE }o--|| ROUTER_RESULT : uses
+    USER ||--|| USER_STATE : maintains
+    USER ||--|| HISTORY : tracks
+    MESSAGE ||--|| LANGUAGE : detected_in
+    MESSAGE ||--|| SOCIAL_INTENT : contains
+    MESSAGE ||--|| ROUTER_RESULT : processed_by
+    ROUTER_RESULT ||--|| CLASSIFICATION : produces
+    ROUTER_RESULT ||--o{ DOCUMENT : searches
+    CLASSIFICATION ||--|| RESPONSE_TYPE : determines
+    RESPONSE_TYPE ||--|| GENERATOR : routes_to
+    GENERATOR ||--|| RESPONSE : creates
+    RESPONSE ||--|| TRANSLATION : may_require
+    RESPONSE ||--|| STREAMING : delivered_via
+    HISTORY ||--o{ MESSAGE : stores_last_10
+    USER_STATE ||--|| EMOTIONAL_STATE : includes
+    EMOTIONAL_STATE ||--|| CTA_BLOCKING : influences
+    
+    USER {
+        string user_id
+        string language_preference
+        timestamp last_greeting
+        int message_count
+    }
+    
+    MESSAGE {
+        string content
+        string language
+        timestamp created_at
+        float social_confidence
+    }
+    
+    RESPONSE {
+        string content
+        string status
+        float cost
+        int response_time_ms
+    }
 ```
 
 The architecture diagrams above are created using Mermaid and are automatically rendered by GitHub in the README.
