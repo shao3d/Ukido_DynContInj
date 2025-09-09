@@ -30,6 +30,8 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            /* Поддержка safe area для iPhone с вырезом */
+            padding-bottom: env(safe-area-inset-bottom, 0);
         }
         
         .chat-header {
@@ -149,6 +151,8 @@
         
         .chat-input {
             padding: 20px;
+            /* Дополнительный отступ снизу для iPhone с вырезом */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom, 0));
             background: white;
             border-top: 1px solid #e2e8f0;
         }
