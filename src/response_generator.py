@@ -1029,9 +1029,9 @@ class ResponseGenerator:
         
         # Определяем переход в зависимости от placement
         if offer.get("placement") == "end_with_urgency":
-            transition = "!\n\n"  # Восклицательный знак для urgency
+            transition = "!\n"  # Восклицательный знак для urgency
         else:
-            transition = ".\n\n"  # Обычная точка
+            transition = ".\n"  # Обычная точка
         
         # Маркеры больше не добавляем в текст ответа
         # так как они становятся видны пользователю

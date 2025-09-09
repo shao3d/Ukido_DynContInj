@@ -186,6 +186,7 @@ archive/
 .claude/
 .mcp.json
 *.pkl  # Cache files from AI tools
+CLAUDE.md  # Local development documentation
 
 # Virtual environments (IMPORTANT!)
 venv/
