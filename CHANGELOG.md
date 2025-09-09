@@ -5,7 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.16.2] - 2025-01-13
+## [0.16.3] - 2025-01-13 (Second Iteration)
+
+### Added
+- GitHub Actions CI/CD workflow for automated testing
+- Complete API documentation in docs/API.md
+- README for archive directory explaining legacy code
+- Professional GitHub templates for issues and pull requests
+
+### Changed
+- Complete repository cleanup and reorganization:
+  - Removed test_results/ directory (95 files, 11,480 lines)
+  - Excluded personal AI configurations (.claude/, .serena/, .mcp.json)
+  - Moved planning/ to docs/planning/
+  - Renamed tools/ to scripts/
+  - Reorganized all test files into proper test structure
+  - Created unified http_sandbox.py in tests/sandbox/
+
+### Removed
+- test_results/ directory from repository
+- Personal AI tool configurations from Git tracking
+- Temporary and cache files from version control
+
+## [0.16.2] - 2025-01-13 (First Iteration)
 
 ### Added
 - Repository reorganization for public presentation
