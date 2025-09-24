@@ -328,7 +328,20 @@ async def chat(request: ChatRequest):
     if status == "success" and user_signal != "exploring_only":
         user_signals_history[request.user_id] = user_signal
         print(f"💾 Сохранён user_signal='{user_signal}' для user_id='{request.user_id}'")
-    
+
+    # РАСШИРЕННЫЙ HOTFIX: Восстанавливаем price_sensitive инерцию для success запросов
+    # Проблема: При переходе от негативных вопросов о цене к информационным, теряется контекст
+    if status == "success" and user_signal == "exploring_only":
+        # Проверяем, был ли ранее price_sensitive
+        if request.user_id in user_signals_history:
+            last_signal = user_signals_history[request.user_id]
+            if last_signal == "price_sensitive":
+                # Восстанавливаем price_sensitive для сохранения контекста скептицизма
+                original_signal = user_signal
+                user_signal = "price_sensitive"
+                print(f"🔧 HOTFIX: Восстановлена инерция price_sensitive (Router вернул '{original_signal}')")
+                # НЕ обновляем user_signals_history - сохраняем price_sensitive
+
     # Отладочный вывод
     print(f"🔍 DEBUG: Router returned user_signal='{user_signal}', status='{status}'")
     
