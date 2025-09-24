@@ -20,11 +20,12 @@ from standard_responses import get_offtopic_response, DEFAULT_FALLBACK, NEED_SIM
 class Router:
     """Роутер для классификации запросов и выбора документов"""
     
-    def __init__(self, use_cache: bool = True):
+    def __init__(self, use_cache: bool = True, social_state: Optional[SocialStateManager] = None):
         """Инициализация роутера с загрузкой саммари
-        
+
         Args:
             use_cache: Использовать ли кешированный клиент для Gemini
+            social_state: Опциональный экземпляр SocialStateManager для синхронизации состояний
         """
         config = Config()
         
@@ -49,7 +50,7 @@ class Router:
         self.use_cache = use_cache
         # Социальные компоненты теперь обрабатываются в main.py
         # после получения ответа от Gemini
-        self._social_state = SocialStateManager()  # Для отслеживания повторных приветствий
+        self._social_state = social_state or SocialStateManager()  # Используем переданный экземпляр или создаём новый
 
         # Проверяем что саммари загрузились
         if not self.summaries:

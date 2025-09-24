@@ -119,10 +119,11 @@ class ChatResponse(BaseModel):
 
 
 # === ГЛОБАЛЬНЫЕ КОМПОНЕНТЫ ===
-router = Router(use_cache=True)
+# Создаем SocialStateManager первым, чтобы передать его в Router
+social_state = SocialStateManager()
+router = Router(use_cache=True, social_state=social_state)  # Передаем единый экземпляр
 response_generator = ResponseGenerator()
 history = HistoryManager()
-social_state = SocialStateManager()
 social_responder = SocialResponder(social_state)
 completed_actions_handler = CompletedActionsHandler()  # Инициализируем обработчик завершённых действий
 simple_cta_blocker = SimpleCTABlocker()  # Инициализируем блокировщик CTA
