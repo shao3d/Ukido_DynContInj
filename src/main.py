@@ -532,7 +532,8 @@ async def chat(request: ChatRequest):
                 history=history_messages,
                 user_id=request.user_id,
                 is_pure_social=is_pure_social,
-                base_probability=config.ZHVANETSKY_PROBABILITY
+                base_probability=config.ZHVANETSKY_PROBABILITY,
+                message_count=current_message_count
             )
             
             if can_use_humor:

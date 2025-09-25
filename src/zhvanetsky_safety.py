@@ -275,7 +275,8 @@ class SafetyChecker:
                          history: List[Dict],
                          user_id: str,
                          is_pure_social: bool = False,
-                         base_probability: float = 0.33) -> Tuple[bool, Dict]:
+                         base_probability: float = 0.33,
+                         message_count: int = 0) -> Tuple[bool, Dict]:
         """
         Комплексная проверка - можно ли использовать юмор.
         
@@ -297,7 +298,13 @@ class SafetyChecker:
             'probability': 0.0,
             'reason': None
         }
-        
+
+        # Блокировка юмора для первого сообщения пользователя
+        if message_count <= 1:
+            print(f"🛡️ Zhvanetsky humor blocked: first message protection for user {user_id}")
+            context['reason'] = 'first_message_protection'
+            return False, context
+
         # Никогда для чистых социальных интентов
         if is_pure_social:
             context['reason'] = 'pure_social_intent'
