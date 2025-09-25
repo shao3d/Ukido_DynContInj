@@ -249,17 +249,23 @@
         <div class="chat-messages" id="chatMessages">
             <div class="message bot">
                 <div class="message-bubble">
-                    <strong>Ukido School Assistant</strong><br>
-                    <span style="font-size: 0.9em; color: #666;">Soft Skills Education (7-14 years)</span>
+                    <div style="line-height: 1.5;">
+                        <strong>Привет! Расскажу всё о нашей школе:</strong><br>
+                        <span style="font-size: 0.95em;">Hi! I'll tell you about our school:</span>
+                    </div>
 
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
-                        <div style="font-size: 0.95em; line-height: 1.6;">
-                            Я говорю на трёх языках:<br>
-                            Русский • Українська • English
+                    <div style="margin-top: 12px; font-size: 0.95em; line-height: 1.8;">
+                        ✓ Курсы и программы • Courses & programs<br>
+                        ✓ Расписание и цены • Schedule & prices<br>
+                        ✓ Педагоги и методика • Teachers & methods
+                    </div>
+
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; text-align: center;">
+                        <div style="font-size: 0.9em; color: #4a5568; margin-bottom: 5px;">
+                            Отвечаю на русском, українською и English
                         </div>
-
-                        <div style="margin-top: 10px; font-size: 0.9em; color: #718096;">
-                            Задайте ваш вопрос, и я отвечу на том же языке.
+                        <div style="font-size: 0.95em; font-weight: 500;">
+                            RU • UA • EN
                         </div>
                     </div>
                 </div>
@@ -277,14 +283,14 @@
         
         <div class="chat-input">
             <form class="input-form" onsubmit="sendMessage(event)">
-                <textarea 
-                    id="messageInput" 
-                    placeholder="Напишите сообщение..." 
+                <textarea
+                    id="messageInput"
+                    placeholder="Ваш вопрос • Your question..."
                     rows="1"
                     maxlength="500"
                     required
                 ></textarea>
-                <button type="submit" id="sendButton">Отправить</button>
+                <button type="submit" id="sendButton">Send</button>
             </form>
         </div>
     </div>
