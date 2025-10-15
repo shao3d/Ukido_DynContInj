@@ -36,7 +36,7 @@ TEST_CASES = [
         "expected_status": "success",
         "expected_signal": "ready_to_buy",
         "expected_social": "thanks",
-        "expected_response_contains": ["запис", "ukido.ua"]
+        "expected_response_contains": ["запис", "shao3d.github.io"]
     },
     
     # Fix 2: Repeated_greeting
@@ -71,7 +71,7 @@ TEST_CASES = [
         "name": "Ready_to_buy начинает с действия",
         "message": "Хочу записать ребенка на курс",
         "expected_signal": "ready_to_buy",
-        "expected_response_contains": ["для записи", "следующий шаг", "ukido.ua/trial"]
+        "expected_response_contains": ["для записи", "следующий шаг", "shao3d.github.io/trial/"]
     },
     
     # Базовые проверки
