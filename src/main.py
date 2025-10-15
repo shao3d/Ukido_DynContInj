@@ -876,8 +876,9 @@ async def api_info():
 # Монтируем статические файлы
 # ВАЖНО: Это должно быть последним, после всех API endpoints
 # Создаем папку static если её нет
-os.makedirs("static", exist_ok=True)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 
 # === ЗАПУСК ===

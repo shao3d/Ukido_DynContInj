@@ -260,7 +260,9 @@ class ResponseGenerator:
                 metadata["detected_language"] = detected_language
 
             # НОВОЕ: Преобразуем URL в кликабельные HTML-ссылки
+            print(f"🔗 DEBUG: До преобразования URL: {final_text[:100]}...")
             final_text = self._make_urls_clickable(final_text)
+            print(f"🔗 DEBUG: После преобразования URL: {final_text[:100]}...")
 
             return final_text, metadata
         except Exception as e:
