@@ -876,8 +876,21 @@ async def api_info():
 # Монтируем статические файлы
 # ВАЖНО: Это должно быть последним, после всех API endpoints
 # Создаем папку static если её нет
-static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+
+# Определяем корень проекта для разных способов запуска (локально vs Docker)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(current_dir) == "src":
+    # Если мы в src/ (локальный запуск)
+    static_dir = os.path.join(current_dir, "..", "static")
+else:
+    # Если мы не в src/ (Docker запуск)
+    static_dir = os.path.join(current_dir, "static")
+
+# Нормализуем путь и создаём директорию
+static_dir = os.path.normpath(static_dir)
 os.makedirs(static_dir, exist_ok=True)
+print(f"📂 Static files directory: {static_dir}")
+
 app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 
