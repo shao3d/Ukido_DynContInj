@@ -427,8 +427,8 @@
                         messagesDiv.appendChild(botMessageDiv);
                     }
                     
-                    // Добавляем текст к сообщению
-                    botBubble.textContent += event.data;
+                    // Добавляем текст к сообщению (поддерживаем HTML для кликабельных ссылок)
+                    botBubble.innerHTML += event.data;
                     scrollToBottom();
                 });
                 
