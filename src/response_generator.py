@@ -259,6 +259,9 @@ class ResponseGenerator:
                 metadata["translated_to"] = detected_language
                 metadata["detected_language"] = detected_language
 
+            # НОВОЕ: Преобразуем URL в кликабельные HTML-ссылки
+            final_text = self._make_urls_clickable(final_text)
+
             return final_text, metadata
         except Exception as e:
             print(f"❌ Ошибка генерации ответа: {e}")
