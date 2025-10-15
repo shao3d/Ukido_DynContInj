@@ -243,10 +243,10 @@ class ResponseGenerator:
                 "cta_type": user_signal if cta_was_added else None,
                 "humor_generated": False
             }
-            
+
             # НОВОЕ: Перевод перед возвратом
             detected_language = router_result.get("detected_language", "ru")
-            
+
             if detected_language != "ru":
                 # Переводим финальный текст
                 final_text = await self.translator.translate(
@@ -254,11 +254,11 @@ class ResponseGenerator:
                     target_language=detected_language,
                     user_context=current_message
                 )
-                
+
                 # Добавляем информацию о переводе в metadata
                 metadata["translated_to"] = detected_language
                 metadata["detected_language"] = detected_language
-            
+
             return final_text, metadata
         except Exception as e:
             print(f"❌ Ошибка генерации ответа: {e}")
@@ -1207,12 +1207,39 @@ class ResponseGenerator:
             
         return keywords
     
+    def _make_urls_clickable(self, text: str) -> str:
+        """Преобразует URL в тексте в HTML-ссылки
+
+        Args:
+            text: Текст для обработки
+
+        Returns:
+            Текст с кликабельными ссылками
+        """
+        # Паттерны для поиска URL (включая наш новый домен)
+        url_patterns = [
+            r'https?://[^\s/$]+',  # https://domain.tld/...
+            r'shao3d\.github\.io/[^\s/]+',  # shao3d.github.io/...
+            r'ukido\.com\.ua/[^\s/]+',  # ukido.com.ua/...
+            r'(?:[^/]+\.)\.(?:com|ua|io|site|online|app|dev|stage|prod)[^\s/]+',  # domain.extension/
+        ]
+
+        def replace_url(match):
+            url = match.group(0)
+            # Добавляем https:// если нет протокола
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            return f'<a href="{url}" target="_blank">{url}</a>'
+
+        # Применяем ко всем найденным URL
+        return re.sub('|'.join(url_patterns), replace_url, text)
+
     def _get_cta_marker(self, user_signal: str) -> str:
         """Возвращает невидимый маркер для отслеживания CTA
-        
+
         Args:
             user_signal: Тип сигнала пользователя
-            
+
         Returns:
             Пустую строку (маркеры больше не добавляются в текст)
         """
