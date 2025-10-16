@@ -32,45 +32,18 @@ Production-ready AI chatbot for Ukido soft skills school with multilingual suppo
 
 ### System Architecture (v0.17.0)
 ```mermaid
-graph TB
-    subgraph Frontend
-        U[User]
-        W[Web Interface]
-        TF[Trial Form]
-    end
+graph LR
+    U[User] --> W[Web Interface]
+    W --> S[Server]
+    TF[Trial Form] --> S
+    S --> R[Router]
+    R --> G[Generator]
+    G --> H[HubSpot Client]
+    H --> CRM[HubSpot CRM]
+    S --> DB[Knowledge Base]
 
-    subgraph API
-        API[FastAPI Server]
-    end
-
-    subgraph AI
-        R[Gemini Router]
-        G[Claude Generator]
-    end
-
-    subgraph Components
-        SD[Social Detector]
-        HM[History Manager]
-        ZH[Zhvanetsky Humor]
-        HS[HubSpot Client]
-    end
-
-    subgraph Data
-        KB[Knowledge Base]
-        HB[HubSpot CRM]
-    end
-
-    U --> W
-    W --> API
-    TF --> API
-    API --> R
-    R --> G
-    G --> HS
-    HS --> HB
-    API --> KB
-
-    style HB fill:#ffecb3
-    style HS fill:#e8f5e9
+    style CRM fill:#ffecb3
+    style H fill:#e8f5e9
 ```
 
 ### Request Flow (v0.17.0)
@@ -78,30 +51,22 @@ graph TB
 sequenceDiagram
     participant U as User
     participant W as Web UI
-    participant TF as Trial Form
-    participant API as API Server
-    participant R as Router
-    participant G as Generator
-    participant HS as HubSpot
-    participant HB as HubSpot CRM
+    participant S as Server
+    participant H as HubSpot
 
     U->>W: Send message
-    W->>API: POST /chat
-    API->>R: Route request
-    R->>G: Generate response
-    G->>API: Return response
-    API->>W: Stream response
+    W->>S: POST /chat
+    S->>S: Process request
+    S->>W: Return response
     W->>U: Display answer
 
-    Note over U,W: User clicks CTA
-    U->>TF: Open trial form
-    TF->>API: POST /trial-signup
-    API->>HS: Create contact
-    HS->>HB: HubSpot API
-    HB-->>HS: Contact created
-    HS-->>API: Success response
-    API-->>TF: Confirmation
-    TF-->>U: Thank you message
+    Note over U,S: Trial signup flow
+    U->>W: Click CTA
+    W->>S: POST /trial-signup
+    S->>H: Create contact
+    H-->>S: Success
+    S-->>W: Confirmation
+    W-->>U: Thank you
 ```
 
 ## 🚀 Quick Start
@@ -225,57 +190,51 @@ python collaborative_test.py "Забывчивая бабушка"  # By name
 ### Processing States (v0.17.0)
 ```mermaid
 stateDiagram-v2
-    [*] --> Input: User message
-    Input --> Route: Process request
-    Route --> Business: Business query
-    Route --> Social: Social only
-    Route --> Offtopic: Other topics
+    [*] --> Input
+    Input --> Route
+    Route --> Business
+    Route --> Social
+    Route --> Offtopic
 
-    Business --> Generate: Create response
-    Generate --> Stream: Send answer
-    Stream --> [*]: Complete
+    Business --> Generate
+    Generate --> [*]
+    Social --> [*]
+    Offtopic --> [*]
 
-    Social --> Local: Quick response
-    Local --> [*]: Complete
-
-    Offtopic --> Humor: Generate joke
-    Humor --> [*]: Complete
-
-    Business --> CTA: Show trial link
-    CTA --> Form: User fills form
-    Form --> HubSpot: Create contact
-    HubSpot --> [*]: Success
+    Business --> CTA
+    CTA --> Form
+    Form --> [*]
 ```
 
 ### Query Distribution (v0.17.0)
 ```mermaid
-pie title Query Types Distribution
-    "Business queries" : 30
-    "Social intents" : 35
-    "Mixed queries" : 15
-    "Schedule questions" : 8
-    "Teacher info" : 5
-    "Offtopic humor" : 5
-    "Trial signups" : 2
+pie title Query Types
+    "Business" : 30
+    "Social" : 35
+    "Mixed" : 15
+    "Schedule" : 8
+    "Teachers" : 5
+    "Offtopic" : 5
+    "Trial" : 2
 ```
 
 ### Data Structure (v0.17.0)
 ```mermaid
 erDiagram
     USER ||--o{ MESSAGE : sends
-    USER ||--|| STATE : maintains
-    MESSAGE ||--|| RESPONSE : generates
-    RESPONSE ||--|| CONTACT : creates
+    USER ||--|| STATE : has
+    MESSAGE ||--|| RESPONSE : creates
+    RESPONSE ||--|| CONTACT : generates
 
     USER {
         string id
-        string language
-        int messages
+        string lang
+        int count
     }
 
     MESSAGE {
-        string content
-        timestamp created
+        string text
+        string time
     }
 
     RESPONSE {
