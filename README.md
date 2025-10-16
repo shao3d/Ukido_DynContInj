@@ -33,142 +33,75 @@ Production-ready AI chatbot for Ukido soft skills school with multilingual suppo
 ### System Architecture (v0.17.0)
 ```mermaid
 graph TB
-    subgraph "Frontend"
-        U[👤 Parent User<br/>RU/UK/EN]
-        W[🌐 Web Interface<br/>SSE Streaming]
-        TF[📝 Trial Form<br/>GitHub Pages]
+    subgraph Frontend
+        U[User]
+        W[Web Interface]
+        TF[Trial Form]
     end
 
-    subgraph "API Layer"
-        API[FastAPI Server<br/>ukidoschool.up.railway.app<br/>SSE + REST]
+    subgraph API
+        API[FastAPI Server]
     end
 
-    subgraph "AI Processing"
-        R[🤖 Gemini 2.5 Flash<br/>Router & Classifier<br/>$0.30/1M tokens]
-        G[🤖 Claude 3.5 Haiku<br/>Response Generator<br/>$0.25/$1.25/1M tokens]
+    subgraph AI
+        R[Gemini Router]
+        G[Claude Generator]
     end
 
-    subgraph "Core Components"
-        SD[Social Detector<br/>50+ patterns]
-        HM[History Manager<br/>10 messages context]
-        SS[Social State<br/>User tracking]
-        SR[Social Responder<br/>Local generation]
-        ZH[🎭 Zhvanetsky Humor<br/>80% probability]
-        TR[🌍 Translator<br/>RU/UK/EN support]
-        CB[CTA Blocker<br/>Smart filtering]
-        HS[🎯 HubSpot Client<br/>CRM Integration]
+    subgraph Components
+        SD[Social Detector]
+        HM[History Manager]
+        ZH[Zhvanetsky Humor]
+        HS[HubSpot Client]
     end
 
-    subgraph "Knowledge Base"
-        KB[(Documents<br/>13 MD files<br/>Fuzzy matching 85%)]
-        SM[Summaries.json<br/>Quick search]
+    subgraph Data
+        KB[Knowledge Base]
+        HB[HubSpot CRM]
     end
 
-    subgraph "Persistence"
-        PM[State Manager<br/>User sessions]
-    end
-
-    subgraph "External Services"
-        HB[(HubSpot CRM<br/>Contact Management)]
-    end
-
-    U -->|SSE/REST| W
-    W -->|POST /chat| API
-    TF -->|POST /trial-signup| API
-    API -->|Route| R
-
-    R --> SD
-    R --> HM
-    R --> SS
-    R --> KB
-    R --> SM
-
-    R -->|Business query| G
-    R -->|Social only| SR
-    R -->|Offtopic| ZH
-
-    G --> HM
-    G --> TR
-    G --> CB
-    G --> PM
-
-    API -->|Create Contact| HS
+    U --> W
+    W --> API
+    TF --> API
+    API --> R
+    R --> G
+    G --> HS
     HS --> HB
-
-    API -->|Stream/JSON| W
-    W -->|Real-time| U
-    G -->|CTA → Trial Form| TF
+    API --> KB
 
     style HB fill:#ffecb3
     style HS fill:#e8f5e9
-    
-    style U fill:#e1f5fe
-    style W fill:#c5e1a5
-    style API fill:#fff3e0
-    style R fill:#f3e5f5
-    style G fill:#f3e5f5
-    style KB fill:#e8f5e9
-    style ZH fill:#ffecb3
-    style TR fill:#b3e5fc
 ```
 
 ### Request Flow (v0.17.0)
 ```mermaid
 sequenceDiagram
-    participant U as 👤 Parent
-    participant W as 🌐 Web UI
-    participant TF as 📝 Trial Form
-    participant API as FastAPI Server
-    participant T as 🌍 Translator
-    participant R as Gemini Router
-    participant SR as Social Responder
-    participant ZH as 🎭 Zhvanetsky
-    participant G as Claude Generator
-    participant HS as 🎯 HubSpot Client
-    participant KB as Knowledge Base
-    participant HB as 🎯 HubSpot CRM
+    participant U as User
+    participant W as Web UI
+    participant TF as Trial Form
+    participant API as API Server
+    participant R as Router
+    participant G as Generator
+    participant HS as HubSpot
+    participant HB as HubSpot CRM
 
-    U->>+W: Type message (RU/UK/EN)
-    W->>+API: POST /chat (SSE stream)
-    API->>+T: Detect language
-    T-->>API: Language detected
+    U->>W: Send message
+    W->>API: POST /chat
+    API->>R: Route request
+    R->>G: Generate response
+    G->>API: Return response
+    API->>W: Stream response
+    W->>U: Display answer
 
-    API->>+R: Route message
-
-    alt Pure Social (30-40% queries)
-        Note over R: Social intent ≥0.7<br/>No business signals
-        R->>SR: Generate local response
-        SR-->>R: Social response (1-2 sec)
-        R-->>API: {"status": "offtopic", "message": "..."}
-    else Mixed/Business Query
-        R->>KB: Search documents
-        KB-->>R: Relevant docs + summaries
-
-        alt Business query
-            R-->>API: RouterResponse (success)
-            API->>+G: Generate with context
-            Note over G: - History: 10 messages<br/>- Emotional state<br/>- CTA blocking<br/>- 100-150 words
-            G-->>-API: Generated response with CTA
-            API->>T: Translate if needed
-            T-->>API: Final language
-            API-->>-W: Stream response (SSE)
-            W-->>-U: Display real-time + CTA
-            U->>+TF: Click CTA → Trial Form
-            TF->>+API: POST /trial-signup
-            API->>+HS: Create/Update HubSpot Contact
-            HS->>+HB: API call to HubSpot CRM
-            HB-->>HS: Contact created/updated
-            HS-->>API: Success response
-            API-->>TF: {"success": true, "contact_id": "..."}
-            TF-->>U: "Спасибо за заявку!"
-        else Offtopic (non-social)
-            R->>ZH: Generate humor (80%)
-            ZH-->>R: Zhvanetsky response
-            R-->>API: {"status": "offtopic", "message": "..."}
-        end
-    end
-
-    Note over U: Pure Social: 1-2 sec, ~$0.00003<br/>Business: 5-7 sec, ~$0.0015<br/>Trial signup: <1 sec<br/>Savings: 40% on API costs
+    Note over U,W: User clicks CTA
+    U->>TF: Open trial form
+    TF->>API: POST /trial-signup
+    API->>HS: Create contact
+    HS->>HB: HubSpot API
+    HB-->>HS: Contact created
+    HS-->>API: Success response
+    API-->>TF: Confirmation
+    TF-->>U: Thank you message
 ```
 
 ## 🚀 Quick Start
@@ -292,115 +225,72 @@ python collaborative_test.py "Забывчивая бабушка"  # By name
 ### Processing States (v0.17.0)
 ```mermaid
 stateDiagram-v2
-    [*] --> Initial: User sends message
-    Initial --> LanguageDetection: Detect RU/UK/EN
-    LanguageDetection --> SocialCheck: Analyze intent
+    [*] --> Input: User message
+    Input --> Route: Process request
+    Route --> Business: Business query
+    Route --> Social: Social only
+    Route --> Offtopic: Other topics
 
-    SocialCheck --> PureSocial: Confidence ≥0.7 & No business
-    SocialCheck --> MixedIntent: Social + Business signals
-    SocialCheck --> BusinessIntent: Pure business query
+    Business --> Generate: Create response
+    Generate --> Stream: Send answer
+    Stream --> [*]: Complete
 
-    PureSocial --> LocalResponse: Social Responder
-    LocalResponse --> Translation: Check language
-    Translation --> [*]: Stream response (1-2 sec)
+    Social --> Local: Quick response
+    Local --> [*]: Complete
 
-    MixedIntent --> RouterProcessing: Gemini Router
-    BusinessIntent --> RouterProcessing: Gemini Router
+    Offtopic --> Humor: Generate joke
+    Humor --> [*]: Complete
 
-    RouterProcessing --> DocumentSearch: Find relevant docs
-    DocumentSearch --> Classification: Classify query type
-
-    Classification --> Success: Valid business query
-    Classification --> Offtopic: Non-school topic
-    Classification --> Simplification: Too complex
-
-    Success --> GenerateResponse: Claude Generator
-    GenerateResponse --> EmotionalState: Apply user state
-    EmotionalState --> CTABlocking: Check CTA rules
-    CTABlocking --> Translation2: Translate if needed
-    Translation2 --> [*]: Stream response (5-7 sec)
-
-    Success --> CTA: Insert trial lesson link
-    CTA --> TrialForm: User fills form
-    TrialForm --> TrialSignup: POST /trial-signup
-    TrialSignup --> HubSpotAPI: Create contact
-    HubSpotAPI --> [*]: Success response
-
-    Offtopic --> ZhvanetskyCheck: 80% probability
-    ZhvanetskyCheck --> HumorGeneration: Generate humor
-    ZhvanetskyCheck --> StandardResponse: Use template
-    HumorGeneration --> [*]: Return humor response
-    StandardResponse --> [*]: Return standard message
-
-    Simplification --> GenerateResponse: Simplified context
+    Business --> CTA: Show trial link
+    CTA --> Form: User fills form
+    Form --> HubSpot: Create contact
+    HubSpot --> [*]: Success
 ```
 
 ### Query Distribution (v0.17.0)
 ```mermaid
-pie title "Query Types Distribution (Based on Testing)"
-    "Business queries (courses/prices)" : 30
-    "Social intents (greetings/thanks)" : 35
-    "Mixed (social + business)" : 15
-    "Schedule & timing questions" : 8
-    "Teacher information" : 5
-    "Offtopic with humor" : 5
-    "Trial lesson signups" : 2
-    "Complex multi-questions" : 0
+pie title Query Types Distribution
+    "Business queries" : 30
+    "Social intents" : 35
+    "Mixed queries" : 15
+    "Schedule questions" : 8
+    "Teacher info" : 5
+    "Offtopic humor" : 5
+    "Trial signups" : 2
 ```
 
 ### Data Structure (v0.17.0)
 ```mermaid
 erDiagram
     USER ||--o{ MESSAGE : sends
-    USER ||--|| USER_STATE : maintains
-    USER ||--|| HISTORY : tracks
-    MESSAGE ||--|| LANGUAGE : detected_in
-    MESSAGE ||--|| SOCIAL_INTENT : contains
-    MESSAGE ||--|| ROUTER_RESULT : processed_by
-    ROUTER_RESULT ||--|| CLASSIFICATION : produces
-    ROUTER_RESULT ||--o{ DOCUMENT : searches
-    CLASSIFICATION ||--|| RESPONSE_TYPE : determines
-    RESPONSE_TYPE ||--|| GENERATOR : routes_to
-    GENERATOR ||--|| RESPONSE : creates
-    RESPONSE ||--|| TRANSLATION : may_require
-    RESPONSE ||--|| STREAMING : delivered_via
-    HISTORY ||--o{ MESSAGE : stores_last_10
-    USER_STATE ||--|| EMOTIONAL_STATE : includes
-    EMOTIONAL_STATE ||--|| CTA_BLOCKING : influences
+    USER ||--|| STATE : maintains
+    MESSAGE ||--|| RESPONSE : generates
+    RESPONSE ||--|| CONTACT : creates
 
     USER {
-        string user_id
-        string language_preference
-        timestamp last_greeting
-        int message_count
+        string id
+        string language
+        int messages
     }
 
     MESSAGE {
         string content
-        string language
-        timestamp created_at
-        float social_confidence
+        timestamp created
     }
 
     RESPONSE {
         string content
         string status
-        float cost
-        int response_time_ms
     }
 
     CONTACT {
-        string contact_id
+        string id
         string email
-        string firstName
-        string lastName
-        string phone
-        timestamp created_at
+        string name
     }
 ```
 
 The architecture diagrams above are created using Mermaid and are automatically rendered by GitHub in the README.
-For high-resolution PNG versions, check the `docs/diagrams/` folder.
 
 ## 📁 Project Structure
 
