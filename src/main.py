@@ -118,6 +118,38 @@ class ChatResponse(BaseModel):
     detected_language: Optional[str] = None  # Добавляем detected_language для мультиязычности
 
 
+class TrialSignupRequest(BaseModel):
+    """Модель данных для формы пробного урока"""
+    firstName: str = Field(..., min_length=1, max_length=50)
+    lastName: str = Field(..., min_length=1, max_length=50)
+    email: str = Field(..., min_length=5, max_length=100)
+    phone: Optional[str] = Field(None, max_length=20)
+
+    @validator('email')
+    def validate_email(cls, v):
+        import re
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, v):
+            raise ValueError('Invalid email format')
+        return v.lower()
+
+    @validator('firstName', 'lastName')
+    def validate_names(cls, v):
+        # Убираем лишние пробелы и проверяем, что это только буквы
+        v = v.strip()
+        if not v.replace(' ', '').replace('-', '').isalpha():
+            raise ValueError('Name must contain only letters')
+        return v.title()  # Приводим к красивому виду: "иван" → "Иван"
+
+
+class TrialSignupResponse(BaseModel):
+    """Модель ответа для формы пробного урока"""
+    success: bool
+    message: str
+    contact_id: Optional[str] = None
+    action: Optional[str] = None  # "created" или "updated"
+
+
 # === ГЛОБАЛЬНЫЕ КОМПОНЕНТЫ ===
 # Создаем SocialStateManager первым, чтобы передать его в Router
 social_state = SocialStateManager()
@@ -865,6 +897,72 @@ async def clear_history(user_id: str):
         history.clear_user_history(user_id)
         return {"status": "success", "message": f"History cleared for user {user_id}"}
     return {"status": "error", "message": "History manager not available"}
+
+
+@app.post("/trial-signup", response_model=TrialSignupResponse)
+async def trial_signup(request: TrialSignupRequest):
+    """
+    Эндпоинт для регистрации на пробный урок
+    Создает или обновляет контакт в HubSpot CRM
+    """
+    print(f"📝 Trial signup request: {request.firstName} {request.lastName} ({request.email})")
+
+    try:
+        # Проверяем наличие HubSpot API ключа
+        if not config.HUBSPOT_PRIVATE_APP_TOKEN:
+            print("❌ HubSpot API key не настроен")
+            return TrialSignupResponse(
+                success=False,
+                message="Сервис временно недоступен. Пожалуйста, попробуйте позже.",
+                action=None
+            )
+
+        # Импортируем HubSpot клиент
+        from hubspot_client import HubSpotClient
+
+        # Создаем клиент
+        hubspot_client = HubSpotClient()
+
+        # Подготавливаем дополнительные данные (минимальный набор стандартных свойств)
+        additional_data = {}  # Используем только базовые поля из основной записи
+
+        # Отправляем в HubSpot
+        result = await hubspot_client.create_or_update_contact(
+            email=request.email,
+            first_name=request.firstName,
+            last_name=request.lastName,
+            phone=request.phone,
+            additional_data=additional_data
+        )
+
+        # Закрываем клиент
+        await hubspot_client.close()
+
+        if result:
+            action_text = "обновлена" if result.get("existing") else "создана"
+            print(f"✅ Заявка на пробный урок обработана: {request.email} ({action_text})")
+
+            return TrialSignupResponse(
+                success=True,
+                message=f"Спасибо за заявку! Мы свяжемся с вами в ближайшее время.",
+                contact_id=result.get("contact_id"),
+                action=result.get("action")
+            )
+        else:
+            print(f"❌ Ошибка обработки заявки: {request.email}")
+            return TrialSignupResponse(
+                success=False,
+                message="Произошла ошибка при обработке заявки. Пожалуйста, попробуйте еще раз.",
+                action=None
+            )
+
+    except Exception as e:
+        print(f"❌ Критическая ошибка в trial_signup: {e}")
+        return TrialSignupResponse(
+            success=False,
+            message="Временная техническая проблема. Мы уже работаем над её решением.",
+            action=None
+        )
 
 
 @app.get("/api-info")

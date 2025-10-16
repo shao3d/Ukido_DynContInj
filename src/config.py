@@ -50,3 +50,7 @@ class Config:
     TRANSLATION_CACHE_SIZE = 1000  # Количество кешированных переводов
     SUPPORTED_LANGUAGES = ["ru", "uk", "en"]
     DEFAULT_LANGUAGE = "ru"
+
+    # Настройки HubSpot CRM
+    HUBSPOT_PRIVATE_APP_TOKEN = os.getenv("HUBSPOT_PRIVATE_APP_TOKEN", "")
+    HUBSPOT_PORTAL_ID = os.getenv("HUBSPOT_PORTAL_ID", "")
