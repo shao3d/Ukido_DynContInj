@@ -36,7 +36,7 @@ class Config:
     
     # Настройки юмора Жванецкого
     ZHVANETSKY_ENABLED = True  # Включить/выключить функцию юмора
-    ZHVANETSKY_PROBABILITY = 0.80  # Базовая вероятность использования юмора (80% от offtopic) - оптимум для демо
+    ZHVANETSKY_PROBABILITY = 0.50  # Базовая вероятность использования юмора (50% от offtopic) - оптимум для демо
     ZHVANETSKY_TIMEOUT = 10.0  # Таймаут генерации юмора в секундах (увеличено до 10.0 для Claude)
     ZHVANETSKY_TEMPERATURE = 1.0  # Температура для Claude Haiku (максимальная для креативности)
     ZHVANETSKY_MAX_PER_HOUR = 5  # Максимум шуток на пользователя в час (увеличено для демо)
