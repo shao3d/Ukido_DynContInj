@@ -36,7 +36,7 @@ class SmartTranslator:
             openrouter_client: Клиент для вызова OpenRouter API
         """
         self.client = openrouter_client
-        self.model = "openai/gpt-4o-mini"  # Оптимальный баланс цена/качество
+        self.model = "anthropic/claude-3.5-haiku"  # Claude Haiku: лучше для RU→EN, быстрее GPT-4o-mini
         
     async def translate(
         self, 
@@ -80,27 +80,13 @@ class SmartTranslator:
         # Создаём список терминов для инструкции
         protected_terms_list = ', '.join(self.PROTECTED_TERMS)
         
-        system_prompt = f"""You are a professional translator for an educational platform.
-Translate the following text from Russian to {lang_map.get(target_language, 'English')}.
+        system_prompt = self._build_translation_prompt(target_language, lang_map, protected_terms_list)
 
-CRITICAL RULES:
-1. Preserve the marketing persuasiveness and emotional tone
-2. Maintain the conversational, friendly style
-3. For Ukrainian: use modern Ukrainian, not surzhyk or russisms
-4. For English: use American English, casual but professional
-5. Preserve all formatting (line breaks, bullet points, etc.)
-
-NEVER translate these terms (keep them exactly as they are):
-{protected_terms_list}
-
-Also NEVER translate:
-- URLs and email addresses
-- Numbers and prices
-- Any English technical terms
-
-Context: This is a response from an AI assistant for a children's soft skills school."""
-
-        user_prompt = f"Translate to {lang_map.get(target_language)}:\n\n{text}"  # Используем чистый текст
+        # Формируем user prompt в зависимости от языка
+        if target_language == 'en':
+            user_prompt = f"Rewrite as natural American English:\n\n{text}"
+        else:
+            user_prompt = f"Translate to {lang_map.get(target_language)}:\n\n{text}"
         
         if user_context:
             user_prompt += f"\n\nUser's original question: {user_context}"
@@ -109,7 +95,7 @@ Context: This is a response from an AI assistant for a children's soft skills sc
             logger.info(f"🔄 Начинаю перевод на {target_language}...")
             logger.debug(f"Исходный текст (первые 100 символов): {text[:100]}...")
             
-            # Вызываем GPT-4o Mini для перевода
+            # Вызываем Claude Haiku для перевода
             response = await self.client.chat(
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -139,6 +125,93 @@ Context: This is a response from an AI assistant for a children's soft skills sc
             # Fallback - возвращаем оригинал
             return text
     
+    def _build_translation_prompt(self, target_language: str, lang_map: dict, protected_terms_list: str) -> str:
+        """
+        Создаёт промпт для перевода с few-shot примерами
+        
+        Args:
+            target_language: Целевой язык ('uk' или 'en')
+            lang_map: Маппинг кодов языков на названия
+            protected_terms_list: Список защищённых терминов
+            
+        Returns:
+            Системный промпт для перевода
+        """
+        target_lang_name = lang_map.get(target_language, 'English')
+        
+        if target_language == 'en':
+            # Улучшенный промпт для английского с few-shot примерами
+            return f"""You are a native English copywriter for Ukido, a children's soft skills school.
+
+YOUR TASK: Rewrite this Russian text as natural American English that sounds like it was originally written by a native speaker for American parents.
+
+DO NOT translate word-by-word. REFRAME the meaning naturally.
+
+TONE: Warm, friendly, professional — like a knowledgeable teacher explaining to a parent over coffee.
+
+STYLE RULES:
+- Use short sentences and active voice
+- Use contractions: "we're", "you'll", "it's", "don't"
+- Avoid formal/corporate language ("is provided" → "we offer")
+- Avoid passive voice ("classes are conducted" → "classes happen")
+- Sound like a real person, not a brochure
+- Keep the informative, helpful tone of the original
+
+BEFORE/AFTER EXAMPLES (based on actual Ukido content):
+
+Russian: "Первое занятие бесплатно. Длительность 90 минут."
+❌ Bad: "The first lesson is provided free of charge. The duration is 90 minutes."
+✅ Good: "First class is free — it's a full 90-minute session."
+
+Russian: "Группы до 6 детей, что позволяет уделить внимание каждому."
+❌ Bad: "Groups of up to 6 children, which allows paying attention to each one."
+✅ Good: "We keep groups small (6 kids max) so every child gets real attention."
+
+Russian: "Большинство застенчивых детей показывают прогресс через месяц."
+❌ Bad: "The majority of shy children demonstrate progress after one month."
+✅ Good: "Most shy kids start opening up within a month — we see it all the time."
+
+Russian: "Занятия проходят онлайн через Zoom, забирать никуда не нужно."
+❌ Bad: "Classes are conducted online via Zoom, there is no need to pick up anywhere."
+✅ Good: "Classes are on Zoom, so no driving — your kid learns from home."
+
+Russian: "Мы работаем с детьми с особыми потребностями после консультации."
+❌ Bad: "We work with children with special needs after a consultation."
+✅ Good: "We welcome kids with special needs — just schedule a quick chat with us first."
+
+Russian: "Занятия 2 раза в неделю по 90 минут."
+❌ Bad: "Classes are held 2 times per week for 90 minutes each."
+✅ Good: "Classes run twice a week, 90 minutes each."
+
+KEEP EXACTLY AS-IS (never translate):
+{protected_terms_list}
+- All URLs, emails, phone numbers, prices in UAH (грн)
+
+Preserve all formatting (line breaks, bullet points, paragraphs).
+
+Now rewrite this Russian text as natural American English:"""
+        else:
+            # Промпт для украинского (оставляем похожим на старый, но улучшенный)
+            return f"""You are a professional translator for Ukido, a children's soft skills school.
+Translate the following text from Russian to modern {target_lang_name}.
+
+CRITICAL RULES:
+1. Use modern Ukrainian, NOT surzhyk or russisms
+2. Preserve the warm, conversational tone
+3. Keep the informative style with specific details
+4. Maintain all formatting (line breaks, bullet points)
+5. Sound natural, like a Ukrainian teacher talking to parents
+
+NEVER translate these terms (keep exactly as-is):
+{protected_terms_list}
+
+Also keep unchanged:
+- URLs and email addresses
+- Numbers and prices
+- Technical terms in English
+
+Context: This is a response from an AI assistant for a children's soft skills school."""
+
     def _protect_terms(self, text: str) -> str:
         """
         Защищает термины от перевода
@@ -233,33 +306,17 @@ Context: This is a response from an AI assistant for a children's soft skills sc
             'en': 'English'
         }
         
-        # НЕ защищаем термины заранее! Пусть GPT-4o Mini сам работает с чистым текстом
-        # Это решает проблему вложенных тегов
-        
         # Создаём список терминов для инструкции
         protected_terms_list = ', '.join(self.PROTECTED_TERMS)
         
-        system_prompt = f"""You are a professional translator for an educational platform.
-Translate the following text from Russian to {lang_map.get(target_language, 'English')}.
+        # Используем общий метод для построения промпта
+        system_prompt = self._build_translation_prompt(target_language, lang_map, protected_terms_list)
 
-CRITICAL RULES:
-1. Preserve the marketing persuasiveness and emotional tone
-2. Maintain the conversational, friendly style
-3. For Ukrainian: use modern Ukrainian, not surzhyk or russisms
-4. For English: use American English, casual but professional
-5. Preserve all formatting (line breaks, bullet points, etc.)
-
-NEVER translate these terms (keep them exactly as they are):
-{protected_terms_list}
-
-Also NEVER translate:
-- URLs and email addresses
-- Numbers and prices
-- Any English technical terms
-
-Context: This is a response from an AI assistant for a children's soft skills school."""
-
-        user_prompt = f"Translate to {lang_map.get(target_language)}:\n\n{text}"  # Используем чистый текст
+        # Формируем user prompt в зависимости от языка
+        if target_language == 'en':
+            user_prompt = f"Rewrite as natural American English:\n\n{text}"
+        else:
+            user_prompt = f"Translate to {lang_map.get(target_language)}:\n\n{text}"
         
         if user_context:
             user_prompt += f"\n\nUser's original question: {user_context}"
