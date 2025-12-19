@@ -189,7 +189,10 @@ KEEP EXACTLY AS-IS (never translate):
 
 Preserve all formatting (line breaks, bullet points, paragraphs).
 
-Now rewrite this Russian text as natural American English:"""
+CRITICAL: Return ONLY the rewritten English text.
+DO NOT add any explanations, comments, or descriptions of what you did.
+DO NOT say things like "The rewrite captures..." or "I've used...".
+Just output the final English text, nothing else."""
         else:
             # Промпт для украинского (оставляем похожим на старый, но улучшенный)
             return f"""You are a professional translator for Ukido, a children's soft skills school.
