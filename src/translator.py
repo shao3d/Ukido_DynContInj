@@ -213,7 +213,12 @@ Also keep unchanged:
 - Numbers and prices
 - Technical terms in English
 
-Context: This is a response from an AI assistant for a children's soft skills school."""
+Context: This is a response from an AI assistant for a children's soft skills school.
+
+CRITICAL: Return ONLY the translated {target_lang_name} text.
+DO NOT add any explanations, comments, or descriptions of what you did.
+DO NOT say things like "Here's the translation..." or "The translation follows...".
+Just output the final {target_lang_name} text, nothing else."""
 
     def _protect_terms(self, text: str) -> str:
         """
