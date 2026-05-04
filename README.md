@@ -12,8 +12,8 @@ Production-ready AI chatbot for Ukido soft skills school with multilingual suppo
 ### Core Capabilities
 - **🌐 Multilingual Support**: Russian, Ukrainian, and English with real-time translation
 - **💬 Web Chat Interface**: Beautiful SSE-powered chat with live streaming responses
-- **🤖 Two-stage AI Architecture**: Gemini for routing + Claude for generation
-- **😄 Zhvanetsky Humor Engine**: Context-aware humor for offtopic queries (80% probability)
+- **🤖 Two-stage AI Architecture**: Gemini routing + Claude generation through OpenRouter
+- **😄 Zhvanetsky Humor Engine**: Context-aware humor for offtopic queries (60% probability)
 - **💾 State Persistence**: Full conversation history and user state preservation
 - **🐳 Docker Ready**: One-click deployment with Railway support
 - **🎯 HubSpot CRM Integration**: Automated trial lesson signup and contact management
@@ -75,6 +75,7 @@ sequenceDiagram
 
 - Python 3.11+
 - API Key for OpenRouter (required)
+- HubSpot Private App Token (optional; required only for live trial signup)
 
 ### Installation
 
@@ -98,6 +99,16 @@ cp .env.example .env
 # OPENROUTER_API_KEY=sk-or-v1-xxxxx
 # HUBSPOT_PRIVATE_APP_TOKEN=pat-eu1-xxxxx
 # HUBSPOT_PORTAL_ID=1234567
+#
+# Optional model overrides:
+# ROUTER_MODEL=google/gemini-2.5-flash
+# MODEL_ANSWER=anthropic/claude-3.5-haiku
+# TRANSLATION_MODEL=anthropic/claude-3.5-haiku
+# ZHVANETSKY_MODEL=anthropic/claude-3.5-haiku
+#
+# Optional production/API hardening:
+# ADMIN_API_TOKEN=change-me
+# CORS_ALLOW_ORIGINS=http://localhost:8000,http://127.0.0.1:8000,https://shao3d.github.io
 ```
 
 4. Run the server:
@@ -119,10 +130,17 @@ docker run -p 8000:8000 --env-file .env ukido-assistant
 
 ### 🌐 Production Deployment (Railway)
 
+Current production target:
+- Railway project: `thorough-intuition`
+- Environment: `production`
+- Service: `Ukido_DynContInj_SSE`
+- Domain: `https://ukidoschool.up.railway.app`
+- Source repo: `shao3d/Ukido_DynContInj`
+
 1. **Deploy to Railway**:
    ```bash
    git push origin main
-   # Railway will auto-detect and deploy
+   # Railway auto-deploys main using railway.json and Dockerfile
    ```
 
 2. **Configure Environment Variables** in Railway:
@@ -130,6 +148,8 @@ docker run -p 8000:8000 --env-file .env ukido-assistant
    OPENROUTER_API_KEY=sk-or-v1-xxxxx
    HUBSPOT_PRIVATE_APP_TOKEN=pat-eu1-xxxxx
    HUBSPOT_PORTAL_ID=1234567
+   ADMIN_API_TOKEN=change-me
+   CORS_ALLOW_ORIGINS=https://shao3d.github.io
    ```
 
 3. **Access the application**:
@@ -147,14 +167,22 @@ docker run -p 8000:8000 --env-file .env ukido-assistant
 ### Trial Signup API
 - **`POST /trial-signup`** - HubSpot CRM integration
   - Request: `{"firstName": "string", "lastName": "string", "email": "string", "phone": "string"}`
-  - Response: `{"success": bool, "message": "string", "contact_id": "string", "action": "string"}`
+  - Response: `{"success": bool, "message": "string", "action": "string"}`
+  - Note: HubSpot contact IDs are intentionally not exposed by the public API.
 
 ### System Endpoints
 - **`GET /chat/stream`** - SSE streaming for real-time responses
 - **`GET /health`** - Health check endpoint
-- **`GET /metrics`** - System performance metrics
+- **`GET /metrics`** - System performance metrics; disabled unless `ADMIN_API_TOKEN` is configured, then requires `X-Admin-Token`
 
 ## 🧪 Testing
+
+### Default Offline Test Suite
+```bash
+python3 -m pytest -q
+```
+
+The default pytest suite is intentionally offline and deterministic. Live/manual scenario runners stay in the repository, but are not collected by default.
 
 ### Interactive Sandbox
 ```bash
