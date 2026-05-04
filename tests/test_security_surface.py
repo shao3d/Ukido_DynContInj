@@ -44,6 +44,19 @@ def test_metrics_requires_admin_token(client):
     assert response.json()["detail"] == "Admin endpoint is disabled"
 
 
+def test_public_metadata_uses_single_app_version(client):
+    main = sys.modules["main"]
+
+    health = client.get("/health")
+    api_info = client.get("/api-info")
+
+    assert health.status_code == 200
+    assert api_info.status_code == 200
+    assert main.app.version == main.config.APP_VERSION
+    assert health.json()["version"] == main.config.APP_VERSION
+    assert api_info.json()["version"] == main.config.APP_VERSION
+
+
 def test_admin_token_rejects_wrong_token(client, monkeypatch):
     main = sys.modules["main"]
     monkeypatch.setattr(main.config, "ADMIN_API_TOKEN", "secret-token")

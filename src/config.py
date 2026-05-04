@@ -11,6 +11,7 @@ load_dotenv()
 
 class Config:
     """Настройки приложения"""
+    APP_VERSION = os.getenv("APP_VERSION", "0.8.0-state-machine")
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
     ROUTER_MODEL = os.getenv("ROUTER_MODEL", os.getenv("MODEL", "google/gemini-2.5-flash"))
     MODEL = ROUTER_MODEL  # Backward-compatible alias for router model

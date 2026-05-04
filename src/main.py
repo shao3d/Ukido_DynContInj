@@ -1,5 +1,5 @@
 """
-main.py - FastAPI сервер чатбота для школы Ukido (версия 0.7.3)
+main.py - FastAPI сервер чатбота для школы Ukido
 Минималистичная версия: Router (Gemini) → Generator (Claude)
 """
 
@@ -63,7 +63,7 @@ else:
     print("🎲 Случайный режим активен (системная энтропия)")
 
 # === ИНИЦИАЛИЗАЦИЯ ===
-app = FastAPI(title="Ukido Chatbot API", version="0.8.0-state-machine")
+app = FastAPI(title="Ukido Chatbot API", version=config.APP_VERSION)
 
 # CORS настройки
 app.add_middleware(
@@ -179,10 +179,10 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
-    relevant_documents: List[str] = []
+    relevant_documents: List[str] = Field(default_factory=list)
     intent: str = ""
     confidence: float = 0.0
-    decomposed_questions: List[str] = []
+    decomposed_questions: List[str] = Field(default_factory=list)
     fuzzy_matched: Optional[bool] = None
     social: Optional[str] = None
     user_signal: Optional[str] = None  # Добавляем user_signal в ответ
@@ -200,7 +200,6 @@ class TrialSignupRequest(BaseModel):
     @field_validator('email')
     @classmethod
     def validate_email(cls, v):
-        import re
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_regex, v):
             raise ValueError('Invalid email format')
@@ -383,7 +382,6 @@ async def chat(request: ChatRequest):
     check_rate_limits(request.user_id)
     
     # Засекаем время для метрик
-    import time
     start = time.time()
     
     # Получаем историю если есть
@@ -931,7 +929,7 @@ async def get_metrics(x_admin_token: Optional[str] = Header(None, alias="X-Admin
 @app.get("/health")
 async def health_check():
     """Проверка состояния сервера"""
-    return {"status": "healthy", "version": "0.8.0-state-machine"}
+    return {"status": "healthy", "version": config.APP_VERSION}
 
 
 @app.post("/clear_history/{user_id}")
@@ -1021,7 +1019,7 @@ async def trial_signup(request: TrialSignupRequest):
 @app.get("/api-info")
 async def api_info():
     """API info эндпоинт"""
-    return {"service": "Ukido Chatbot API", "version": "0.7.3"}
+    return {"service": "Ukido Chatbot API", "version": config.APP_VERSION}
 
 
 # Монтируем статические файлы
@@ -1054,7 +1052,7 @@ if __name__ == "__main__":
     
     # Логирование конфигурации при старте
     print("=" * 50)
-    print("🚀 Ukido AI Assistant v0.7.3")
+    print(f"🚀 Ukido AI Assistant v{config.APP_VERSION}")
     print("📝 Архитектура: Router → Generator")
     print(f"📝 Уровень логирования: {config.LOG_LEVEL}")
     print(f"💾 Лимит истории: {config.HISTORY_LIMIT} сообщений")

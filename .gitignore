@@ -147,6 +147,7 @@ cython_debug/
 # Project specific
 tests/reports/old/
 *.bak
+*.backup_*
 
 # Archive folders
 archive/legacy/

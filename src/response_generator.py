@@ -6,7 +6,6 @@ from standard_responses import DEFAULT_FALLBACK
 from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
 from translator import SmartTranslator
 import re
-import asyncio
 
 class ResponseGenerator:
     """

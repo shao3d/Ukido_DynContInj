@@ -19,6 +19,7 @@ ENV/
 *.swp
 *.swo
 *~
+*.backup_*
 
 # Project specific
 .env
