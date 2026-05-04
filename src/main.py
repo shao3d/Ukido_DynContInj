@@ -7,10 +7,10 @@ import os
 import random
 import time
 import re
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ValidationError, validator
 from typing import List, Optional
 import sys
 # SSE streaming support
@@ -67,8 +67,8 @@ app = FastAPI(title="Ukido Chatbot API", version="0.8.0-state-machine")
 # CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=config.CORS_ALLOW_ORIGINS,
+    allow_credentials=config.CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -83,6 +83,32 @@ signal_stats = {
 request_count = 0
 total_latency = 0.0
 start_time = datetime.now()
+USER_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]+$')
+
+
+def validate_user_id_format(user_id: str) -> str:
+    """Validate public user_id inputs shared by JSON and query/path endpoints."""
+    if not USER_ID_PATTERN.fullmatch(user_id):
+        raise ValueError('Invalid user_id format. Only alphanumeric characters, underscores and hyphens allowed.')
+    return user_id
+
+
+def require_admin_access(x_admin_token: Optional[str]) -> None:
+    """Protect maintenance endpoints unless an explicit admin token is configured."""
+    if not config.ADMIN_API_TOKEN:
+        raise HTTPException(status_code=403, detail="Admin endpoint is disabled")
+    if x_admin_token != config.ADMIN_API_TOKEN:
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+
+
+def serializable_validation_errors(exc: ValidationError) -> List[dict]:
+    """Return Pydantic errors without non-JSON-serializable context objects."""
+    errors = []
+    for error in exc.errors():
+        safe_error = dict(error)
+        safe_error.pop("ctx", None)
+        errors.append(safe_error)
+    return errors
 
 # === МОДЕЛИ ДАННЫХ ===
 class ChatRequest(BaseModel):
@@ -91,10 +117,7 @@ class ChatRequest(BaseModel):
     
     @validator('user_id')
     def validate_user_id(cls, v):
-        # Только буквы, цифры, подчёркивания, дефисы
-        if not re.match(r'^[a-zA-Z0-9_\-]+$', v):
-            raise ValueError('Invalid user_id format. Only alphanumeric characters, underscores and hyphens allowed.')
-        return v
+        return validate_user_id_format(v)
     
     @validator('message')
     def validate_message(cls, v):
@@ -726,11 +749,21 @@ async def process_chat_message(user_id: str, message: str) -> dict:
 
 
 @app.get("/chat/stream")
-async def chat_stream(user_id: str, message: str):
+async def chat_stream(
+    user_id: str = Query(..., min_length=1, max_length=50),
+    message: str = Query(..., min_length=1, max_length=1000)
+):
     """
     SSE endpoint для стриминга ответов чата
     КРИТИЧНО: headers для отключения буферизации на Railway!
     """
+    try:
+        validated_request = ChatRequest(user_id=user_id, message=message)
+        user_id = validated_request.user_id
+        message = validated_request.message
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=serializable_validation_errors(exc))
+
     async def generate():
         try:
             # Получаем полный ответ через существующую логику
@@ -890,8 +923,17 @@ async def health_check():
 
 
 @app.post("/clear_history/{user_id}")
-async def clear_history(user_id: str):
+async def clear_history(
+    user_id: str = Path(..., min_length=1, max_length=50),
+    x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token")
+):
     """Очищает историю конкретного пользователя"""
+    require_admin_access(x_admin_token)
+    try:
+        user_id = validate_user_id_format(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
     global history
     if history:
         history.clear_user_history(user_id)

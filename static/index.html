@@ -301,13 +301,100 @@
             const messages = document.getElementById('chatMessages');
             messages.scrollTop = messages.scrollHeight;
         }
+
+        function isSafeHttpUrl(rawUrl) {
+            try {
+                const url = new URL(rawUrl, window.location.origin);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+                return false;
+            }
+        }
+
+        function appendTextWithLinks(target, text) {
+            const urlRegex = /(https?:\/\/[^\s<>"']+|(?:shao3d\.github\.io|ukido\.com\.ua)\/[^\s<>"']+)/g;
+            let lastIndex = 0;
+            let match;
+
+            while ((match = urlRegex.exec(text)) !== null) {
+                if (match.index > lastIndex) {
+                    target.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+                }
+
+                const visibleUrl = match[0];
+                const href = visibleUrl.startsWith('http://') || visibleUrl.startsWith('https://')
+                    ? visibleUrl
+                    : `https://${visibleUrl}`;
+
+                if (isSafeHttpUrl(href)) {
+                    const link = document.createElement('a');
+                    link.href = new URL(href, window.location.origin).href;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    link.textContent = visibleUrl;
+                    target.appendChild(link);
+                } else {
+                    target.appendChild(document.createTextNode(visibleUrl));
+                }
+
+                lastIndex = urlRegex.lastIndex;
+            }
+
+            if (lastIndex < text.length) {
+                target.appendChild(document.createTextNode(text.slice(lastIndex)));
+            }
+        }
+
+        function renderSafeContent(target, content) {
+            target.textContent = '';
+
+            const template = document.createElement('template');
+            template.innerHTML = content;
+
+            const walk = (node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    appendTextWithLinks(target, node.textContent || '');
+                    return;
+                }
+
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return;
+                }
+
+                if (node.tagName.toLowerCase() === 'a') {
+                    const rawHref = node.getAttribute('href') || node.textContent || '';
+                    const href = rawHref.startsWith('http://') || rawHref.startsWith('https://')
+                        ? rawHref
+                        : `https://${rawHref}`;
+
+                    if (isSafeHttpUrl(href)) {
+                        const link = document.createElement('a');
+                        link.href = new URL(href, window.location.origin).href;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        link.textContent = node.textContent || rawHref;
+                        target.appendChild(link);
+                    } else {
+                        appendTextWithLinks(target, node.textContent || '');
+                    }
+                    return;
+                }
+
+                node.childNodes.forEach(walk);
+            };
+
+            template.content.childNodes.forEach(walk);
+        }
         
         function addMessage(content, isUser = false, metadata = null) {
             const messagesDiv = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            
-            let html = `<div class="message-bubble">${content}</div>`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            renderSafeContent(bubble, content);
+            messageDiv.appendChild(bubble);
             
             // Добавляем метаданные для сообщений бота
             if (!isUser && metadata) {
@@ -317,11 +404,13 @@
                 if (metadata.humor_generated) metaText.push('🎭 юмор');
                 
                 if (metaText.length > 0) {
-                    html += `<div class="metadata">${metaText.join(' | ')}</div>`;
+                    const metadataDiv = document.createElement('div');
+                    metadataDiv.className = 'metadata';
+                    metadataDiv.textContent = metaText.join(' | ');
+                    messageDiv.appendChild(metadataDiv);
                 }
             }
-            
-            messageDiv.innerHTML = html;
+
             messagesDiv.appendChild(messageDiv);
             scrollToBottom();
             
@@ -422,7 +511,7 @@
 
                         botBubble = document.createElement('div');
                         botBubble.className = 'message-bubble streaming';
-                        botBubble.innerHTML = ''; // Инициализируем как HTML
+                        botBubble.textContent = '';
 
                         botMessageDiv.appendChild(botBubble);
                         messagesDiv.appendChild(botMessageDiv);
@@ -432,7 +521,7 @@
                     accumulatedHTML += event.data;
 
                     // Показываем накопленный контент с задержкой для эффекта печати
-                    botBubble.innerHTML = accumulatedHTML;
+                    renderSafeContent(botBubble, accumulatedHTML);
                     scrollToBottom();
                 });
                 
@@ -441,7 +530,7 @@
 
                     // Финальное обновление контента
                     if (botBubble) {
-                        botBubble.innerHTML = accumulatedHTML;
+                        renderSafeContent(botBubble, accumulatedHTML);
                         botBubble.classList.remove('streaming');
                     }
 

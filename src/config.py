@@ -31,6 +31,21 @@ class Config:
     # Настройки истории диалогов
     HISTORY_LIMIT = 10  # Количество последних сообщений для хранения и использования
     PERSISTENCE_BASE_PATH = os.getenv("PERSISTENCE_BASE_PATH", "data/persistent_states")
+
+    # Настройки публичной поверхности API
+    CORS_ALLOW_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ALLOW_ORIGINS",
+            "http://localhost:8000,http://127.0.0.1:8000,https://shao3d.github.io"
+        ).split(",")
+        if origin.strip()
+    ]
+    CORS_ALLOW_CREDENTIALS = (
+        os.getenv("CORS_ALLOW_CREDENTIALS", "true").lower() == "true"
+        and "*" not in CORS_ALLOW_ORIGINS
+    )
+    ADMIN_API_TOKEN = os.getenv("ADMIN_API_TOKEN", "")
     
     # Уровень логирования
     LOG_LEVEL = "INFO"  # INFO для основных событий, DEBUG для детальной отладки
