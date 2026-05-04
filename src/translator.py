@@ -28,7 +28,7 @@ class SmartTranslator:
     translation_count = 0
     cache_hits = 0
     
-    def __init__(self, openrouter_client):
+    def __init__(self, openrouter_client, model: Optional[str] = None):
         """
         Инициализация переводчика
         
@@ -36,7 +36,7 @@ class SmartTranslator:
             openrouter_client: Клиент для вызова OpenRouter API
         """
         self.client = openrouter_client
-        self.model = "anthropic/claude-3.5-haiku"  # Claude Haiku: лучше для RU→EN, быстрее GPT-4o-mini
+        self.model = model or getattr(openrouter_client, "model", "anthropic/claude-3.5-haiku")
         
     async def translate(
         self, 

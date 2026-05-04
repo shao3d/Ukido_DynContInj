@@ -462,7 +462,7 @@ class ZhvanetskyGenerator:
                 top_p=0.95,  # Немного сузили выбор слов
                 frequency_penalty=1.2,  # УВЕЛИЧИЛИ штраф за повторения!
                 presence_penalty=0.8,   # Больше поощрения оригинальности
-                model="anthropic/claude-3-haiku"  # Старая версия для эксперимента
+                model=getattr(self.config, 'ZHVANETSKY_MODEL', getattr(self.client, 'model', None))
             )
             
             # response уже является строкой

@@ -35,7 +35,8 @@ class Router:
                 config.OPENROUTER_API_KEY,
                 seed=config.SEED,
                 max_tokens=config.MAX_TOKENS,
-                temperature=config.TEMPERATURE
+                temperature=config.TEMPERATURE,
+                model=config.MODEL
             )
         else:
             self.client = OpenRouterClient(
@@ -43,7 +44,7 @@ class Router:
                 seed=config.SEED,
                 max_tokens=config.MAX_TOKENS,
                 temperature=config.TEMPERATURE,
-                model="google/gemini-2.5-flash"
+                model=config.MODEL
             )
         
         self.summaries = self._load_summaries()

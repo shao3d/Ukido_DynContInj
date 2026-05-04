@@ -145,7 +145,7 @@ class HubSpotClient:
 
             if response.status_code == 201:
                 result = response.json()
-                print(f"✅ Контакт создан в HubSpot: {result.get('id')}")
+                print("✅ Контакт создан в HubSpot")
                 return result
             else:
                 print(f"❌ Ошибка создания контакта: {response.status_code} - {response.text}")
@@ -170,7 +170,7 @@ class HubSpotClient:
 
             if response.status_code == 200:
                 result = response.json()
-                print(f"✅ Контакт обновлен в HubSpot: {contact_id}")
+                print("✅ Контакт обновлен в HubSpot")
                 return result
             else:
                 print(f"❌ Ошибка обновления контакта: {response.status_code} - {response.text}")

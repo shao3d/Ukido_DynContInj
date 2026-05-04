@@ -25,11 +25,11 @@ class ResponseGenerator:
             seed=self.cfg.SEED,
             max_tokens=self.cfg.MAX_TOKENS_ANSWER,  # Используем настройку из конфига (1200 токенов)
             temperature=0.1,  # Минимальная температура для точности
-            model="anthropic/claude-3.5-haiku",  # Claude Haiku для качественных ответов
+            model=self.cfg.MODEL_ANSWER,
         )
         self.docs_dir = docs_dir or (Path(__file__).parent.parent / "data" / "documents_compressed")
         self.history_limit = self.cfg.HISTORY_LIMIT  # Используем настройку из конфига
-        self.translator = SmartTranslator(self.client)  # Инициализируем переводчик
+        self.translator = SmartTranslator(self.client, model=self.cfg.TRANSLATION_MODEL)  # Инициализируем переводчик
 
     async def generate(
         self,

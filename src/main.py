@@ -5,6 +5,7 @@ main.py - FastAPI сервер чатбота для школы Ukido (верс�
 
 import os
 import random
+import secrets
 import time
 import re
 from fastapi import FastAPI, HTTPException, Header, Path, Query
@@ -84,6 +85,31 @@ request_count = 0
 total_latency = 0.0
 start_time = datetime.now()
 USER_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_\-]+$')
+PHONE_PATTERN = re.compile(r'^[0-9+\-\s()]+$')
+
+
+def is_debug_logging() -> bool:
+    return config.LOG_LEVEL == "DEBUG"
+
+
+def redact_email(email: str) -> str:
+    """Mask email for logs while preserving enough shape for operations."""
+    local, _, domain = email.partition("@")
+    if not domain:
+        return "[invalid-email]"
+
+    masked_local = local[:1] + "***" if local else "***"
+    domain_name, dot, suffix = domain.rpartition(".")
+    if dot:
+        masked_domain = (domain_name[:1] + "***" if domain_name else "***") + dot + suffix
+    else:
+        masked_domain = domain[:1] + "***"
+    return f"{masked_local}@{masked_domain}"
+
+
+def message_log_summary(message: str) -> str:
+    """Return non-content message metadata safe for production logs."""
+    return f"len={len(message)}"
 
 
 def validate_user_id_format(user_id: str) -> str:
@@ -97,7 +123,7 @@ def require_admin_access(x_admin_token: Optional[str]) -> None:
     """Protect maintenance endpoints unless an explicit admin token is configured."""
     if not config.ADMIN_API_TOKEN:
         raise HTTPException(status_code=403, detail="Admin endpoint is disabled")
-    if x_admin_token != config.ADMIN_API_TOKEN:
+    if not x_admin_token or not secrets.compare_digest(x_admin_token, config.ADMIN_API_TOKEN):
         raise HTTPException(status_code=403, detail="Invalid admin token")
 
 
@@ -168,12 +194,26 @@ class TrialSignupRequest(BaseModel):
             raise ValueError('Name must contain only letters')
         return v.title()  # Приводим к красивому виду: "иван" → "Иван"
 
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v):
+        if v is None:
+            return v
+
+        v = v.strip()
+        if not v:
+            return None
+
+        digits = re.sub(r'\D', '', v)
+        if not PHONE_PATTERN.fullmatch(v) or len(digits) < 7 or len(digits) > 15:
+            raise ValueError('Invalid phone format')
+        return v
+
 
 class TrialSignupResponse(BaseModel):
     """Модель ответа для формы пробного урока"""
     success: bool
     message: str
-    contact_id: Optional[str] = None
     action: Optional[str] = None  # "created" или "updated"
 
 
@@ -256,7 +296,7 @@ if config.ZHVANETSKY_ENABLED:
         # Создаём OpenRouter client для Haiku
         zhvanetsky_client = OpenRouterClient(
             api_key=config.OPENROUTER_API_KEY,
-            model="anthropic/claude-3.5-haiku",
+            model=config.ZHVANETSKY_MODEL,
             temperature=config.ZHVANETSKY_TEMPERATURE
         )
         
@@ -333,7 +373,7 @@ async def chat(request: ChatRequest):
     # === PIPELINE: Router (Gemini) → Generator (Claude) ===
     
     # Всё идет в Router
-    print(f"ℹ️ Routing: {request.message[:50]}..." if len(request.message) > 50 else f"ℹ️ Routing: {request.message}")
+    print(f"ℹ️ Routing message ({message_log_summary(request.message)})")
     
     try:
         # Передаем user_id в Router для отслеживания социального состояния
@@ -680,7 +720,7 @@ async def chat(request: ChatRequest):
                     "Рада, что понятно! Что ещё рассказать?"
                 ]
                 response_text = random.choice(acknowledgment_responses)
-                print(f"ℹ️ Using acknowledgment response for '{request.message}'")
+                print(f"ℹ️ Using acknowledgment response ({message_log_summary(request.message)})")
             elif social_context == "farewell":
                 # Для прощания используем ТОЛЬКО прощальную фразу, без offtopic сообщения
                 farewells = [
@@ -795,10 +835,9 @@ async def chat_stream(
             
             # ВЕТКА 1: Для русского языка - псевдо-стриминг (НЕ ТРОГАЕМ!)
             if detected_language == "ru":
-                # DEBUG: Логируем, есть ли переводы строк в ответе
-                newline_count = response_text.count('\n')
-                print(f"🔍 DEBUG: В ответе {newline_count} переводов строк")
-                print(f"🔍 DEBUG: Первые 200 символов с экранированием: {repr(response_text[:200])}")
+                if is_debug_logging():
+                    newline_count = response_text.count('\n')
+                    print(f"🔍 DEBUG: response_len={len(response_text)}, newlines={newline_count}")
                 
                 # Разбиваем текст на строки, чтобы сохранить структуру абзацев
                 lines = response_text.split('\n')
@@ -952,7 +991,7 @@ async def trial_signup(request: TrialSignupRequest):
     Эндпоинт для регистрации на пробный урок
     Создает или обновляет контакт в HubSpot CRM
     """
-    print(f"📝 Trial signup request: {request.firstName} {request.lastName} ({request.email})")
+    print(f"📝 Trial signup request: email={redact_email(request.email)}")
 
     try:
         # Проверяем наличие HubSpot API ключа
@@ -987,16 +1026,15 @@ async def trial_signup(request: TrialSignupRequest):
 
         if result:
             action_text = "обновлена" if result.get("existing") else "создана"
-            print(f"✅ Заявка на пробный урок обработана: {request.email} ({action_text})")
+            print(f"✅ Заявка на пробный урок обработана: email={redact_email(request.email)} ({action_text})")
 
             return TrialSignupResponse(
                 success=True,
                 message=f"Спасибо за заявку! Мы свяжемся с вами в ближайшее время.",
-                contact_id=result.get("contact_id"),
                 action=result.get("action")
             )
         else:
-            print(f"❌ Ошибка обработки заявки: {request.email}")
+            print(f"❌ Ошибка обработки заявки: email={redact_email(request.email)}")
             return TrialSignupResponse(
                 success=False,
                 message="Произошла ошибка при обработке заявки. Пожалуйста, попробуйте еще раз.",
