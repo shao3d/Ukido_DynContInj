@@ -29,6 +29,13 @@ def test_clear_history_requires_admin_token(client):
     assert response.json()["detail"] == "Admin endpoint is disabled"
 
 
+def test_metrics_requires_admin_token(client):
+    response = client.get("/metrics")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin endpoint is disabled"
+
+
 def test_stream_rejects_invalid_user_id(client):
     response = client.get("/chat/stream", params={"user_id": "../bad", "message": "hello"})
 

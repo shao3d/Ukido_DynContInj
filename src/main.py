@@ -10,7 +10,7 @@ import re
 from fastapi import FastAPI, HTTPException, Header, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, ValidationError, validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from typing import List, Optional
 import sys
 # SSE streaming support
@@ -115,11 +115,13 @@ class ChatRequest(BaseModel):
     user_id: str = Field(..., min_length=1, max_length=50)
     message: str = Field(..., min_length=1, max_length=1000)
     
-    @validator('user_id')
+    @field_validator('user_id')
+    @classmethod
     def validate_user_id(cls, v):
         return validate_user_id_format(v)
     
-    @validator('message')
+    @field_validator('message')
+    @classmethod
     def validate_message(cls, v):
         # Убираем лишние пробелы
         v = v.strip()
@@ -148,7 +150,8 @@ class TrialSignupRequest(BaseModel):
     email: str = Field(..., min_length=5, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
 
-    @validator('email')
+    @field_validator('email')
+    @classmethod
     def validate_email(cls, v):
         import re
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
@@ -156,7 +159,8 @@ class TrialSignupRequest(BaseModel):
             raise ValueError('Invalid email format')
         return v.lower()
 
-    @validator('firstName', 'lastName')
+    @field_validator('firstName', 'lastName')
+    @classmethod
     def validate_names(cls, v):
         # Убираем лишние пробелы и проверяем, что это только буквы
         v = v.strip()
@@ -879,8 +883,9 @@ async def chat_stream(
 
 
 @app.get("/metrics")
-async def get_metrics():
+async def get_metrics(x_admin_token: Optional[str] = Header(None, alias="X-Admin-Token")):
     """Endpoint для просмотра метрик State Machine"""
+    require_admin_access(x_admin_token)
     global signal_stats, request_count, total_latency, start_time
     
     uptime = (datetime.now() - start_time).total_seconds()
