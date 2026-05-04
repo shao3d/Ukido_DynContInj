@@ -168,6 +168,8 @@ sandbox_results.txt
 local_test_*
 
 # Test data and temporary states
+data/persistent_states/*.json
+!data/persistent_states/.gitkeep
 data/persistent_states/test_*.json
 data/persistent_states/*_test_*.json
 data/persistent_states/temp_*.json

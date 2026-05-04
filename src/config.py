@@ -30,6 +30,7 @@ class Config:
     
     # Настройки истории диалогов
     HISTORY_LIMIT = 10  # Количество последних сообщений для хранения и использования
+    PERSISTENCE_BASE_PATH = os.getenv("PERSISTENCE_BASE_PATH", "data/persistent_states")
     
     # Уровень логирования
     LOG_LEVEL = "INFO"  # INFO для основных событий, DEBUG для детальной отладки

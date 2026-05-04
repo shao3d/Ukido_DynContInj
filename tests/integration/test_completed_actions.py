@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from completed_actions_handler import CompletedActionsHandler
 
 
-def test_completed_actions():
+def run_completed_actions_checks():
     """Тестирует обработку завершённых действий"""
     
     # Тестовые кейсы
@@ -201,6 +201,11 @@ def test_completed_actions():
     return failed == 0
 
 
+def test_completed_actions():
+    """Pytest entrypoint for completed action checks."""
+    assert run_completed_actions_checks()
+
+
 if __name__ == "__main__":
-    success = test_completed_actions()
+    success = run_completed_actions_checks()
     exit(0 if success else 1)

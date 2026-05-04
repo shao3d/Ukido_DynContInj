@@ -41,16 +41,14 @@ jobs:
         echo "DETERMINISTIC_MODE=true" >> .env
         echo "LOG_LEVEL=DEBUG" >> .env
     
-    - name: Run tests
-      run: |
-        # Run any existing tests
-        python -m pytest tests/ -v --tb=short || true
+    - name: Run offline tests
+      run: python -m pytest
     
-    - name: Test imports
+    - name: Test side-effect-free imports
       run: |
-        python -c "from src.main import app; print('✅ Main app imports successfully')"
-        python -c "from src.router import Router; print('✅ Router imports successfully')"
-        python -c "from src.response_generator import ResponseGenerator; print('✅ ResponseGenerator imports successfully')"
+        PYTHONPATH=src PERSISTENCE_BASE_PATH=/tmp/ukido_ci_persistent_states python -c "from src.main import app; print('✅ Main app imports successfully')"
+        PYTHONPATH=src python -c "from src.router import Router; print('✅ Router imports successfully')"
+        PYTHONPATH=src python -c "from src.response_generator import ResponseGenerator; print('✅ ResponseGenerator imports successfully')"
     
     - name: Lint with basic checks
       run: |
