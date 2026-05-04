@@ -185,6 +185,7 @@ test_results/
 archive/
 
 # AI tools local configurations (personal settings)
+.agents/
 .serena/
 .claude/
 .mcp.json

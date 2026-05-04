@@ -46,6 +46,7 @@ http_sandbox*.py
 
 # Cache
 .pytest_cache/
+.agents/
 .serena/
 .claude/
 .mcp.json
