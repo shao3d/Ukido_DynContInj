@@ -60,6 +60,46 @@ def test_stream_rejects_invalid_user_id(client):
     assert response.status_code == 422
 
 
+def test_stream_non_ru_uses_final_response_without_retranslation(client, monkeypatch):
+    main = sys.modules["main"]
+    translator_constructed = {"value": False}
+
+    async def fake_process_chat_message(user_id, message):
+        return {
+            "response": "Already translated answer",
+            "intent": "success",
+            "user_signal": "exploring_only",
+            "metadata": {"translated_to": "en"},
+            "detected_language": "en",
+        }
+
+    class RaisingTranslator:
+        def __init__(self, *args, **kwargs):
+            translator_constructed["value"] = True
+            raise AssertionError("SSE must not translate an already final non-RU response")
+
+    monkeypatch.setattr(main, "process_chat_message", fake_process_chat_message)
+    monkeypatch.setitem(
+        sys.modules,
+        "translator",
+        types.SimpleNamespace(SmartTranslator=RaisingTranslator),
+    )
+
+    response = client.get(
+        "/chat/stream",
+        params={"user_id": "stream_en_test", "message": "Hello"},
+    )
+    body = response.text
+
+    assert response.status_code == 200
+    assert translator_constructed["value"] is False
+    assert "event: error" not in body
+    assert '"detected_language": "en"' in body
+    assert "Already" in body
+    assert "translated" in body
+    assert "answer" in body
+
+
 def test_cors_rejects_unknown_origin(client):
     response = client.options(
         "/chat",

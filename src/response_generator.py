@@ -31,6 +31,10 @@ class ResponseGenerator:
         self.history_limit = self.cfg.HISTORY_LIMIT  # Используем настройку из конфига
         self.translator = SmartTranslator(self.client, model=self.cfg.TRANSLATION_MODEL)  # Инициализируем переводчик
 
+    def _debug(self, message: str) -> None:
+        if self.cfg.LOG_LEVEL == "DEBUG":
+            print(message)
+
     async def generate(
         self,
         router_result: Dict,
@@ -73,7 +77,7 @@ class ResponseGenerator:
         else:
             offer = get_offer(user_signal, history)
             if offer and offer["priority"] in ["high", "medium"]:
-                print(f"🎯 DEBUG: Есть offer для {user_signal}, проверяем нужно ли добавлять...")
+                self._debug(f"🎯 DEBUG: Есть offer для {user_signal}, проверяем нужно ли добавлять...")
                 should_add = self._should_add_offer(user_signal, history, offer, current_message)
                 
                 # Применяем модификатор частоты
@@ -84,9 +88,9 @@ class ResponseGenerator:
                         should_add = False
                         print(f"📉 CTA пропущен из-за модификатора частоты ({cta_frequency_modifier:.1%})")
                 
-                print(f"🎯 DEBUG: _should_add_offer вернул: {should_add}")
+                self._debug(f"🎯 DEBUG: _should_add_offer вернул: {should_add}")
                 if should_add:
-                    print(f"🎯 DEBUG: Будем встраивать CTA для {user_signal} органично")
+                    self._debug(f"🎯 DEBUG: Будем встраивать CTA для {user_signal} органично")
                     cta_offer = offer  # Сохраняем для fallback
                     # Выбираем правильный вариант CTA текста
                     if "text_variants" in offer and offer["text_variants"]:
@@ -99,7 +103,7 @@ class ResponseGenerator:
                         # Используем основной текст
                         cta_text = offer.get("text", "")
                 else:
-                    print(f"🎯 DEBUG: CTA НЕ будет добавлен для {user_signal}")
+                    self._debug(f"🎯 DEBUG: CTA НЕ будет добавлен для {user_signal}")
         
         # Одноэтапная генерация с Claude Haiku + dynamic few-shot + CTA (если нужен)
         messages = self._build_messages(doc_texts, questions, history or [], router_result, cta_text)
@@ -134,7 +138,7 @@ class ResponseGenerator:
             
             # 2. Если был social_context == "greeting" но ответ НЕ начинается с приветствия - добавляем
             social_ctx = router_result.get("social_context")
-            print(f"🔍 DEBUG postprocessing: social_context = {social_ctx}, text starts with: {final_text[:30]}...")
+            self._debug(f"🔍 DEBUG postprocessing: social_context = {social_ctx}, text starts with: {final_text[:30]}...")
             if social_ctx == "greeting":
                 greeting_starters = ["привет", "здравствуйте", "добрый день", "добрый вечер", "доброе утро"]
                 if not any(final_text.lower().startswith(g) for g in greeting_starters):
@@ -260,9 +264,9 @@ class ResponseGenerator:
                 metadata["detected_language"] = detected_language
 
             # НОВОЕ: Преобразуем URL в кликабельные HTML-ссылки
-            print(f"🔗 DEBUG: До преобразования URL: {final_text[:100]}...")
+            self._debug(f"🔗 DEBUG: До преобразования URL: {final_text[:100]}...")
             final_text = self._make_urls_clickable(final_text)
-            print(f"🔗 DEBUG: После преобразования URL: {final_text[:100]}...")
+            self._debug(f"🔗 DEBUG: После преобразования URL: {final_text[:100]}...")
 
             return final_text, metadata
         except Exception as e:
@@ -289,19 +293,6 @@ class ResponseGenerator:
         except Exception as e:
             print(f"⚠️ Ошибка чтения {doc_name}: {e}")
             return ""
-    
-    def _load_docs(self, docs: List[str]) -> Dict[str, str]:
-        """Синхронная загрузка всех документов - простая и надёжная"""
-        # Дедупликация - убираем повторы
-        unique_docs = list(dict.fromkeys(docs))  # Сохраняем порядок
-        
-        texts = {}
-        for doc_name in unique_docs:
-            content = self._load_doc(doc_name)
-            if content:
-                texts[doc_name] = content
-        
-        return texts
     
     def _load_docs(self, docs: List[str]) -> Dict[str, str]:
         """Синхронная загрузка всех документов - простая и надёжная"""
@@ -572,12 +563,12 @@ class ResponseGenerator:
         cta_final_instruction = ""
         if cta_text:
             # Диагностическое логирование
-            print(f"\n📝 DEBUG CTA: Добавляем инструкцию для {user_signal}")
-            print(f"   CTA текст: {cta_text[:80]}...")
+            self._debug(f"\n📝 DEBUG CTA: Добавляем инструкцию для {user_signal}")
+            self._debug(f"   CTA текст: {cta_text[:80]}...")
             
             # Дифференцированная позиция CTA в зависимости от сигнала
             if user_signal == "ready_to_buy":
-                print(f"   Позиция: в НАЧАЛЕ ответа (ready_to_buy)")
+                self._debug(f"   Позиция: в НАЧАЛЕ ответа (ready_to_buy)")
                 cta_final_instruction = (
                     f"\n\n🔴🔴🔴 КРИТИЧНО: ПОЛЬЗОВАТЕЛЬ ГОТОВ ЗАПИСАТЬСЯ! 🔴🔴🔴\n"
                     f"ОН ЯВНО ПРОСИТ ЗАПИСАТЬ ЕГО НА ПРОБНОЕ ЗАНЯТИЕ!\n"
@@ -589,7 +580,7 @@ class ResponseGenerator:
                     f"После информации о записи можешь добавить 1-2 предложения о гарантиях."
                 )
             elif user_signal == "price_sensitive":
-                print(f"   Позиция: в НАЧАЛЕ ответа (price_sensitive)")
+                self._debug(f"   Позиция: в НАЧАЛЕ ответа (price_sensitive)")
                 cta_final_instruction = (
                     f"\n\n🔴🔴🔴 ФИНАЛЬНОЕ КРИТИЧЕСКОЕ ТРЕБОВАНИЕ 🔴🔴🔴\n"
                     f"{cta_detail_instruction}\n"
@@ -599,7 +590,7 @@ class ResponseGenerator:
                     f"Если не включишь - ответ считается ПРОВАЛЬНЫМ!"
                 )
             else:
-                print(f"   Позиция: в КОНЦЕ ответа (exploring/anxiety)")
+                self._debug(f"   Позиция: в КОНЦЕ ответа (exploring/anxiety)")
                 cta_final_instruction = (
                     f"\n\n🔴🔴🔴 ФИНАЛЬНОЕ КРИТИЧЕСКОЕ ТРЕБОВАНИЕ 🔴🔴🔴\n"
                     f"{cta_detail_instruction}\n"
@@ -920,15 +911,15 @@ class ResponseGenerator:
         if user_signal == "price_sensitive":
             # Проверяем только прямые вопросы о скидках/рассрочке
             skip_phrases = ["скидки", "скидка", "рассрочк", "есть ли скидк", "какие скидк"]
-            print(f"🔍 DEBUG _should_add_offer для price_sensitive:")
-            print(f"   last_user_msg: '{last_user_msg}'")
+            self._debug(f"🔍 DEBUG _should_add_offer для price_sensitive:")
+            self._debug(f"   last_user_msg: '{last_user_msg}'")
             
             for phrase in skip_phrases:
                 if phrase in last_user_msg:
-                    print(f"   ✅ Найдена фраза '{phrase}' в сообщении пользователя")
-                    print("🔄 Контекст: Пользователь прямо спрашивает про скидки, пропускаем CTA")
+                    self._debug(f"   ✅ Найдена фраза '{phrase}' в сообщении пользователя")
+                    self._debug("🔄 Контекст: Пользователь прямо спрашивает про скидки, пропускаем CTA")
                     return False
-            print(f"   ⭕ Контекстная проверка пройдена, проверяем rate limiting...")
+            self._debug(f"   ⭕ Контекстная проверка пройдена, проверяем rate limiting...")
         
         # Для price_sensitive - rate limiting (каждое 2-е сообщение)
         if user_signal == "price_sensitive":

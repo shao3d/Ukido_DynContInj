@@ -28,6 +28,7 @@ class Router:
             social_state: Опциональный экземпляр SocialStateManager для синхронизации состояний
         """
         config = Config()
+        self.log_level = config.LOG_LEVEL
         
         # Используем кешированный клиент для Gemini если включено
         if use_cache:
@@ -346,7 +347,8 @@ class Router:
                 if result.get("status") == "success" and result.get("social_context") == "greeting":
                     # Проверяем, было ли уже приветствие в этой сессии
                     if self._social_state.has_greeted(user_id):
-                        print(f"🔍 DEBUG: Mixed запрос с повторным приветствием от {user_id[:8]}...")
+                        if self.log_level == "DEBUG":
+                            print(f"🔍 DEBUG: Mixed запрос с повторным приветствием от {user_id[:8]}...")
                         result["social_context"] = "repeated_greeting"
                     else:
                         # Первое приветствие в mixed запросе - отмечаем

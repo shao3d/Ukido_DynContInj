@@ -92,6 +92,27 @@ def is_debug_logging() -> bool:
     return config.LOG_LEVEL == "DEBUG"
 
 
+async def stream_response_chunks(response_text: str):
+    """Yield final response text in small chunks while preserving paragraphs."""
+    lines = response_text.split('\n')
+
+    for line_idx, line in enumerate(lines):
+        if line_idx > 0:
+            yield "\n"
+
+        if not line.strip():
+            continue
+
+        words = line.split()
+
+        for i, word in enumerate(words):
+            if i > 0:
+                word = " " + word
+
+            yield word
+            await asyncio.sleep(0.05)
+
+
 def redact_email(email: str) -> str:
     """Mask email for logs while preserving enough shape for operations."""
     local, _, domain = email.partition("@")
@@ -441,8 +462,8 @@ async def chat(request: ChatRequest):
                 print(f"🔧 HOTFIX: Восстановлена инерция price_sensitive (Router вернул '{original_signal}')")
                 # НЕ обновляем user_signals_history - сохраняем price_sensitive
 
-    # Отладочный вывод
-    print(f"🔍 DEBUG: Router returned user_signal='{user_signal}', status='{status}'")
+    if is_debug_logging():
+        print(f"🔍 DEBUG: Router returned user_signal='{user_signal}', status='{status}'")
     
     # Собираем метрики
     if user_signal in signal_stats:
@@ -621,8 +642,8 @@ async def chat(request: ChatRequest):
         # === ИНТЕГРАЦИЯ ЮМОРА ЖВАНЕЦКОГО ===
         # Проверяем возможность использования юмора для content offtopic
         if status == "offtopic" and not is_pure_social and zhvanetsky_generator and zhvanetsky_safety_checker:
-            # Отладочный вывод
-            print(f"🔍 DEBUG main.py: Checking humor for offtopic. user_signal='{user_signal}', is_pure_social={is_pure_social}")
+            if is_debug_logging():
+                print(f"🔍 DEBUG main.py: Checking humor for offtopic. user_signal='{user_signal}', is_pure_social={is_pure_social}")
             
             # Используем глобальный SafetyChecker для проверки
             can_use_humor, humor_context = zhvanetsky_safety_checker.should_use_humor(
@@ -830,73 +851,20 @@ async def chat_stream(
                 "data": json.dumps(metadata)
             }
             
-            # ВАЖНО: Две разные ветки для стриминга!
             response_text = result.get("response", "")
-            
-            # ВЕТКА 1: Для русского языка - псевдо-стриминг (НЕ ТРОГАЕМ!)
-            if detected_language == "ru":
-                if is_debug_logging():
-                    newline_count = response_text.count('\n')
-                    print(f"🔍 DEBUG: response_len={len(response_text)}, newlines={newline_count}")
-                
-                # Разбиваем текст на строки, чтобы сохранить структуру абзацев
-                lines = response_text.split('\n')
-                
-                for line_idx, line in enumerate(lines):
-                    # Добавляем перевод строки между строками
-                    if line_idx > 0:
-                        yield {
-                            "event": "message", 
-                            "data": "\n"  # Отправляем перевод строки
-                        }
-                    
-                    # Если строка пустая (был двойной перевод), отправляем ещё один перевод
-                    if not line.strip():
-                        continue  # Пропускаем пустые строки, но перевод уже отправлен
-                    
-                    # Разбиваем строку на слова
-                    words = line.split()
-                    
-                    for i, word in enumerate(words):
-                        if i > 0:
-                            word = " " + word
-                            
-                        yield {
-                            "event": "message",
-                            "data": word
-                        }
-                        
-                        # 50ms между СЛОВАМИ для эффекта печати
-                        await asyncio.sleep(0.05)
-            
-            # ВЕТКА 2: Для украинского/английского - РЕАЛЬНЫЙ стриминг перевода!
-            else:
-                print(f"🚀 Запускаем РЕАЛЬНЫЙ стриминг перевода на {detected_language}")
-                
-                # Импортируем транслятор
-                from translator import SmartTranslator
-                from openrouter_client import OpenRouterClient
-                
-                # Создаём клиента и транслятор
-                translator_client = OpenRouterClient(
-                    api_key=config.OPENROUTER_API_KEY,
-                    model=config.TRANSLATION_MODEL
+
+            if is_debug_logging():
+                newline_count = response_text.count('\n')
+                print(
+                    f"🔍 DEBUG: stream language={detected_language}, "
+                    f"response_len={len(response_text)}, newlines={newline_count}"
                 )
-                translator = SmartTranslator(translator_client)
-                
-                # Стримим перевод напрямую!
-                async for chunk in translator.translate_stream(
-                    text=response_text,
-                    target_language=detected_language,
-                    user_context=message
-                ):
-                    if chunk:
-                        yield {
-                            "event": "message",
-                            "data": chunk
-                        }
-                
-                print(f"✅ Стриминг перевода на {detected_language} завершён")
+
+            async for chunk in stream_response_chunks(response_text):
+                yield {
+                    "event": "message",
+                    "data": chunk
+                }
             
             # Завершение стрима
             yield {
