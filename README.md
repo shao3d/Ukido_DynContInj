@@ -12,7 +12,7 @@ Production-ready AI chatbot for Ukido soft skills school with multilingual suppo
 ### Core Capabilities
 - **🌐 Multilingual Support**: Russian, Ukrainian, and English with real-time translation
 - **💬 Web Chat Interface**: Beautiful SSE-powered chat with live streaming responses
-- **🤖 Two-stage AI Architecture**: Gemini routing + Claude generation through OpenRouter
+- **🤖 Two-stage AI Architecture**: Gemini routing + Gemini generation through OpenRouter
 - **😄 Zhvanetsky Humor Engine**: Context-aware humor for offtopic queries (60% probability)
 - **💾 State Persistence**: Full conversation history and user state preservation
 - **🐳 Docker Ready**: One-click deployment with Railway support
@@ -102,9 +102,9 @@ cp .env.example .env
 #
 # Optional model overrides:
 # ROUTER_MODEL=google/gemini-2.5-flash
-# MODEL_ANSWER=anthropic/claude-3.5-haiku
-# TRANSLATION_MODEL=anthropic/claude-3.5-haiku
-# ZHVANETSKY_MODEL=anthropic/claude-3.5-haiku
+# MODEL_ANSWER=google/gemini-2.5-flash
+# TRANSLATION_MODEL=google/gemini-2.5-flash
+# ZHVANETSKY_MODEL=google/gemini-2.5-flash
 #
 # Optional production/API hardening:
 # ADMIN_API_TOKEN=change-me
@@ -285,7 +285,7 @@ The architecture diagrams above are created using Mermaid and are automatically 
 ├── src/
 │   ├── main.py              # FastAPI server & orchestrator
 │   ├── router.py             # Gemini intent classifier
-│   ├── response_generator.py # Claude response generator
+│   ├── response_generator.py # Gemini response generator
 │   ├── hubspot_client.py     # 🆕 HubSpot CRM API client
 │   ├── history_manager.py    # Conversation history
 │   └── social_state.py       # Social intent tracking
@@ -356,7 +356,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Ukido team for domain expertise
-- OpenRouter for Claude API access
+- OpenRouter for Gemini API access
 - Google AI for Gemini API
 - FastAPI community for the excellent framework
 

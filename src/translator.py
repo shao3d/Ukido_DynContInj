@@ -36,7 +36,7 @@ class SmartTranslator:
             openrouter_client: Клиент для вызова OpenRouter API
         """
         self.client = openrouter_client
-        self.model = model or getattr(openrouter_client, "model", "anthropic/claude-3.5-haiku")
+        self.model = model or getattr(openrouter_client, "model", "google/gemini-2.5-flash")
         
     async def translate(
         self, 
@@ -95,7 +95,7 @@ class SmartTranslator:
             logger.info(f"🔄 Начинаю перевод на {target_language}...")
             logger.debug(f"Исходный текст (первые 100 символов): {text[:100]}...")
             
-            # Вызываем Claude Haiku для перевода
+            # Вызываем настроенную Gemini-модель для перевода
             response = await self.client.chat(
                 messages=[
                     {"role": "system", "content": system_prompt},

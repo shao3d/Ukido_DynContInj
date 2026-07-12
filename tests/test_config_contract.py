@@ -24,9 +24,9 @@ def test_llm_model_defaults_preserve_runtime_models(monkeypatch):
     config = reload_module("config").Config
 
     assert config.MODEL == "google/gemini-2.5-flash"
-    assert config.MODEL_ANSWER == "anthropic/claude-3.5-haiku"
-    assert config.TRANSLATION_MODEL == "anthropic/claude-3.5-haiku"
-    assert config.ZHVANETSKY_MODEL == "anthropic/claude-3.5-haiku"
+    assert config.MODEL_ANSWER == "google/gemini-2.5-flash"
+    assert config.TRANSLATION_MODEL == "google/gemini-2.5-flash"
+    assert config.ZHVANETSKY_MODEL == "google/gemini-2.5-flash"
 
 
 def test_response_generator_uses_configured_answer_and_translation_models(monkeypatch):

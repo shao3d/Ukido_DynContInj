@@ -13,9 +13,10 @@ class Config:
     """Настройки приложения"""
     APP_VERSION = os.getenv("APP_VERSION", "0.8.0-state-machine")
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-    ROUTER_MODEL = os.getenv("ROUTER_MODEL", os.getenv("MODEL", "google/gemini-2.5-flash"))
+    DEFAULT_GEMINI_MODEL = "google/gemini-2.5-flash"
+    ROUTER_MODEL = os.getenv("ROUTER_MODEL", os.getenv("MODEL", DEFAULT_GEMINI_MODEL))
     MODEL = ROUTER_MODEL  # Backward-compatible alias for router model
-    MODEL_ANSWER = os.getenv("MODEL_ANSWER", os.getenv("ANSWER_MODEL", "anthropic/claude-3.5-haiku"))
+    MODEL_ANSWER = os.getenv("MODEL_ANSWER", os.getenv("ANSWER_MODEL", DEFAULT_GEMINI_MODEL))
     ANSWER_MODEL = MODEL_ANSWER  # Backward-compatible alias for answer generation
     API_URL = "https://openrouter.ai/api/v1/chat/completions"
     
@@ -54,10 +55,10 @@ class Config:
     
     # Настройки юмора Жванецкого
     ZHVANETSKY_ENABLED = True  # Включить/выключить функцию юмора
-    ZHVANETSKY_MODEL = os.getenv("ZHVANETSKY_MODEL", os.getenv("HUMOR_MODEL", "anthropic/claude-3.5-haiku"))
+    ZHVANETSKY_MODEL = os.getenv("ZHVANETSKY_MODEL", os.getenv("HUMOR_MODEL", DEFAULT_GEMINI_MODEL))
     HUMOR_MODEL = ZHVANETSKY_MODEL  # Backward-compatible alias
     ZHVANETSKY_PROBABILITY = 0.60  # Базовая вероятность использования юмора (60% от offtopic) - оптимум для демо
-    ZHVANETSKY_TIMEOUT = 10.0  # Таймаут генерации юмора в секундах (увеличено до 10.0 для Claude)
+    ZHVANETSKY_TIMEOUT = 10.0  # Таймаут генерации юмора в секундах
     ZHVANETSKY_TEMPERATURE = 1.0  # Температура для Claude Haiku (максимальная для креативности)
     ZHVANETSKY_MAX_PER_HOUR = 5  # Максимум шуток на пользователя в час (увеличено для демо)
     
@@ -65,7 +66,7 @@ class Config:
     ENABLE_COMPLETED_ACTIONS_HANDLER = True  # Включить/выключить обработку завершённых действий
     
     # Настройки мультиязычности
-    TRANSLATION_MODEL = os.getenv("TRANSLATION_MODEL", "anthropic/claude-3.5-haiku")
+    TRANSLATION_MODEL = os.getenv("TRANSLATION_MODEL", DEFAULT_GEMINI_MODEL)
     TRANSLATION_ENABLED = os.getenv("TRANSLATION_ENABLED", "true").lower() == "true"
     TRANSLATION_CACHE_SIZE = 1000  # Количество кешированных переводов
     SUPPORTED_LANGUAGES = ["ru", "uk", "en"]

@@ -18,7 +18,7 @@ class ResponseGenerator:
 
     def __init__(self, docs_dir: Optional[Path] = None):
         self.cfg = Config()  # Сохраняем как атрибут экземпляра для доступа из других методов
-        # Используем Claude 3.5 Haiku для одноэтапной генерации с естественным стилем
+        # Используем Gemini 2.5 Flash для одноэтапной генерации с естественным стилем
         self.client = OpenRouterClient(
             self.cfg.OPENROUTER_API_KEY,
             seed=self.cfg.SEED,
@@ -104,7 +104,7 @@ class ResponseGenerator:
                 else:
                     self._debug(f"🎯 DEBUG: CTA НЕ будет добавлен для {user_signal}")
         
-        # Одноэтапная генерация с Claude Haiku + dynamic few-shot + CTA (если нужен)
+        # Одноэтапная генерация с Gemini + dynamic few-shot + CTA (если нужен)
         messages = self._build_messages(doc_texts, questions, history or [], router_result, cta_text)
 
         try:
@@ -214,7 +214,7 @@ class ResponseGenerator:
                         final_text = prefix + final_text
                         print("✅ Добавлено уточнение про онлайн-формат в начало ответа")
             
-            # Проверяем, встроил ли Claude CTA (если мы его запрашивали)
+            # Проверяем, встроила ли модель CTA (если мы его запрашивали)
             cta_was_added = False
             if cta_text and cta_offer:
                 # Определяем контекст агрессивности
@@ -222,8 +222,8 @@ class ResponseGenerator:
                 context_type = "агрессивный" if is_aggressive else "нормальный"
                 
                 if not self._verify_cta_included(final_text, cta_text):
-                    # Fallback: Claude не встроил CTA, добавляем механически
-                    print(f"⚠️ ПРОВАЛ: Claude НЕ встроил CTA для {user_signal}")
+                    # Fallback: модель не встроила CTA, добавляем механически
+                    print(f"⚠️ ПРОВАЛ: модель НЕ встроила CTA для {user_signal}")
                     print(f"   Контекст: {context_type}")
                     # Используем self.cfg вместо несуществующего config
                     temperature = getattr(self.cfg, 'TEMPERATURE_BY_SIGNAL', {}).get(user_signal, 0.1)
@@ -316,7 +316,7 @@ class ResponseGenerator:
         tone_adaptation = get_tone_adaptation(user_signal)
         dynamic_example = get_dynamic_example(user_signal)
         
-        # Объединённый промпт для Claude Haiku - факты + стиль + адаптация
+        # Объединённый промпт для Gemini - факты + стиль + адаптация
         system_role = (
             "Ты — консультант детской школы soft skills Ukido. "
             "Отвечай живым разговорным языком от лица школы (используй 'мы', не 'я'). "
@@ -721,7 +721,7 @@ class ResponseGenerator:
             out = out.replace(eng.capitalize(), rus.capitalize())
         
         # Заменяем украинские слова на русские эквиваленты
-        # (Claude иногда генерирует украинские слова из-за контекста украинской школы)
+        # (модель иногда генерирует украинские слова из-за контекста украинской школы)
         ukrainian_to_russian = {
             "підтримують": "поддерживают",
             "підтримати": "поддержать",
@@ -1088,7 +1088,7 @@ class ResponseGenerator:
         return count
     
     def _verify_cta_included(self, response: str, cta_text: str) -> bool:
-        """Проверяет, включил ли Claude CTA в ответ
+        """Проверяет, включила ли модель CTA в ответ
         
         Менее строгая проверка - ищем основные концепты, а не точные фразы
         """

@@ -150,7 +150,7 @@ OPENROUTER_API_KEY=sk-or-v1-xxxxx      # Без этого сервер не з�
 
 ### Опциональные переменные:
 ```bash
-MODEL_ANSWER=anthropic/claude-3.5-haiku  # Модель для генерации (по умолчанию: gpt-4o-mini)
+MODEL_ANSWER=google/gemini-2.5-flash  # Модель для генерации через OpenRouter
 DETERMINISTIC_MODE=false                  # true для воспроизводимых тестов
 LOG_LEVEL=INFO                           # INFO или DEBUG для детальной отладки
 ```
@@ -278,13 +278,13 @@ USER MESSAGE → [ROUTER] → [ORCHESTRATOR] → [GENERATOR/HUMOR] → RESPONSE
 
 #### 2️⃣ **ORCHESTRATOR** (main.py) - Центр принятия решений
 - **Сохраняет:** историю (LRU 1000 users × 10 msgs), состояния
-- **Фильтрует:** offtopic из истории перед Claude  
+- **Фильтрует:** offtopic из истории перед Generator
 - **Маршрутизирует:**
-  - `success` → Generator (Claude) 
+  - `success` → Generator (Gemini)
   - `offtopic` → Юмор (80%) или стандартные фразы
   - `need_simplification` → Просьба упростить
 
-#### 3️⃣ **GENERATOR** (Claude 3.5 Haiku) - Создание ответов
+#### 3️⃣ **GENERATOR** (Gemini 2.5 Flash) - Создание ответов
 - **Загружает:** документы из базы знаний
 - **Адаптирует тон:** под user_signal (деловой/эмпатичный/ценностный)
 - **Органично встраивает CTA:** с rate limiting 1/2 сообщений
@@ -392,7 +392,7 @@ should_block_cta, block_reason = simple_cta_blocker.should_block_cta(
 ```
 
 ### Система юмора Жванецкого (3 компонента)
-**1. zhvanetsky_humor.py** - Генератор юмора через Claude:
+**1. zhvanetsky_humor.py** - Генератор юмора через Gemini:
 - Создаёт юмор в стиле Жванецкого для offtopic сообщений
 - Адаптируется к контексту и истории диалога
 - Настройки: temperature=1.0, max_tokens=150
@@ -432,7 +432,7 @@ src/
 ├── main.py                 # Оркестратор + HOTFIX user_signal + персистентность
 ├── config.py               # ⚙️ Конфигурация системы: модели, таймауты, лимиты
 ├── router.py               # Gemini роутер (600+ строк промпта!)
-├── response_generator.py   # Claude генератор + постпроцессинг
+├── response_generator.py   # Gemini генератор + постпроцессинг
 ├── openrouter_client.py    # HTTP клиент с timeout=30s защитой (строка 59)
 ├── persistence_manager.py  # 🆕 Сохранение/восстановление состояний в JSON
 ├── hubspot_client.py       # 🆕 HubSpot CRM API клиент для trial signup
@@ -669,7 +669,7 @@ tools/                     # Вспомогательные скрипты ан�
 ```python
 # src/config.py - главный конфигурационный файл
 MODEL_ROUTER = "google/gemini-2.5-flash"
-MODEL_ANSWER = "anthropic/claude-3.5-haiku"  
+MODEL_ANSWER = "google/gemini-2.5-flash"
 ZHVANETSKY_PROBABILITY = 0.80  # Вероятность юмора (увеличено для демо)
 MAX_HISTORY_SIZE = 10           # Сообщений на пользователя
 CACHE_SIZE = 1000               # LRU пользователей
@@ -852,4 +852,3 @@ curl http://localhost:8000/metrics
 - Первый контакт создан: ID 487382687988
 - GitHub Pages форма интегрирована с Railway API
 - CORS проблемы решены, система работает в production
-
