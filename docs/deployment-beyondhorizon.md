@@ -9,11 +9,39 @@
 - Persistent conversation state: `/srv/bh/ukido/data/persistent_states`
 - Secrets: `/srv/bh/ukido/.env.production` with mode `600`
 - Service: user-scoped `ukido.service`
-- Apache and Let's Encrypt are managed by the Beyond Horizon administrator.
-  Do not run `sudo bh-cert ukido` for this reverse-proxy deployment.
+- Source of truth: private GitHub repository `shao3d/Ukido_DynContInj`, branch
+  `main`.
+- A successful push to `main` automatically deploys through
+  `.github/workflows/tests.yml` after both test jobs pass.
+- Apache and Let's Encrypt are provisioned by the self-service helper
+  `sudo bh-proxy ukido 8102`. Do not run `sudo bh-cert ukido` for this
+  reverse-proxy deployment.
 
-Railway remains the rollback target until the public HTTPS, SSE and HubSpot
-smoke checks pass on Beyond Horizon.
+Railway remains the external rollback target until Andrey explicitly approves
+its removal.
+
+## Normal deployment
+
+Do not edit `/srv/bh/ukido/app` manually. It is deployment output. The normal
+production path is:
+
+1. Commit the approved change.
+2. Push it to `main`.
+3. GitHub Actions runs Python tests and the Docker build.
+4. The deploy job uploads `/srv/bh/ukido/app.next`.
+5. `ops/activate-release.sh` installs dependencies only when
+   `requirements.txt` changed, swaps the candidate into `/srv/bh/ukido/app`,
+   restarts `ukido.service` and checks the private `/health` endpoint.
+6. GitHub Actions checks the public HTTPS `/health` endpoint.
+
+The previous application tree is retained as `/srv/bh/ukido/app.previous`.
+If the private health check fails, it is restored automatically. Production
+secrets and conversation state live outside all application releases and are
+never uploaded by GitHub Actions.
+
+Required GitHub Actions repository secrets are `BH_DEPLOY_HOST`,
+`BH_DEPLOY_USER`, `BH_DEPLOY_KEY` and `BH_KNOWN_HOSTS`. Never print their
+values or store them in repository files.
 
 ## Server preparation
 
@@ -48,9 +76,11 @@ systemctl --user enable --now ukido.service
 systemctl --user status ukido.service
 ```
 
-If `CPUQuota=50%` is not accepted in the user-scoped unit, contact the Beyond
-Horizon administrator so the CPU controller can be delegated. Do not remove
-the memory limits to hide a startup problem.
+`MemoryHigh=256M`, `MemoryMax=384M` and `TasksMax=128` are enforced by the
+service cgroup. The effective CPU ceiling is enforced for all Andrey's
+processes by the system-level `user-1004.slice` with `CPUQuota=50%`; the same
+line in the user service is retained as documentation but is not the enforcing
+control on this systemd 249 host.
 
 ## Private smoke check and proxy handoff
 
@@ -65,8 +95,15 @@ The expected health response has `"status":"healthy"`. The SSE response uses
 an explicit 15-second comment heartbeat so Apache and client proxies do not
 close an idle stream.
 
-After the private health check succeeds, ask the administrator to configure
-Apache and HTTPS for `ukido.beyondhorizon.dev -> 127.0.0.1:8102`.
+For initial proxy provisioning or an intentional port change, run:
+
+```bash
+sudo bh-proxy ukido 8102
+```
+
+The command provisions Apache and HTTPS for
+`ukido.beyondhorizon.dev -> 127.0.0.1:8102`. It is idempotent. Normal
+application deployments do not need to call it again.
 
 ## Public verification
 

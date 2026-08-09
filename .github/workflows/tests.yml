@@ -70,3 +70,56 @@ jobs:
     - name: Test Docker image
       run: |
         docker run --rm ukido-test python -c "print('✅ Docker container runs successfully')"
+
+  deploy:
+    name: Deploy to Beyond Horizon
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, docker]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: ukido-production
+      cancel-in-progress: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Configure deployment SSH
+      env:
+        DEPLOY_KEY: ${{ secrets.BH_DEPLOY_KEY }}
+        KNOWN_HOSTS: ${{ secrets.BH_KNOWN_HOSTS }}
+      run: |
+        install -d -m 700 ~/.ssh
+        printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+        printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+    - name: Upload candidate release
+      env:
+        DEPLOY_HOST: ${{ secrets.BH_DEPLOY_HOST }}
+        DEPLOY_USER: ${{ secrets.BH_DEPLOY_USER }}
+      run: |
+        ssh "$DEPLOY_USER@$DEPLOY_HOST" 'rm -rf /srv/bh/ukido/app.next && mkdir -p /srv/bh/ukido/app.next'
+        rsync -az --delete \
+          --exclude='.git/' \
+          --exclude='.env' \
+          --exclude='.venv/' \
+          --exclude='data/persistent_states/' \
+          ./ "$DEPLOY_USER@$DEPLOY_HOST:/srv/bh/ukido/app.next/"
+
+    - name: Activate and verify release
+      env:
+        DEPLOY_HOST: ${{ secrets.BH_DEPLOY_HOST }}
+        DEPLOY_USER: ${{ secrets.BH_DEPLOY_USER }}
+      run: |
+        ssh "$DEPLOY_USER@$DEPLOY_HOST" "bash /srv/bh/ukido/app.next/ops/activate-release.sh '$GITHUB_SHA'"
+
+    - name: Verify public HTTPS
+      run: |
+        for attempt in {1..10}; do
+          if curl --fail --silent --show-error https://ukido.beyondhorizon.dev/health; then
+            exit 0
+          fi
+          sleep 3
+        done
+        exit 1
