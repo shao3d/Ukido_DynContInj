@@ -1,0 +1,21 @@
+[Unit]
+Description=Ukido FastAPI service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/bh/ukido/app
+EnvironmentFile=/srv/bh/ukido/.env.production
+ExecStart=/srv/bh/ukido/.venv/bin/python -m uvicorn src.main:app --host 127.0.0.1 --port 8102
+Restart=always
+RestartSec=5
+MemoryHigh=256M
+MemoryMax=384M
+CPUQuota=50%
+TasksMax=128
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

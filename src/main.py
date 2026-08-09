@@ -884,7 +884,10 @@ async def chat_stream(
         'Connection': 'keep-alive'       # Держит соединение
     }
     
-    return EventSourceResponse(generate(), headers=headers)
+    # Keep idle SSE connections alive through Apache and client-side proxies.
+    # sse-starlette currently defaults to 15 seconds, but keeping this explicit
+    # makes the production contract independent of a future library default.
+    return EventSourceResponse(generate(), headers=headers, ping=15)
 
 
 @app.get("/metrics")
