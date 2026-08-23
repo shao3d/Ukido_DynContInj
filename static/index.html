@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -243,7 +243,7 @@
     <div class="chat-container">
         <div class="chat-header">
             <h1>🎓 Ukido AI Assistant</h1>
-            <p>Онлайн-школа soft skills для детей</p>
+            <p>Онлайн-школа soft skills для детей • Online soft skills school for kids</p>
         </div>
         
         <div class="chat-messages" id="chatMessages">
@@ -401,7 +401,7 @@
                 let metaText = [];
                 if (metadata.intent) metaText.push(`intent: ${metadata.intent}`);
                 if (metadata.user_signal) metaText.push(`signal: ${metadata.user_signal}`);
-                if (metadata.humor_generated) metaText.push('🎭 юмор');
+                if (metadata.humor_generated) metaText.push('🎭 humor');
                 
                 if (metaText.length > 0) {
                     const metadataDiv = document.createElement('div');
@@ -458,7 +458,7 @@
             const messagesDiv = document.getElementById('chatMessages');
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
-            errorDiv.textContent = `Ошибка: ${message}`;
+            errorDiv.textContent = `Error: ${message}`;
             messagesDiv.appendChild(errorDiv);
             scrollToBottom();
         }
@@ -567,7 +567,7 @@
                     if (event.data) {
                         showError(event.data);
                     } else {
-                        showError('Не удалось получить ответ от сервера');
+                        showError('Could not get a response from the server');
                     }
                     
                     if (eventSource) {
@@ -582,7 +582,7 @@
                 eventSource.onerror = (error) => {
                     console.error('EventSource error:', error);
                     hideTypingIndicator();
-                    showError('Соединение прервано. Проверьте подключение к интернету.');
+                    showError('Connection lost. Please check your internet connection.');
                     
                     if (eventSource) {
                         eventSource.close();
@@ -596,7 +596,7 @@
             } catch (error) {
                 console.error('Error sending message:', error);
                 hideTypingIndicator();
-                showError('Произошла ошибка при отправке сообщения');
+                showError('Something went wrong while sending your message');
                 isStreaming = false;
                 button.disabled = false;
             }

@@ -155,9 +155,12 @@ class ResponseGenerator:
                     print("✅ Использован fallback ответ для mixed greeting")
             
             # 3. Добавление контактов при готовности к пробному занятию
+            # Кроме случая, когда пользователь сам сообщил о завершённом действии —
+            # предлагать запись уже записавшемуся = «меню человеку с тарелкой супа»
             trial_words = ["попроб", "пробн", "давайте попробуем", "хочу попробовать", "запишите на пробное",
                            "try it", "want to try", "trial class", "free class", "sign us up"]
-            if current_message and any(word in current_message.lower() for word in trial_words):
+            if (current_message and not router_result.get("user_completed_action")
+                    and any(word in current_message.lower() for word in trial_words)):
                 # Проверяем, есть ли уже контакты в ответе (любое упоминание ukido считается контактом)
                 if not any(contact in final_text.lower() for contact in ["ukido", "+380", "запишитесь", "запись"]):
                     # Добавляем контактную информацию в конец ответа

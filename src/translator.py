@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class SmartTranslator:
-    """Умный переводчик с защитой терминов и кешированием"""
-    
+    """Умный переводчик с защитой терминов"""
+
     # Термины, которые НЕ переводим
     PROTECTED_TERMS = {
         'Ukido', 'ukido', 'UKIDO',
@@ -20,14 +20,7 @@ class SmartTranslator:
         'Zoom', 'zoom', 'ZOOM',
         'online', 'Online', 'ONLINE'
     }
-    
-    # Кеш популярных фраз (заполнится в процессе работы)
-    translation_cache: Dict[str, str] = {}
-    
-    # Счётчики для метрик
-    translation_count = 0
-    cache_hits = 0
-    
+
     def __init__(self, openrouter_client, model: Optional[str] = None):
         """
         Инициализация переводчика
@@ -61,16 +54,10 @@ class SmartTranslator:
         # Если язык тот же - не переводим
         if target_language == source_language or target_language == 'ru':
             return text
-            
-        # Проверяем кеш
-        cache_key = f"{target_language}:{text[:100]}"  # Первые 100 символов как ключ
-        if cache_key in self.translation_cache:
-            logger.info(f"✅ Использован кеш перевода для {target_language}")
-            self.cache_hits += 1
-            return self.translation_cache[cache_key]
-        
-        # НЕ защищаем термины заранее - используем тот же подход, что и в translate_stream
-        
+
+        # Кеш переводов сознательно не используется: экономия копеечная,
+        # а ключ по первым 100 символам мог подменить похожий ответ чужим переводом.
+
         # Формируем промпт для перевода
         lang_map = {
             'uk': 'Ukrainian',
@@ -107,17 +94,12 @@ class SmartTranslator:
             )
             
             logger.debug(f"Получен ответ от API: {response[:100]}...")
-            
+
             # Сохраняем форматирование абзацев
             translated = response
-            
-            # Сохраняем в кеш (только короткие фразы)
-            if len(text) < 200:
-                self.translation_cache[cache_key] = translated
-                
+
             logger.info(f"✅ Успешный перевод на {target_language}")
             logger.debug(f"Переведённый текст (первые 100 символов): {translated[:100]}...")
-            self.translation_count += 1
             return translated
             
         except Exception as e:
@@ -350,8 +332,7 @@ Just output the final {target_lang_name} text, nothing else."""
                     yield chunk
                 
             logger.info(f"✅ Успешный стриминг перевода на {target_language}")
-            self.translation_count += 1
-            
+
         except Exception as e:
             logger.error(f"❌ Ошибка стриминга перевода: {e}")
             # Fallback - возвращаем оригинал

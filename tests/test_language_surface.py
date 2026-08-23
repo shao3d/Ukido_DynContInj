@@ -244,7 +244,7 @@ def install_mocks(monkeypatch, main, route_result=None, route_exc=None, generate
 
     async def fake_generate(router_result, history=None, current_message=None):
         if generate is not None:
-            return generate(router_result, history, current_message)
+            return await generate(router_result, history, current_message)
         return await fake_generate_success(router_result, history, current_message)
 
     monkeypatch.setattr(main.router, "route", fake_route)
@@ -501,3 +501,113 @@ def test_mixed_ru_message_gets_russian_reply(client, monkeypatch):
     assert "Русский ответ" in body["response"]
     assert body["detected_language"] == "ru"
     assert translator.calls == []
+
+
+# ============================================================================
+# Пакет косметики: кеш удалён, фоллбек перевода, контакты записи, UI
+# ============================================================================
+
+def test_translator_has_no_cache_and_always_calls_client():
+    """Кеш переводов удалён: одинаковый текст переводится каждый раз заново."""
+    from translator import SmartTranslator
+
+    calls = {"count": 0}
+
+    class CountingClient:
+        model = "test/model"
+
+        async def chat(self, messages, **kwargs):
+            calls["count"] += 1
+            return "Translated text."
+
+    translator = SmartTranslator(CountingClient())
+    assert not hasattr(SmartTranslator, "translation_cache")
+
+    import asyncio
+    loop = asyncio.new_event_loop()
+    try:
+        first = loop.run_until_complete(translator.translate("Один и тот же текст", "en"))
+        second = loop.run_until_complete(translator.translate("Один и тот же текст", "en"))
+    finally:
+        loop.close()
+
+    assert first == second == "Translated text."
+    assert calls["count"] == 2, "Без кеша каждый перевод должен идти в модель"
+
+
+def test_config_has_no_dead_cache_setting():
+    from config import Config
+    assert not hasattr(Config, "TRANSLATION_CACHE_SIZE")
+
+
+def test_failed_translation_yields_english_apology_not_russian(client, monkeypatch):
+    """Сбой перевода: в ответе не должно быть внезапного русского текста."""
+    main = sys.modules["main"]
+
+    async def russian_generate(router_result, history=None, current_message=None):
+        return "Русский ответ, который не смог перевестись.", {
+            "intent": "success", "user_signal": "exploring_only",
+            "cta_added": False, "cta_type": None, "humor_generated": False,
+        }
+
+    class BrokenTranslator:
+        async def translate(self, text, target_language, **kwargs):
+            return text  # «перевод» не изменил текст — симуляция сбоя
+
+    install_mocks(
+        monkeypatch, main,
+        route_result=make_route(status="success", lang="en"),
+        generate=russian_generate,
+        translator=BrokenTranslator(),
+    )
+
+    body = post_chat(client, "lang_en_translate_fail", "What courses do you have?")
+    assert_no_cyrillic(body["response"], "сбой перевода")
+    assert "rephrase" in body["response"].lower() or "wrong" in body["response"].lower()
+
+
+def test_no_signup_contacts_for_user_who_just_signed_up():
+    """«Меню человеку с тарелкой супа»: записавшемуся не предлагаем запись."""
+    import asyncio
+    from response_generator import ResponseGenerator
+
+    generator = ResponseGenerator()
+
+    async def fake_chat(messages, **kwargs):
+        return "Занятия проходят в мини-группах до шести детей."
+
+    generator.client.chat = fake_chat
+
+    base_router_result = {
+        "status": "success",
+        "documents": ["faq.md"],
+        "decomposed_questions": ["Как проходят занятия?"],
+        "user_signal": "exploring_only",
+        "detected_language": "ru",
+        "cta_blocked": True,  # отключаем CTA-механику, проверяем только контакты
+    }
+
+    with_action = dict(base_router_result, user_completed_action="registered")
+    text, _ = asyncio.run(generator.generate(
+        with_action, [], "Я записался на пробное занятие"
+    ))
+    assert "ukido.com.ua/trial" not in text, f"Контакты записи предложены записавшемуся: {text!r}"
+
+    without_action = dict(base_router_result)
+    text_control, _ = asyncio.run(generator.generate(
+        without_action, [], "Хочу попробовать пробное занятие"
+    ))
+    assert "ukido.com.ua/trial" in text_control, "Контроль: без флага контакты должны добавляться"
+
+
+def test_ui_declares_english_and_has_no_russian_errors():
+    from pathlib import Path
+    html = (Path(__file__).resolve().parents[1] / "static" / "index.html").read_text(encoding="utf-8")
+    assert '<html lang="en">' in html
+    for russian_string in (
+        "Произошла ошибка при отправке",
+        "Соединение прервано",
+        "Не удалось получить ответ",
+        "Ошибка: ${message}",
+    ):
+        assert russian_string not in html, f"Русская строка ошибки осталась: {russian_string!r}"

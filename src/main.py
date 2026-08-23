@@ -626,6 +626,7 @@ async def chat(request: ChatRequest):
                         "cta_frequency_modifier": cta_frequency_modifier,  # Передаем модификатор частоты
                         "detected_language": detected_language,  # Передаем detected_language для перевода
                         "block_reason": block_reason if should_block_cta else None,  # Причина блокировки
+                        "user_completed_action": completed_action,  # Пользователь уже сообщил о действии (записался/оплатил)
                     },
                     filtered_history,  # Используем отфильтрованную историю
                     request.message,  # Передаём текущее сообщение отдельно для корректной проверки CTA
@@ -806,6 +807,13 @@ async def chat(request: ChatRequest):
             response_metadata["translated_to"] = detected_language
             response_metadata["detected_language"] = detected_language
             print(f"🌐 Финальный языковой шлюз: ответ переведён на {detected_language}")
+
+            # Страховка: если перевод не удался и в тексте осталась кириллица,
+            # англоязычный пользователь получает вежливое извинение вместо
+            # внезапного русского ответа
+            if detected_language == "en" and has_cyrillic(response_text):
+                print("⚠️ Перевод не удался (осталась кириллица) — отдаём EN-извинение")
+                response_text = get_error_response("invalid_response", "en")
     except Exception as e:
         print(f"⚠️ Ошибка финального перевода: {e}")
 
