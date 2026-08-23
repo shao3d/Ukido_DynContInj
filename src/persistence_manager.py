@@ -315,9 +315,10 @@ def create_state_snapshot(history_manager, user_signals_history: Dict,
         try:
             social_state = social_state_manager.get(user_id)
             state["greeting_exchanged"] = social_state.greeting_exchanged
+            state["language"] = social_state.language
         except:
             pass
-    
+
     return state
 
 
@@ -346,6 +347,10 @@ def restore_state_snapshot(state_data: Dict[str, Any], history_manager,
     # Восстанавливаем социальное состояние
     if social_state_manager and state_data.get('greeting_exchanged'):
         social_state_manager.mark_greeted(user_id)
+
+    # Восстанавливаем память языка сессии
+    if social_state_manager and state_data.get('language') in ('ru', 'uk', 'en'):
+        social_state_manager.set_language(user_id, state_data['language'])
     
     logger.info(f"Восстановлено состояние для {user_id}: "
                 f"{len(state_data.get('history', []))} сообщений, "

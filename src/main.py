@@ -34,7 +34,28 @@ from social_intents import SocialIntent
 from social_responder import SocialResponder
 from social_state import SocialStateManager
 from config import Config
-from standard_responses import DEFAULT_FALLBACK, get_error_response
+from localization import (
+    has_cyrillic,
+    resolve_language,
+    is_confident_language_signal,
+    get_offtopic_response,
+    get_need_simplification_message,
+    get_error_response,
+    get_default_fallback,
+    get_greeting,
+    get_greeting_prefix,
+    get_online_fallback,
+    get_thanks_response,
+    get_thanks_prefix,
+    get_apology_response,
+    get_apology_prefix,
+    get_acknowledgment_response,
+    get_farewell,
+    get_farewell_addon,
+    get_thanks_prefix_success,
+    has_farewell_marker,
+    THANKS_MARKERS,
+)
 from datetime import datetime
 from typing import Dict
 from collections import defaultdict, deque
@@ -404,8 +425,9 @@ async def chat(request: ChatRequest):
         print(f"❌ Router failed: {e}")
         route_result = {
             "status": "offtopic",
-            "message": "Временная проблема. Попробуйте позже.",
-            "decomposed_questions": []
+            "message": "",
+            "decomposed_questions": [],
+            "_router_failed": True
         }
     
     # === ОБРАБОТКА ЗАВЕРШЁННЫХ ДЕЙСТВИЙ ===
@@ -429,7 +451,18 @@ async def chat(request: ChatRequest):
     social_context = route_result.get("social_context")  # Новое поле от Gemini
     fuzzy_matched = route_result.get("fuzzy_matched", False)
     user_signal = route_result.get("user_signal", "exploring_only")  # Получаем user_signal
-    detected_language = route_result.get("detected_language", "ru")  # Получаем detected_language для мультиязычности
+    # === ЯЗЫК ДИАЛОГА: мнение роутера + память сессии (sticky language) ===
+    # Роутер определяет язык посимвольно и ошибается на эмодзи и коротких
+    # репликах. Сводим его результат с языком сессии, чтобы язык диалога
+    # не переключался посреди разговора.
+    raw_detected_language = route_result.get("detected_language", "ru")
+    session_lang = social_state.get_language(request.user_id)
+    detected_language = resolve_language(raw_detected_language, request.message, session_lang)
+    if detected_language != session_lang and is_confident_language_signal(detected_language, request.message):
+        social_state.set_language(request.user_id, detected_language)
+        print(f"🌐 Язык сессии обновлён: {session_lang} → {detected_language}")
+    if raw_detected_language != detected_language:
+        print(f"🌐 Язык скорректирован памятью сессии: {raw_detected_language} → {detected_language}")
     
     # HOTFIX: Восстанавливаем user_signal для offtopic из предыдущих успешных запросов
     # Проблема: Gemini 2.5 Flash игнорирует инструкцию сохранять user_signal для offtopic
@@ -580,33 +613,26 @@ async def chat(request: ChatRequest):
             # Правило: Бизнес-интент ВСЕГДА приоритетнее социального
             
             # 1. Farewell для success - добавляем прощание в КОНЕЦ ответа
+            # (на языке диалога — текст уже переведён генератором)
             if social_context == "farewell":
                 # Проверяем, нет ли уже прощания в ответе
-                farewell_markers = ["до свидания", "до встречи", "всего доброго", "удачи", "до связи"]
-                if not any(marker in response_text.lower() for marker in farewell_markers):
-                    farewells = [
-                        "\n\nДо свидания! Будем рады видеть вас в нашей школе!",
-                        "\n\nВсего доброго! Обращайтесь, если появятся вопросы!",
-                        "\n\nДо встречи! Надеемся увидеть вашего ребенка на занятиях!",
-                        "\n\nУдачи вам! До связи!"
-                    ]
-                    response_text += random.choice(farewells)
+                if not has_farewell_marker(response_text, detected_language):
+                    response_text += get_farewell_addon(detected_language)
                     if config.LOG_LEVEL == "DEBUG":
                         print(f"✅ Added farewell to success response")
             
             # 2. Thanks для success - добавляем короткий префикс
             elif social_context == "thanks":
                 # Проверяем, нет ли уже благодарности в начале
-                thanks_markers = ["рад", "пожалуйста", "всегда пожалуйста"]
-                if not any(response_text.lower().startswith(marker) for marker in thanks_markers):
-                    thanks_prefixes = ["Рады помочь! ", "Пожалуйста! "]
-                    response_text = random.choice(thanks_prefixes) + response_text
+                thanks_starts = THANKS_MARKERS.get(detected_language, THANKS_MARKERS["ru"])
+                if not any(response_text.lower().startswith(marker) for marker in thanks_starts):
+                    response_text = get_thanks_prefix_success(detected_language) + response_text
                     if config.LOG_LEVEL == "DEBUG":
                         print(f"✅ Added thanks prefix to success response")
                         
         except Exception as e:
             print(f"❌ ResponseGenerator failed: {e}")
-            response_text = get_error_response("generation_failed")
+            response_text = get_error_response("generation_failed", detected_language)
             # Создаём metadata для случая ошибки
             response_metadata = {
                 "intent": status,
@@ -624,8 +650,16 @@ async def chat(request: ChatRequest):
         if is_pure_social:
             # Для чистых социальных интентов НЕ используем offtopic сообщение
             base_message = ""
+        elif route_result.get("_router_failed"):
+            # Роутер упал — извиняемся на языке диалога
+            base_message = get_error_response("router_failed", detected_language)
+        elif status == "offtopic":
+            # Роутер кладёт в message русскую заготовку — берём свою на нужном языке
+            base_message = get_offtopic_response(detected_language)
+        elif status == "need_simplification":
+            base_message = get_need_simplification_message(detected_language)
         else:
-            base_message = message if message else DEFAULT_FALLBACK
+            base_message = message if message else get_default_fallback(detected_language)
         documents_used = []
         
         # Инициализируем metadata для offtopic случаев
@@ -638,8 +672,11 @@ async def chat(request: ChatRequest):
         }
         
         # === ИНТЕГРАЦИЯ ЮМОРА ЖВАНЕЦКОГО ===
-        # Проверяем возможность использования юмора для content offtopic
-        if status == "offtopic" and not is_pure_social and zhvanetsky_generator and zhvanetsky_safety_checker:
+        # Проверяем возможность использования юмора для content offtopic.
+        # Юмор генерируется по-русски и культурно непереводим — для не-русских
+        # диалогов используем вежливую заготовку из словаря.
+        if (status == "offtopic" and not is_pure_social and detected_language == "ru"
+                and zhvanetsky_generator and zhvanetsky_safety_checker):
             if is_debug_logging():
                 print(f"🔍 DEBUG main.py: Checking humor for offtopic. user_signal='{user_signal}', is_pure_social={is_pure_social}")
             
@@ -675,13 +712,11 @@ async def chat(request: ChatRequest):
                         print(f"🎭 Zhvanetsky humor used for user {request.user_id}")
                     else:
                         # Fallback на стандартный offtopic
-                        from standard_responses import get_offtopic_response
-                        base_message = get_offtopic_response()
+                        base_message = get_offtopic_response("ru")
                         
                 except Exception as e:
                     print(f"❌ Zhvanetsky generation failed: {e}")
-                    from standard_responses import get_offtopic_response
-                    base_message = get_offtopic_response()
+                    base_message = get_offtopic_response("ru")
         
         # Добавляем социальные элементы к offtopic/need_simplification ответам
         if social_context:
@@ -690,72 +725,68 @@ async def chat(request: ChatRequest):
                 if not social_state.has_greeted(request.user_id):
                     if is_pure_social:
                         # Для чистого приветствия используем полноценный ответ
-                        greetings = [
-                            "Здравствуйте! Я помощник школы Ukido. Чем могу помочь?",
-                            "Добрый день! Рад помочь с вопросами о наших курсах.",
-                            "Приветствую! Готов рассказать о программах школы Ukido."
-                        ]
-                        response_text = random.choice(greetings)
+                        response_text = get_greeting(detected_language)
                     else:
                         # Для mixed случаев добавляем префикс
-                        response_text = f"Здравствуйте! {base_message}"
+                        response_text = get_greeting_prefix(detected_language) + base_message
                     social_state.mark_greeted(request.user_id)
                 else:
-                    response_text = base_message if base_message else "Я на связи. Чем помочь?"
+                    response_text = base_message if base_message else get_online_fallback(detected_language)
             elif social_context == "thanks":
                 if is_pure_social:
                     # Для чистой благодарности используем полноценный ответ
-                    thanks_responses = [
-                        "Пожалуйста! Обращайтесь, если будут вопросы.",
-                        "Рады помочь! Если нужна дополнительная информация - спрашивайте.",
-                        "Всегда пожалуйста! Готов ответить на другие вопросы."
-                    ]
-                    response_text = random.choice(thanks_responses)
+                    response_text = get_thanks_response(detected_language)
                 else:
                     # Для mixed случаев добавляем префикс
-                    response_text = f"Пожалуйста! {base_message}"
+                    response_text = get_thanks_prefix(detected_language) + base_message
             elif social_context == "apology":
                 if is_pure_social:
                     # Для чистого извинения используем полноценный ответ
-                    apology_responses = [
-                        "Ничего страшного! Чем могу помочь?",
-                        "Всё в порядке! Готов ответить на ваши вопросы.",
-                        "Не переживайте! Расскажите, что вас интересует."
-                    ]
-                    response_text = random.choice(apology_responses)
+                    response_text = get_apology_response(detected_language)
                 else:
                     # Для mixed случаев добавляем префикс
-                    response_text = f"Ничего страшного! {base_message}"
+                    response_text = get_apology_prefix(detected_language) + base_message
             elif social_context == "repeated_greeting":
                 # Для повторного приветствия НЕ добавляем социальный префикс
                 response_text = base_message
             elif social_context == "acknowledgment":
                 # Для соглашательских ответов и смайликов используем продолжающие фразы
-                acknowledgment_responses = [
-                    "Отлично! Что ещё вас интересует о наших курсах?",
-                    "Хорошо! Есть ещё вопросы по школе Ukido?",
-                    "Какая информация ещё нужна?",
-                    "Супер! Чем ещё могу помочь?",
-                    "Рада, что понятно! Что ещё рассказать?"
-                ]
-                response_text = random.choice(acknowledgment_responses)
+                response_text = get_acknowledgment_response(detected_language)
                 print(f"ℹ️ Using acknowledgment response ({message_log_summary(request.message)})")
             elif social_context == "farewell":
                 # Для прощания используем ТОЛЬКО прощальную фразу, без offtopic сообщения
-                farewells = [
-                    "Было приятно помочь! До свидания!",
-                    "Спасибо за обращение! Всего доброго!",
-                    "Рады были проконсультировать! До встречи!",
-                    "Удачи вам! До свидания!",
-                    "Будем рады видеть вас в нашей школе! До связи!"
-                ]
-                response_text = random.choice(farewells)
+                response_text = get_farewell(detected_language)
                 # ВАЖНО: НЕ добавляем base_message для прощания!
             else:
                 response_text = base_message
         else:
             response_text = base_message
     
+    # === ЕДИНАЯ ТОЧКА ПЕРЕВОДА (гарантия языка ответа) ===
+    # Всё, что прошло через генератор, уже переведено (metadata.translated_to);
+    # canned-фразы берутся из словаря сразу на нужном языке; всё остальное
+    # (pre-generated ответы завершённых действий, смешанные тексты, любые
+    # пропущенные ветки) переводится здесь — пользователь не должен получать
+    # ответ на чужом языке.
+    try:
+        already_translated = response_metadata.get("translated_to") == detected_language
+        needs_final_translation = (
+            detected_language != "ru"
+            and not already_translated
+            and (detected_language == "uk" or has_cyrillic(response_text))
+        )
+        if needs_final_translation:
+            response_text = await response_generator.translator.translate(
+                text=response_text,
+                target_language=detected_language,
+                user_context=request.message,
+            )
+            response_metadata["translated_to"] = detected_language
+            response_metadata["detected_language"] = detected_language
+            print(f"🌐 Финальный языковой шлюз: ответ переведён на {detected_language}")
+    except Exception as e:
+        print(f"⚠️ Ошибка финального перевода: {e}")
+
     # === СОХРАНЕНИЕ В ИСТОРИЮ ===
     if history:
         history.add_message(request.user_id, "user", request.message)

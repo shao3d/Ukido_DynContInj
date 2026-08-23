@@ -13,6 +13,10 @@ class SessionSocialState:
     greeting_exchanged: bool = False
     farewell_pending: bool = False
     last_social_at: float = field(default_factory=lambda: 0.0)
+    # Последний уверенно определённый язык пользователя (ru/uk/en).
+    # None = язык сессии ещё не установлен (пока не было уверенных реплик).
+    # Нужен, чтобы неоднозначные реплики (эмодзи, "ok") не переключали язык диалога.
+    language: str = None
 
 
 class SocialStateManager:
@@ -57,3 +61,15 @@ class SocialStateManager:
     def reset_farewell(self, session_id: str):
         st = self._ensure(session_id)
         st.farewell_pending = False
+        st.last_social_at = self._now()
+
+    def get_language(self, session_id: str):
+        """Язык сессии (ru/uk/en) или None, если ещё не установлен."""
+        return self._ensure(session_id).language
+
+    def set_language(self, session_id: str, language: str):
+        """Запоминает язык сессии для неоднозначных будущих реплик."""
+        if language in ("ru", "uk", "en"):
+            st = self._ensure(session_id)
+            st.language = language
+            st.last_social_at = self._now()

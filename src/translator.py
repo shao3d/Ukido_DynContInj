@@ -185,7 +185,8 @@ Russian: "Занятия 2 раза в неделю по 90 минут."
 
 KEEP EXACTLY AS-IS (never translate):
 {protected_terms_list}
-- All URLs, emails, phone numbers, prices in UAH (грн)
+- All URLs, emails, phone numbers
+- Prices must use "UAH" (e.g., "6,000 UAH") — NEVER the Cyrillic "грн", the English text must stay fully Latin
 
 Preserve all formatting (line breaks, bullet points, paragraphs).
 
