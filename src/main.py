@@ -54,6 +54,7 @@ from localization import (
     get_farewell_addon,
     get_thanks_prefix_success,
     has_farewell_marker,
+    get_trial_signup_message,
     THANKS_MARKERS,
 )
 from datetime import datetime
@@ -217,6 +218,19 @@ class TrialSignupRequest(BaseModel):
     lastName: str = Field(..., min_length=1, max_length=50)
     email: str = Field(..., min_length=5, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
+    # Язык пользователя формы (ru/uk/en) — форма может прислать, чтобы
+    # получить подтверждение на своём языке. По умолчанию русский.
+    language: Optional[str] = Field(None, max_length=5)
+
+    @field_validator('language')
+    @classmethod
+    def validate_language(cls, v):
+        if v is None or not v.strip():
+            return "ru"
+        normalized = v.strip().lower()
+        if normalized not in ("ru", "uk", "en"):
+            raise ValueError('language must be one of: ru, uk, en')
+        return normalized
 
     @field_validator('email')
     @classmethod
@@ -540,6 +554,14 @@ async def chat(request: ChatRequest):
             "погода",
             "перемена в школе",  # Часть юмора про парковку
             "У нас парковка",    # Начало шутки про парковку
+            # EN-маркеры canned-фраз из localization.OFFTOPIC_RESPONSES["en"]
+            "get back to Ukido",
+            "outside my expertise",
+            "kids' soft skills",
+            "questions about Ukido",
+            "back to learning",
+            "Not really my area",
+            "Let's talk school",
         ]
         
         i = 0
@@ -999,7 +1021,7 @@ async def trial_signup(request: TrialSignupRequest):
             print("❌ HubSpot API key не настроен")
             return TrialSignupResponse(
                 success=False,
-                message="Сервис временно недоступен. Пожалуйста, попробуйте позже.",
+                message=get_trial_signup_message("not_configured", request.language),
                 action=None
             )
 
@@ -1030,14 +1052,14 @@ async def trial_signup(request: TrialSignupRequest):
 
             return TrialSignupResponse(
                 success=True,
-                message=f"Спасибо за заявку! Мы свяжемся с вами в ближайшее время.",
+                message=get_trial_signup_message("success", request.language),
                 action=result.get("action")
             )
         else:
             print(f"❌ Ошибка обработки заявки: email={redact_email(request.email)}")
             return TrialSignupResponse(
                 success=False,
-                message="Произошла ошибка при обработке заявки. Пожалуйста, попробуйте еще раз.",
+                message=get_trial_signup_message("failure", request.language),
                 action=None
             )
 
@@ -1045,7 +1067,7 @@ async def trial_signup(request: TrialSignupRequest):
         print(f"❌ Критическая ошибка в trial_signup: {e}")
         return TrialSignupResponse(
             success=False,
-            message="Временная техническая проблема. Мы уже работаем над её решением.",
+            message=get_trial_signup_message("critical", request.language),
             action=None
         )
 

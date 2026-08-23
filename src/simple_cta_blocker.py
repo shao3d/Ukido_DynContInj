@@ -22,21 +22,29 @@ class SimpleCTABlocker:
         
         # Триггеры для детекции завершённых действий
         self.COMPLETION_TRIGGERS = {
-            'paid': ['оплатил', 'заплатил', 'внёс оплату', 'перевёл деньги', 'оплачено', 'внесла оплату'],
-            'registered': ['записался', 'записалась', 'зарегистрировал', 'записали ребенка', 'записал сына', 'записала дочь'],
-            'trial_completed': ['были на пробном', 'прошли пробное', 'посетили пробный урок'],
-            'form_filled': ['заполнил форму', 'заполнила анкету', 'отправил заявку']
+            'paid': ['оплатил', 'заплатил', 'внёс оплату', 'перевёл деньги', 'оплачено', 'внесла оплату',
+                     'i paid', "i've paid", 'paid for the course', 'made the payment', 'payment sent'],
+            'registered': ['записался', 'записалась', 'зарегистрировал', 'записали ребенка', 'записал сына', 'записала дочь',
+                           'signed up', 'i registered', "i've registered", 'already registered', 'enrolled'],
+            'trial_completed': ['были на пробном', 'прошли пробное', 'посетили пробный урок',
+                                'attended the trial', 'did the trial', 'went to the trial'],
+            'form_filled': ['заполнил форму', 'заполнила анкету', 'отправил заявку',
+                            'filled the form', 'filled out the form', 'submitted the form']
         }
-        
+
         # Триггеры для детекции отказов
         self.HARD_REFUSALS = [
-            'не надо', 'не нужно', 'отстаньте', 'достали', 'надоели', 
-            'хватит предлагать', 'прекратите', 'не интересно'
+            'не надо', 'не нужно', 'отстаньте', 'достали', 'надоели',
+            'хватит предлагать', 'прекратите', 'не интересно',
+            'no thanks', 'stop offering', 'stop pushing', 'leave me alone',
+            'not interested', "don't need", 'do not need'
         ]
-        
+
         self.SOFT_REFUSALS = [
             'я подумаю', 'потом решу', 'позже', 'не сейчас', 'может потом',
-            'надо подумать', 'посоветуюсь с мужем', 'посоветуюсь с женой'
+            'надо подумать', 'посоветуюсь с мужем', 'посоветуюсь с женой',
+            "i'll think about it", 'maybe later', 'not now', 'need to think',
+            'talk to my husband', 'talk to my wife', 'ask my husband', 'ask my wife'
         ]
         
         logger.info("🔧 SimpleCTABlocker инициализирован (MVP версия)")

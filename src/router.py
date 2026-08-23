@@ -11,6 +11,7 @@ from gemini_cached_client import GeminiCachedClient
 from config import Config
 from social_intents import has_business_signals_extended
 from social_state import SocialStateManager  # Нужен для отслеживания повторных приветствий
+from localization import has_cyrillic
 # Удалены неиспользуемые импорты после рефакторинга:
 # detect_social_intent, SocialIntent - больше не нужны (Gemini обрабатывает)
 # SocialResponder - больше не нужен (обработка в main.py)
@@ -119,28 +120,7 @@ class Router:
         user_message = self._deduplicate_questions(user_message)
 
         # СПЕЦИАЛЬНАЯ ОБРАБОТКА УЛЬТРА-КРАТКИХ КОНТЕКСТУАЛЬНЫХ ВОПРОСОВ
-        ultra_short_patterns = ["а?", "и?", "и всё?", "а дальше?", "и что?", "ну и?"]
-        if user_message.strip().lower() in ultra_short_patterns and history:
-            # Ищем последний ответ ассистента
-            last_assistant_msg = None
-            for msg in reversed(history):
-                if msg.get("role") == "assistant":
-                    last_assistant_msg = msg.get("content", "")
-                    break
-            
-            if last_assistant_msg:
-                print(f"🔍 Обнаружен ультра-краткий вопрос '{user_message}' - восстанавливаем контекст из истории")
-                # Определяем тему из последнего ответа
-                if "цен" in last_assistant_msg.lower() or "стои" in last_assistant_msg.lower():
-                    expanded_question = "Расскажите подробнее о ценах и скидках"
-                elif "курс" in last_assistant_msg.lower():
-                    expanded_question = "Расскажите подробнее о курсах"
-                else:
-                    expanded_question = "Расскажите подробнее"
-                
-                # Подменяем вопрос на расширенный
-                user_message = expanded_question
-                print(f"📝 Расширенный вопрос: {expanded_question}")
+        user_message = self._expand_ultra_short_question(user_message, history)
 
         # Проверяем был ли fuzzy matching для статистики
         _, was_fuzzy_matched = has_business_signals_extended(user_message)
@@ -381,6 +361,47 @@ class Router:
             print(f"❌ Ошибка при вызове Gemini: {e}")
             return self._fallback_response()
     
+    # Ультра-краткие реплики, требующие восстановления контекста из истории
+    ULTRA_SHORT_PATTERNS = [
+        "а?", "и?", "и всё?", "а дальше?", "и что?", "ну и?",
+        "and?", "so?", "that's it?", "thats it?", "what next?", "and what?",
+    ]
+
+    def _expand_ultra_short_question(self, user_message: str, history: List[Dict[str, str]]) -> str:
+        """Раскрывает ультра-краткие контекстуальные вопросы из истории.
+
+        Двуязычно: язык расширенного вопроса выбирается по наличию кириллицы
+        в исходной реплике; тема ищется в последнем ответе ассистента тоже на
+        обоих языках (в EN-сессии ответы ассистента уже английские).
+        """
+        if user_message.strip().lower() not in self.ULTRA_SHORT_PATTERNS or not history:
+            return user_message
+
+        last_assistant_msg = ""
+        for msg in reversed(history):
+            if msg.get("role") == "assistant":
+                last_assistant_msg = msg.get("content", "")
+                break
+
+        if not last_assistant_msg:
+            return user_message
+
+        print(f"🔍 Обнаружен ультра-краткий вопрос '{user_message}' - восстанавливаем контекст из истории")
+        lowered = last_assistant_msg.lower()
+        wants_english = not has_cyrillic(user_message)
+
+        if any(word in lowered for word in ("цен", "стои", "price", "cost", "uah")):
+            expanded = ("Tell me more about prices and discounts" if wants_english
+                        else "Расскажите подробнее о ценах и скидках")
+        elif any(word in lowered for word in ("курс", "course", "program")):
+            expanded = ("Tell me more about your courses" if wants_english
+                        else "Расскажите подробнее о курсах")
+        else:
+            expanded = "Please tell me more details" if wants_english else "Расскажите подробнее"
+
+        print(f"📝 Расширенный вопрос: {expanded}")
+        return expanded
+
     def _deduplicate_questions(self, text: str) -> str:
         """
         Удаляет точные дубликаты вопросов из текста

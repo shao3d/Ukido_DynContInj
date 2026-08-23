@@ -155,7 +155,8 @@ class ResponseGenerator:
                     print("✅ Использован fallback ответ для mixed greeting")
             
             # 3. Добавление контактов при готовности к пробному занятию
-            trial_words = ["попроб", "пробн", "давайте попробуем", "хочу попробовать", "запишите на пробное"]
+            trial_words = ["попроб", "пробн", "давайте попробуем", "хочу попробовать", "запишите на пробное",
+                           "try it", "want to try", "trial class", "free class", "sign us up"]
             if current_message and any(word in current_message.lower() for word in trial_words):
                 # Проверяем, есть ли уже контакты в ответе (любое упоминание ukido считается контактом)
                 if not any(contact in final_text.lower() for contact in ["ukido", "+380", "запишитесь", "запись"]):
@@ -165,7 +166,12 @@ class ResponseGenerator:
                     print("✅ Добавлены контакты для пробного занятия")
             
             # 4. Обработка непонимания формата обучения (проблема "забирать")
-            transport_words = ["забира", "привози", "довози", "везти", "отвози", "вожу", "везу", "заберу", "привезу"]
+            # EN-фразы намеренно конкретные: голое "pick up" ловит "pick up skills"
+            transport_words = ["забира", "привози", "довози", "везти", "отвози", "вожу", "везу", "заберу", "привезу",
+                               "pick him up", "pick her up", "pick them up", "pick up my kid",
+                               "pick up my child", "pick up my son", "pick up my daughter",
+                               "drop him off", "drop her off", "drop them off",
+                               "drive him to", "drive her to", "take him to class", "take her to class"]
             if current_message and any(word in current_message.lower() for word in transport_words):
                 # Проверяем, упоминается ли уже онлайн в ответе
                 if "онлайн" not in final_text.lower() and "zoom" not in final_text.lower() and "из дома" not in final_text.lower():
@@ -204,9 +210,9 @@ class ResponseGenerator:
                     # Fallback: если не нашли подходящего места, добавляем в начало, но мягко
                     if not inserted:
                         # Выбираем подходящую формулировку в зависимости от контекста
-                        if "после работы" in current_message.lower():
+                        if "после работы" in current_message.lower() or "after work" in current_message.lower():
                             prefix = "Удобно, что после работы вам не придётся никуда ехать - занятия проходят онлайн через Zoom, ребёнок учится из дома. "
-                        elif "далеко" in current_message.lower():
+                        elif "далеко" in current_message.lower() or "far away" in current_message.lower() or "far from" in current_message.lower():
                             prefix = "Отличная новость - не нужно никуда ехать! Все занятия проходят онлайн через Zoom. "
                         else:
                             prefix = "Занятия проходят полностью онлайн через Zoom, поэтому забирать ребёнка не нужно - он учится из дома. "
@@ -873,7 +879,9 @@ class ResponseGenerator:
                 all_cta_phrases = [
                     "действуют скидки", "скидка", "рассрочка", "10% при полной оплате",
                     "первое занятие", "бесплатное", "пробное занятие",
-                    "shao3d.github.io/trial/", "записаться", "менеджер свяжется"
+                    "shao3d.github.io/trial/", "записаться", "менеджер свяжется",
+                    "10% off", "% off", "discount", "installment", "first class",
+                    "free trial", "sign up", "we'll contact", "we will contact",
                 ]
                 if any(phrase in content for phrase in all_cta_phrases):
                     last_cta_position = i
@@ -886,7 +894,8 @@ class ResponseGenerator:
         # Блокировка для exploring_only при упоминании цены
         if user_signal == "exploring_only":
             # Проверяем последние 2 сообщения пользователя на упоминание цены
-            price_keywords = ["дорого", "цена", "стоимость", "сколько стоит", "грн", "гривен"]
+            price_keywords = ["дорого", "цена", "стоимость", "сколько стоит", "грн", "гривен",
+                              "price", "cost", "expensive", "how much", "uah"]
             for msg in history[-4:]:  # Последние 2 пары
                 if msg.get("role") == "user":
                     user_text = msg.get("content", "").lower()
@@ -909,7 +918,8 @@ class ResponseGenerator:
         # Для price_sensitive - контекстная проверка
         if user_signal == "price_sensitive":
             # Проверяем только прямые вопросы о скидках/рассрочке
-            skip_phrases = ["скидки", "скидка", "рассрочк", "есть ли скидк", "какие скидк"]
+            skip_phrases = ["скидки", "скидка", "рассрочк", "есть ли скидк", "какие скидк",
+                            "discount", "discounts", "installment", "payment plan"]
             self._debug(f"🔍 DEBUG _should_add_offer для price_sensitive:")
             self._debug(f"   last_user_msg: '{last_user_msg}'")
             
@@ -959,7 +969,8 @@ class ResponseGenerator:
                 return False
             
             # Контекстная проверка - не дублируем информацию о пробном занятии
-            trial_phrases = ["пробное", "пробный", "первое занятие", "попробовать", "бесплатн"]
+            trial_phrases = ["пробное", "пробный", "первое занятие", "попробовать", "бесплатн",
+                             "trial", "free class", "try it", "first class", "check it out"]
             if any(phrase in last_user_msg for phrase in trial_phrases):
                 print("🔄 Контекст: Пользователь спрашивает про пробное занятие, пропускаем CTA")
                 return False
@@ -976,7 +987,9 @@ class ResponseGenerator:
                 anxiety_cta_phrases = [
                     "первое занятие", "бесплатное", "пробное занятие",
                     "без обязательств", "оценить, подходит ли",
-                    "попробует", "оцените подходит"
+                    "попробует", "оцените подходит",
+                    "first class", "free trial", "no obligation",
+                    "try it", "see if it fits", "check us out"
                 ]
                 if any(phrase in msg_content.lower() for phrase in anxiety_cta_phrases):
                     print("🔄 Rate limiting: CTA для anxiety был недавно, пропускаем")
@@ -985,14 +998,16 @@ class ResponseGenerator:
         # Для ready_to_buy - rate limiting и контекстная проверка
         if user_signal == "ready_to_buy":
             # Контекстная проверка - если пользователь уже говорит о записи
-            recording_phrases = ["записалась", "записался", "отправил", "заполнил", "зарегистрировал"]
+            recording_phrases = ["записалась", "записался", "отправил", "заполнил", "зарегистрировал",
+                                 "signed up", "already registered", "filled the form", "already paid"]
             if any(phrase in last_user_msg for phrase in recording_phrases):
                 print("🔄 Контекст: Пользователь уже записался, пропускаем CTA")
                 return False
             
             # Rate limiting - не чаще чем каждое второе сообщение
             recent_count = 0
-            ready_cta_phrases = ["записаться", "shao3d.github.io", "консультация", "менеджер свяжется"]
+            ready_cta_phrases = ["записаться", "shao3d.github.io", "консультация", "менеджер свяжется",
+                                 "sign up", "shao3d.github.io", "consultation", "we'll contact", "we will contact"]
             
             for msg in history[-4:]:  # Последние 2 пары сообщений
                 if msg.get("role") == "assistant":

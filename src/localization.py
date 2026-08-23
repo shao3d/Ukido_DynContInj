@@ -256,6 +256,31 @@ THANKS_MARKERS = {
 }
 
 
+# Сообщения эндпоинта /trial-signup (форма шлёт поле language)
+TRIAL_SIGNUP_MESSAGES = {
+    "ru": {
+        "not_configured": "Сервис временно недоступен. Пожалуйста, попробуйте позже.",
+        "success": "Спасибо за заявку! Мы свяжемся с вами в ближайшее время.",
+        "failure": "Произошла ошибка при обработке заявки. Пожалуйста, попробуйте еще раз.",
+        "critical": "Временная техническая проблема. Мы уже работаем над её решением.",
+    },
+    "en": {
+        "not_configured": "The service is temporarily unavailable. Please try again later.",
+        "success": "Thank you for signing up! We'll be in touch shortly.",
+        "failure": "Something went wrong while processing your request. Please try again.",
+        "critical": "A temporary technical issue on our side. We're already on it.",
+    },
+}
+
+
+def get_trial_signup_message(key: str, lang: str = DEFAULT_LANGUAGE) -> str:
+    lang = normalize_language(lang)
+    if lang not in TRIAL_SIGNUP_MESSAGES:
+        lang = "ru"
+    messages = TRIAL_SIGNUP_MESSAGES[lang]
+    return messages.get(key, messages["critical"])
+
+
 def _pick(variant: Dict[str, List[str]] or Dict[str, str], lang: str, key: str = None):
     """Выбирает фразу по языку с fallback на русский."""
     lang = normalize_language(lang)
