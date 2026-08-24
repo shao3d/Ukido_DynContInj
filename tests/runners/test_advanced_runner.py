@@ -36,7 +36,7 @@ async def process_message(message: str, history: List[Dict], user_id: str):
     # Вызываем Router
     router_result = await router.route(message, history, user_id)
     
-    # Генерируем ответ через Claude если нужно
+    # Генерируем ответ через настроенную модель, если нужно
     if router_result.status == "success":
         response = await response_generator.generate(
             questions=router_result.decomposed_questions,

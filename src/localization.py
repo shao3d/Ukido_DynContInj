@@ -17,6 +17,7 @@ DEFAULT_LANGUAGE = "ru"
 # поэтому шлюз перевода для uk не полагается на эту проверку)
 _CYRILLIC_RE = re.compile(r"[а-яА-ЯёЁіІїЇєЄґҐ]")
 _LATIN_RE = re.compile(r"[a-zA-Z]")
+_SHORT_ENGLISH_GREETINGS = {"hi", "hey"}
 
 
 def has_cyrillic(text: str) -> bool:
@@ -56,6 +57,12 @@ def resolve_language(raw: str, message: str, session_lang: str = None) -> str:
     if raw == "ru" and not msg_has_cyrillic:
         if session in ("en", "uk"):
             return session
+        # A fresh English user may start with a two- or three-letter greeting.
+        # Keep ambiguous replies such as "ok" Russian by default, but do not
+        # let a router failure turn an explicit greeting into a Russian reply.
+        short_latin_token = re.sub(r"[^a-z]", "", message.strip().lower())
+        if session is None and short_latin_token in _SHORT_ENGLISH_GREETINGS:
+            return "en"
         # Явно латинское сообщение без кириллицы: роутер ошибся или упал
         if latin_letter_count(message) >= 5:
             return "en"

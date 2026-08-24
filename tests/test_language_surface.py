@@ -122,6 +122,10 @@ class TestResolveLanguage:
         # Новому пользователю с неустановленной сессией верим роутеру
         assert resolve_language("en", "ok", None) == "en"
 
+    @pytest.mark.parametrize("greeting", ["Hi", "hi!", "Hey"])
+    def test_short_english_greeting_survives_router_failure(self, greeting):
+        assert resolve_language("ru", greeting, None) == "en"
+
     def test_emoji_from_fresh_user_defaults_to_ru(self):
         assert resolve_language("ru", "👍", None) == "ru"
 
@@ -454,6 +458,19 @@ def test_translator_en_prompt_forbids_cyrillic_hrn():
     prompt = translator._build_translation_prompt("en", {"en": "English"}, "Ukido, soft skills")
     assert '"UAH"' in prompt
     assert "NEVER the Cyrillic" in prompt  # прямой запрет кириллического 'грн'
+    assert "natural American English" in prompt
+    assert "Preserve all formatting" in prompt
+
+
+def test_router_requires_decomposition_in_user_language():
+    from router import Router
+
+    role = Router._get_role_section(None)
+    response_format = Router._get_response_format_section(None)
+
+    assert "НА ЯЗЫКЕ ПОЛЬЗОВАТЕЛЯ" in role
+    assert "decomposed_questions пиши на detected_language" in role
+    assert "How much does the course cost?" in response_format
 
 
 def test_uk_offtopic_phrase_goes_through_translator(client, monkeypatch):
@@ -564,6 +581,24 @@ def test_failed_translation_yields_english_apology_not_russian(client, monkeypat
     body = post_chat(client, "lang_en_translate_fail", "What courses do you have?")
     assert_no_cyrillic(body["response"], "сбой перевода")
     assert "rephrase" in body["response"].lower() or "wrong" in body["response"].lower()
+
+
+def test_en_api_metadata_drops_russian_decomposed_questions(client, monkeypatch):
+    main = sys.modules["main"]
+    install_mocks(
+        monkeypatch,
+        main,
+        route_result=make_route(
+            status="success",
+            lang="en",
+            questions=["What does it cost?", "Сколько длится занятие?"],
+        ),
+    )
+
+    body = post_chat(client, "lang_en_metadata", "What does it cost and how long is class?")
+
+    assert body["decomposed_questions"] == ["What does it cost?"]
+    assert_no_cyrillic(" ".join(body["decomposed_questions"]), "EN metadata")
 
 
 def test_no_signup_contacts_for_user_who_just_signed_up():

@@ -75,7 +75,7 @@ async def run_dialogue():
             source = "router_simplification"
         
         elif status == "success":
-            # Генерация через Claude
+            # Генерация через настроенную модель
             try:
                 response_text = await response_generator.generate(
                     router_result=route_result,

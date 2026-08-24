@@ -1,6 +1,6 @@
 """
 Модуль генерации юмора в стиле Михаила Жванецкого для offtopic запросов.
-Использует Claude Haiku для генерации с учётом контекста и золотого запаса примеров.
+Использует настроенную OpenRouter-модель с учётом контекста и золотого запаса примеров.
 """
 
 import asyncio
@@ -98,7 +98,7 @@ class ZhvanetskyGenerator:
         Инициализация генератора.
         
         Args:
-            client: Клиент для Claude Haiku
+            client: Клиент OpenRouter для настроенной модели юмора
             config: Конфигурация
         """
         self.client = client
@@ -359,10 +359,10 @@ class ZhvanetskyGenerator:
                 examples=formatted_examples
             )
             
-            # Генерируем через Claude Haiku
+            # Генерируем через настроенную OpenRouter-модель
             if self.client:
                 response = await asyncio.wait_for(
-                    self._call_claude_haiku(prompt),
+                    self._call_humor_model(prompt),
                     timeout=timeout
                 )
             else:
@@ -371,7 +371,7 @@ class ZhvanetskyGenerator:
             
             # Валидируем ответ
             if response:
-                # КРИТИЧЕСКИЙ ПАРСИНГ: убираем метаданные если Claude их добавил
+                # КРИТИЧЕСКИЙ ПАРСИНГ: убираем метаданные, если модель их добавила
                 # Убираем всё после "Этот ответ:" или галочек
                 if "Этот ответ:" in response:
                     response = response.split("Этот ответ:")[0].strip()
@@ -434,9 +434,9 @@ class ZhvanetskyGenerator:
         
         return None
     
-    async def _call_claude_haiku(self, prompt: str) -> Optional[str]:
+    async def _call_humor_model(self, prompt: str) -> Optional[str]:
         """
-        Вызывает Claude Haiku для генерации.
+        Вызывает настроенную OpenRouter-модель для генерации.
         
         Args:
             prompt: Промпт для генерации
@@ -471,7 +471,7 @@ class ZhvanetskyGenerator:
             
             return None
         except Exception as e:
-            logger.error(f"Claude Haiku call failed: {e}")
+            logger.error(f"Humor model call failed: {e}")
             return None
     
     def _get_mock_response(self, topic_category: str) -> str:

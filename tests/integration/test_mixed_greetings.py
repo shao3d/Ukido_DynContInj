@@ -80,7 +80,7 @@ async def test_mixed_greetings():
             
             # Проверяем упоминание повторного приветствия
             if "уже поздоровались" in result.response.lower() or "еще раз" in result.response.lower():
-                print(f"  {Colors.GREEN}✓ Claude отметил повторное приветствие{Colors.ENDC}")
+                print(f"  {Colors.GREEN}✓ Модель отметила повторное приветствие{Colors.ENDC}")
         
         print()
     
@@ -89,7 +89,7 @@ async def test_mixed_greetings():
     print(f"\n{Colors.CYAN}Ключевые выводы:{Colors.ENDC}")
     print("• Чистые приветствия обрабатываются Router (0.00s)")
     print("• Mixed запросы с повторными приветствиями теперь помечаются как 'repeated_greeting'")
-    print("• Claude корректно обрабатывает повторные приветствия")
+    print("• Модель корректно обрабатывает повторные приветствия")
 
 if __name__ == "__main__":
     asyncio.run(test_mixed_greetings())

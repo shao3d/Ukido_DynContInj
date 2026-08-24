@@ -59,7 +59,7 @@ class Config:
     HUMOR_MODEL = ZHVANETSKY_MODEL  # Backward-compatible alias
     ZHVANETSKY_PROBABILITY = 0.60  # Базовая вероятность использования юмора (60% от offtopic) - оптимум для демо
     ZHVANETSKY_TIMEOUT = 10.0  # Таймаут генерации юмора в секундах
-    ZHVANETSKY_TEMPERATURE = 1.0  # Температура для Claude Haiku (максимальная для креативности)
+    ZHVANETSKY_TEMPERATURE = 1.0  # Высокая температура для креативной генерации
     ZHVANETSKY_MAX_PER_HOUR = 5  # Максимум шуток на пользователя в час (увеличено для демо)
     
     # Настройки обработчика завершённых действий

@@ -1,6 +1,6 @@
 """
 main.py - FastAPI сервер чатбота для школы Ukido
-Минималистичная версия: Router (Gemini) → Generator (Claude)
+Минималистичная версия: Router → Generator через OpenRouter
 """
 
 import os
@@ -348,7 +348,7 @@ if config.ZHVANETSKY_ENABLED:
         from zhvanetsky_safety import SafetyChecker
         from openrouter_client import OpenRouterClient
         
-        # Создаём OpenRouter client для Haiku
+        # Создаём отдельный OpenRouter client для генератора юмора
         zhvanetsky_client = OpenRouterClient(
             api_key=config.OPENROUTER_API_KEY,
             model=config.ZHVANETSKY_MODEL,
@@ -424,7 +424,7 @@ async def chat(request: ChatRequest):
     if history:
         history_messages = history.get_history(request.user_id)
     
-    # === PIPELINE: Router (Gemini) → Generator (Claude) ===
+    # === PIPELINE: Router → Response Generator ===
     
     # Всё идет в Router
     print(f"ℹ️ Routing message ({message_log_summary(request.message)})")
@@ -597,7 +597,7 @@ async def chat(request: ChatRequest):
         try:
             # Проверяем, есть ли готовый ответ для завершённого действия
             if route_result.get("completed_action_response"):
-                # Используем готовый ответ вместо генерации через Claude
+                # Используем готовый ответ вместо вызова генератора
                 response_text = route_result["completed_action_response"]
                 # Создаём metadata для pre-generated ответа
                 response_metadata = {
@@ -840,6 +840,19 @@ async def chat(request: ChatRequest):
     
     if config.LOG_LEVEL == "DEBUG":
         print(f"⏱️ Latency: {latency:.2f}s | Signal: {user_signal}")
+
+    # The public language guarantee covers metadata as well as visible text.
+    # If the router ignored the same-language decomposition instruction, omit
+    # only the offending questions instead of leaking Russian text to an
+    # English API consumer or paying for another translation call.
+    if detected_language == "en":
+        english_questions = [
+            question for question in decomposed_questions
+            if isinstance(question, str) and not has_cyrillic(question)
+        ]
+        if len(english_questions) != len(decomposed_questions):
+            print("⚠️ Removed non-English decomposed_questions from EN response")
+        decomposed_questions = english_questions
     
     # === ВОЗВРАТ РЕЗУЛЬТАТА ===
     return ChatResponse(
@@ -879,7 +892,7 @@ async def chat_stream(
 ):
     """
     SSE endpoint для стриминга ответов чата
-    КРИТИЧНО: headers для отключения буферизации на Railway!
+    Headers отключают буферизацию на reverse proxy.
     """
     try:
         validated_request = ChatRequest(user_id=user_id, message=message)
@@ -1111,7 +1124,7 @@ app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
     
-    # Получаем порт из окружения (для Railway) или используем 8000 по умолчанию
+    # Получаем порт из окружения или используем 8000 по умолчанию
     port = int(os.getenv("PORT", 8000))
     
     # Логирование конфигурации при старте

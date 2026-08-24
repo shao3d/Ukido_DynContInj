@@ -12,6 +12,5 @@ The root [README](../README.md) contains local setup and the shortest project
 overview. Product facts used by the chatbot live in `data/documents/` and
 `data/documents_compressed/`; they are runtime content, not engineering docs.
 
-Older implementation plans, research, generated diagrams and superseded
-Railway/Chainlit instructions are under `archive/old_docs/ukido-legacy/`.
-They are retained for history and must not be used as the current contract.
+Superseded plans, research and generated reports remain available in Git
+history instead of the active documentation tree.

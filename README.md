@@ -59,8 +59,8 @@ collection.
 - [HTTP and SSE API](docs/API.md)
 - [Beyond Horizon deployment](docs/deployment-beyondhorizon.md)
 
-Historical plans and generated diagrams are kept under
-`archive/old_docs/ukido-legacy/`; they do not describe the current runtime.
+Superseded plans, generated reports and diagrams remain available in Git
+history instead of the current project tree.
 
 ## Deployment
 
