@@ -32,3 +32,16 @@
 - `закоммить, но не выкатывай`: use a `work/...` branch, never `main`.
 
 The human-facing runbook is `docs/deployment-beyondhorizon.md`.
+
+## LaneHub discipline
+
+- Read the shared LaneHub feed before host-level work, but do not post normal
+  deploy start/progress/success updates; GitHub Actions is the deploy log.
+- Use the Telegram group only when administrator action is required, Ukido may
+  affect neighbouring services, or the shared host changes: DNS, vhost, port,
+  certificate, `sudo`, outage, or meaningful resource use.
+- Warn once in advance before provisioning another
+  `*.beyondhorizon.dev` certificate because the Let's Encrypt limit is shared.
+- Send at most one concise final status after relevant shared-infrastructure
+  work. A successful application-only deploy to the existing Ukido setup needs
+  no Telegram message.

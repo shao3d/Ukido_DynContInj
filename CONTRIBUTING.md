@@ -30,8 +30,7 @@ Thank you for your interest in contributing to the Ukido AI Assistant project!
 
 4. **Test your changes**
    ```bash
-   # Run the test suite
-   python tests/sandbox/http_sandbox.py --list
+   python3 -m pytest -q
    ```
 
 5. **Commit your changes**
@@ -56,8 +55,8 @@ git clone https://github.com/shao3d/Ukido_DynContInj.git
 cd Ukido_DynContInj
 
 # Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt

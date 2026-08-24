@@ -43,6 +43,24 @@ Required GitHub Actions repository secrets are `BH_DEPLOY_HOST`,
 `BH_DEPLOY_USER`, `BH_DEPLOY_KEY` and `BH_KNOWN_HOSTS`. Never print their
 values or store them in repository files.
 
+## Shared infrastructure coordination
+
+LaneHub connects the `shao3d` lane to the shared Beyond Horizon Telegram group.
+Read the current feed before host-level work, but do not use the group as a
+step-by-step deploy log.
+
+- Routine pushes, test results, candidate activation and successful deploys to
+  the existing Ukido service stay in GitHub Actions and need no chat message.
+- Write when administrator action is required, when there is an outage or risk
+  to neighbouring services, or when shared infrastructure changes: DNS, vhost,
+  port, certificate, `sudo`, or meaningful disk/CPU/RAM consumption.
+- Before provisioning another `*.beyondhorizon.dev` certificate, send one
+  advance line because the Let's Encrypt rate limit is shared across the
+  domain.
+- After relevant infrastructure work, send at most one concise final result.
+  Keep commands, detailed evidence and rollback notes in this repository or the
+  task tracker.
+
 ## Server preparation
 
 ```bash

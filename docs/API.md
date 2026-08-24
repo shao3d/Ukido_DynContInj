@@ -1,271 +1,105 @@
-# API Documentation
+# Ukido API
 
-## Base URL
+Local base URL: `http://localhost:8000`. Production base URL:
+`https://ukido.beyondhorizon.dev`.
 
-```
-http://localhost:8000
-```
+The public chat and trial endpoints do not use API authentication. `user_id`
+identifies conversation state; it is not an authentication credential.
+Administrative endpoints require `X-Admin-Token` when `ADMIN_API_TOKEN` is
+configured and return `404` when it is not configured.
 
-For production deployment, replace with your actual domain.
+Interactive OpenAPI documentation is available at `/docs`.
 
-## Authentication
+## Chat
 
-Currently, the API does not require authentication. Each request must include a `user_id` to track conversation history.
-
-## Endpoints
-
-### 1. Chat Endpoint
-
-Send a message to the AI assistant and receive a response.
-
-#### Request
-
-```http
-POST /chat
-Content-Type: application/json
-```
-
-#### Request Body
+### `POST /chat`
 
 ```json
 {
-  "user_id": "string",  // Required, unique identifier for the user
-  "message": "string"   // Required, user's message (1-1000 characters)
+  "user_id": "parent_123",
+  "message": "Какие курсы подходят ребёнку 10 лет?"
 }
 ```
 
-#### Response
+`user_id` must contain 1–50 ASCII letters, digits, `_` or `-`. `message` is
+trimmed and must contain 1–1000 characters.
+
+The response contains the final text plus routing information:
 
 ```json
 {
-  "response": "string",           // AI assistant's response
-  "intent": "string",             // Message intent: "success", "offtopic", "need_simplification"
-  "user_signal": "string",        // User's emotional state: "exploring_only", "anxiety_about_child", "price_sensitive", "ready_to_buy"
-  "relevant_documents": ["..."],  // List of documents used for response
-  "confidence": 0.95,             // Confidence score (0-1)
-  "decomposed_questions": ["..."], // Decomposed questions if complex query
-  "fuzzy_matched": false,         // Whether fuzzy matching was used
-  "social": null,                 // Social context if detected
-  "detected_language": "ru",      // Detected language: "ru", "uk", "en"
-  "metadata": {                   // Additional metadata
+  "response": "...",
+  "relevant_documents": ["courses_detailed"],
+  "intent": "success",
+  "confidence": 0.95,
+  "decomposed_questions": [],
+  "fuzzy_matched": false,
+  "social": null,
+  "user_signal": "exploring_only",
+  "metadata": {
     "cta_added": false,
-    "cta_blocked": true,
-    "block_reason": "rate_limit",
     "humor_generated": false
-  }
+  },
+  "detected_language": "ru"
 }
 ```
 
-#### Example
+Fields may vary by route; optional fields can be `null`. Supported detected
+languages are `ru`, `uk` and `en`.
 
-```bash
-curl -X POST http://localhost:8000/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "parent_123",
-    "message": "Сколько стоят ваши курсы?"
-  }'
-```
+### `GET /chat/stream`
 
-### 2. Streaming Chat Endpoint
+Query parameters are the same `user_id` and `message`. The endpoint returns
+Server-Sent Events in this order:
 
-Get real-time streaming responses using Server-Sent Events (SSE).
+```text
+event: metadata
+data: {"intent":"success","user_signal":"exploring_only","humor_generated":false,"detected_language":"ru"}
 
-#### Request
-
-```http
-GET /chat/stream?user_id={user_id}&message={message}
-```
-
-#### Query Parameters
-
-- `user_id` (required): Unique identifier for the user
-- `message` (required): User's message (URL-encoded)
-
-#### Response
-
-Server-Sent Events stream with the following event types:
-
-```
-event: start
-data: {"intent": "success", "user_signal": "exploring_only"}
-
-event: token
-data: {"token": "Наши"}
-
-event: token
-data: {"token": " курсы"}
+event: message
+data: Ответ
 
 event: done
-data: {"message": "Stream completed"}
+data: completed
 ```
 
-#### Example (JavaScript)
+There can be many `message` events. An SSE comment heartbeat is emitted every
+15 seconds by the server. Processing failures produce an `error` event.
 
-```javascript
-const eventSource = new EventSource(
-  `/chat/stream?user_id=user123&message=${encodeURIComponent("Расскажите о курсах")}`
-);
+## Trial signup
 
-eventSource.addEventListener('token', (event) => {
-  const data = JSON.parse(event.data);
-  console.log('Received token:', data.token);
-});
-
-eventSource.addEventListener('done', (event) => {
-  eventSource.close();
-});
-```
-
-### 3. Health Check
-
-Check if the server is running and healthy.
-
-#### Request
-
-```http
-GET /health
-```
-
-#### Response
+### `POST /trial-signup`
 
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2025-01-13T12:34:56.789Z"
+  "firstName": "Анна",
+  "lastName": "Иванова",
+  "email": "anna@example.com",
+  "phone": "+380 50 123 45 67",
+  "language": "uk"
 }
 ```
 
-### 4. Metrics
+`phone` is optional. `language` is optional and accepts `ru`, `uk` or `en`;
+the default is `ru`. A successful response has `success`, a localized
+`message`, and `action` equal to `created` or `updated`. HubSpot contact IDs
+are not exposed.
 
-Get system metrics and statistics.
+## System endpoints
 
-#### Request
+- `GET /health` — public liveness response with `status` and application
+  `version`.
+- `GET /api-info` — public service name and application version.
+- `GET /metrics` — runtime, signal, humour and persistence metrics;
+  administrative access only.
+- `POST /clear_history/{user_id}` — clears one user's conversation history;
+  administrative access only.
+- `GET /` — static web chat. It is mounted last so API routes take priority.
 
-```http
-GET /metrics
-```
+## Errors and limits
 
-#### Response
-
-```json
-{
-  "uptime_seconds": 3600,
-  "total_requests": 150,
-  "avg_latency": 2.3,
-  "signal_distribution": {
-    "exploring_only": 45,
-    "price_sensitive": 30,
-    "anxiety_about_child": 20,
-    "ready_to_buy": 5
-  },
-  "cache_stats": {
-    "hit_rate": 0.85,
-    "size": 234
-  }
-}
-```
-
-### 5. Web Interface
-
-Access the interactive chat interface.
-
-#### Request
-
-```http
-GET /
-```
-
-Opens the web-based chat interface with real-time streaming support.
-
-## Error Handling
-
-All endpoints return appropriate HTTP status codes:
-
-- `200 OK` - Request successful
-- `400 Bad Request` - Invalid request parameters
-- `422 Unprocessable Entity` - Validation error
-- `500 Internal Server Error` - Server error
-
-Error response format:
-
-```json
-{
-  "detail": "Error description"
-}
-```
-
-## Rate Limiting
-
-Currently, there are no hard rate limits, but the system includes:
-- Humor generation limited to 5 per hour per user
-- CTA (Call-to-action) rate limiting: 1 per 2 messages minimum
-
-## Language Support
-
-The API automatically detects the language of the input message and responds in the same language. Supported languages:
-- Russian (`ru`) - Primary language
-- Ukrainian (`uk`) - Full support with real-time translation
-- English (`en`) - Full support with real-time translation
-
-## User Context
-
-The system maintains conversation history for each `user_id`:
-- Last 10 messages are kept in memory
-- User emotional state is tracked across messages
-- Conversation context persists for up to 7 days (with persistence enabled)
-
-## WebSocket Support (Future)
-
-WebSocket support for real-time bidirectional communication is planned for future releases.
-
-## SDK Examples
-
-### Python
-
-```python
-import httpx
-
-def chat_with_ukido(user_id: str, message: str):
-    response = httpx.post(
-        "http://localhost:8000/chat",
-        json={"user_id": user_id, "message": message}
-    )
-    return response.json()
-
-# Usage
-result = chat_with_ukido("parent_456", "Какие курсы есть для детей 10 лет?")
-print(result["response"])
-```
-
-### JavaScript/Node.js
-
-```javascript
-async function chatWithUkido(userId, message) {
-  const response = await fetch('http://localhost:8000/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id: userId, message: message })
-  });
-  return await response.json();
-}
-
-// Usage
-chatWithUkido('parent_789', 'Расскажите о преподавателях')
-  .then(result => console.log(result.response));
-```
-
-## Testing
-
-Use the included sandbox tool for testing:
-
-```bash
-# Interactive mode
-python tests/sandbox/http_sandbox.py -i
-
-# Send single message
-python tests/sandbox/http_sandbox.py -m "Привет!"
-
-# Run test dialogue
-python tests/sandbox/http_sandbox.py dialog_v2_1
-```
+Validation errors return HTTP `422`; rate-limit violations return HTTP `429`;
+unexpected processing errors return HTTP `500`. The application limits each
+user to 10 requests per minute and 100 per calendar day in process memory.
+These limits reset when the process restarts and are not shared between
+multiple instances.
