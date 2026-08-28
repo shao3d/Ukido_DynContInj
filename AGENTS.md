@@ -1,47 +1,40 @@
-# Ukido Codex Notes
+# Ukido — project rules
 
-## Production
+## Start here
 
-- Canonical repository: private GitHub repository `shao3d/Ukido_DynContInj`.
-- Canonical production branch: `main`.
-- Production URL: `https://ukido.beyondhorizon.dev`.
-- Production host: Beyond Horizon VPS, user `andrey`.
-- Runtime service: user-scoped systemd unit `ukido.service` on port `8102`.
-- Production secrets live only in `/srv/bh/ukido/.env.production` on the VPS.
-- Persistent conversation state lives outside releases in
-  `/srv/bh/ukido/data/persistent_states`.
+- This directory is the Git root. Canonical repository: `shao3d/Ukido_DynContInj`, branch `main`.
+- Development happens on Andrey's Mac. The Beyond Horizon VPS is production only: do not edit code or run AI agents there.
+- At the start of a session, inspect Git status, remotes, branch and upstream yourself. Do not ask Andrey to run routine Git checks.
+- Read the relevant project files before editing. For runtime or deployment work, also read `docs/deployment-beyondhorizon.md`.
 
-## Deployment contract
+## Safety and scope
 
-- A push to `main` runs tests and, only after they pass, deploys that commit through
-  `.github/workflows/tests.yml`.
-- The deploy uploads a candidate release, activates it, restarts `ukido.service`,
-  checks the private health endpoint and then verifies the public HTTPS endpoint.
-- A failed private health check restores the previous application release.
-- Never print, request, edit or commit GitHub Actions secrets or production API keys.
-- Do not edit `/srv/bh/ukido/app` manually during normal work. It is deployment output.
-- Direct SSH deployment is emergency recovery only and requires an explicit request.
-- Keep Railway available as rollback until Andrey explicitly approves its removal.
+- Never print, copy or commit secrets, `.env` values, customer data or persistent conversation state.
+- Keep changes inside the requested scope. Do not change tests, fixtures or runtime behavior merely to make checks pass.
+- Do not edit `/srv/bh/ukido/app` manually. It is deployment output, not a development checkout.
+- Production secrets and persistent state must remain outside releases in `/srv/bh/ukido/.env.production` and `/srv/bh/ukido/data/persistent_states`.
+- Direct SSH deployment is emergency recovery only.
 
-## Collaboration phrases
+## Checks
 
-- `подготовь`, `покажи`, `проверь`: local changes and QA only, no commit or deploy.
-- `зафиксируй`: local commit only.
-- `выкатывай Ukido`, `опубликуй`, `закоммить и пушни main`: commit approved files,
-  push `main`, watch GitHub Actions and verify production.
-- `закоммить, но не выкатывай`: use a `work/...` branch, never `main`.
+- Normal offline check: `python3 -m pytest -q`.
+- Run the closest relevant tests after code changes. Live scripts that need real APIs are not routine checks and must not expose credentials.
+- Deployment gates are defined by `.github/workflows/tests.yml` and `ops/activate-release.sh`; do not weaken them.
 
-The human-facing runbook is `docs/deployment-beyondhorizon.md`.
+## Release
 
-## LaneHub discipline
+- A push to `main` deploys production. After pushing, wait for GitHub Actions and verify the private and public health endpoints.
 
-- Read the shared LaneHub feed before host-level work, but do not post normal
-  deploy start/progress/success updates; GitHub Actions is the deploy log.
-- Use the Telegram group only when administrator action is required, Ukido may
-  affect neighbouring services, or the shared host changes: DNS, vhost, port,
-  certificate, `sudo`, outage, or meaningful resource use.
-- Warn once in advance before provisioning another
-  `*.beyondhorizon.dev` certificate because the Let's Encrypt limit is shared.
-- Send at most one concise final status after relevant shared-infrastructure
-  work. A successful application-only deploy to the existing Ukido setup needs
-  no Telegram message.
+## Production map
+
+- URL: `https://ukido.beyondhorizon.dev`.
+- SSH alias: `sasha-visual`.
+- Service: user-scoped `ukido.service`.
+- Runtime: `/srv/bh/ukido/app`, listening on `127.0.0.1:8102`.
+- Deployment: push to `main` -> tests and Docker build -> candidate release -> activation and health checks.
+- A failed private health check automatically restores the previous application release.
+
+## Shared VPS coordination
+
+- Routine application releases use GitHub Actions and need no Telegram message.
+- Read the LaneHub feed before host-level work. Use the shared Telegram group only for administrator action, outage risk, or changes to shared DNS, proxy, certificate, port, `sudo` or material resource use.
