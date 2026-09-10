@@ -6,6 +6,12 @@ MVP версия: только критичный функционал без п
 from typing import Dict, Set, Optional, Tuple
 import logging
 
+from completed_actions_handler import (
+    NON_SCHOOL_EXCLUSIONS,
+    is_conditional_after,
+    is_negated_before,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,9 +41,11 @@ class SimpleCTABlocker:
         # Триггеры для детекции завершённых действий
         self.COMPLETION_TRIGGERS = {
             'paid': ['оплатил', 'заплатил', 'внёс оплату', 'перевёл деньги', 'оплачено', 'внесла оплату',
-                     'i paid', "i've paid", 'paid for the course', 'made the payment', 'payment sent'],
-            'registered': ['записался', 'записалась', 'зарегистрировал', 'записали ребенка', 'записал сына', 'записала дочь',
-                           'signed up', 'i registered', "i've registered", 'already registered', 'enrolled'],
+                      'i paid', "i've paid", 'paid for the course', 'made the payment', 'payment sent'],
+            'registered': ['записался', 'записалась', 'записались', 'зарегистрировал',
+                           'зарегистрировала', 'зарегистрировались', 'записали ребенка',
+                           'записал сына', 'записала дочь',
+                            'signed up', 'i registered', "i've registered", 'already registered', 'enrolled'],
             'trial_completed': ['были на пробном', 'прошли пробное', 'посетили пробный урок',
                                 'attended the trial', 'did the trial', 'went to the trial'],
             'form_filled': ['заполнил форму', 'заполнила анкету', 'отправил заявку',
@@ -65,19 +73,43 @@ class SimpleCTABlocker:
         """
         Проверяет, содержит ли сообщение информацию о завершённом действии.
         Возвращает тип действия или None.
+
+        BUG-02 fix: отрицания («ещё не оплатили»), условия («записались бы»)
+        и чужие контексты («записались в бассейн») действиями не считаются.
+        Нормализация ё→е — чтобы «внёс» тоже матчился.
         """
-        message_lower = message.lower()
-        
+        message_lower = message.lower().replace('ё', 'е')
+
+        # Вопрос — не утверждение («Оплатил?» ≠ «Оплатил»).
+        if '?' in message_lower:
+            return None
+
         for action_type, triggers in self.COMPLETION_TRIGGERS.items():
-            if any(trigger in message_lower for trigger in triggers):
-                # Сохраняем завершённое действие
-                if user_id not in self.completed_actions:
-                    self.completed_actions[user_id] = set()
-                
-                self.completed_actions[user_id].add(action_type)
-                logger.info(f"✅ Пользователь {user_id}: зафиксировано действие '{action_type}'")
-                return action_type
-        
+            matched = [t for t in triggers
+                       if t.replace('ё', 'е') in message_lower]
+            if not matched:
+                continue
+
+            # Чужой контекст — не наше действие (кроме явного «Ukido»)
+            if 'ukido' not in message_lower and 'укидо' not in message_lower:
+                if any(ex in message_lower for ex in NON_SCHOOL_EXCLUSIONS):
+                    continue
+
+            # Отрицание/план/условие рядом с триггером — не действие
+            alive = [t for t in matched
+                     if not is_negated_before(message_lower, t.replace('ё', 'е'))
+                     and not is_conditional_after(message_lower, t.replace('ё', 'е'))]
+            if not alive:
+                continue
+
+            # Сохраняем завершённое действие
+            if user_id not in self.completed_actions:
+                self.completed_actions[user_id] = set()
+
+            self.completed_actions[user_id].add(action_type)
+            logger.info(f"✅ Пользователь {user_id}: зафиксировано действие '{action_type}'")
+            return action_type
+
         return None
     
     def _next_seq(self, user_id: str) -> int:

@@ -5,7 +5,63 @@ MVP версия для Ukido AI Assistant.
 """
 
 import random
+import re
 from typing import Dict, List, Optional
+
+
+def _norm(s: str) -> str:
+    """Нижний регистр + ё→е (иначе «счёт» не матчит «счет»)."""
+    return s.lower().replace('ё', 'е')
+
+
+# BUG-02 fix: чужие места/темы — действия с ними никогда не наши.
+# Проверяются для ВСЕХ типов (оплата интернета, запись в бассейн,
+# форма в поликлинике, пробное в автошколе — всё мимо).
+NON_SCHOOL_EXCLUSIONS = [
+    'бассейн', 'поликлиник', 'больниц', 'стоматолог', 'кружок', 'секци',
+    'садик', 'детский сад', 'футбол', 'football', 'хоккей', 'танц', 'музык',
+    'вокал', 'художествен', 'автошкол', 'театр', 'кино',
+    'налогов', 'кредит', 'ипотек', 'аренд', 'интернет', 'жкх',
+    'свет', 'воду', 'электрич',
+    'gas', 'groceries', 'supermarket', 'restaurant', 'taxi', 'parking',
+    'rent', 'utilities',
+]
+
+# BUG-02 fix: отрицание/незавершённость НЕПОСРЕДСТВЕННО перед триггером
+# (окно ≤3 слов): «ещё не оплатили», "haven't paid for", «хотим записаться».
+_NEG_RU = (r'(?:\bне\b|\bнет\b|еще не|пока не|не успели|не смогли|'
+           r'не получилось|не вышло|собираюсь|собираемся|планирую|'
+           r'планируем|хочу|хотим|думаем|будем|буду|скоро|завтра)')
+_NEG_EN = (r"(?:\bnot\b|n[’']t\b|\bnever\b|going to|\bgonna\b|want to|"
+           r"\bwanna\b|plan to|planning to|\bwill\b|'ll\b|\bsoon\b|\btomorrow\b)")
+
+
+def is_negated_before(message_lower: str, keyword: str) -> bool:
+    """True, если перед триггером в окне ≤3 слов стоит отрицание/план."""
+    for neg in (_NEG_RU, _NEG_EN):
+        if re.search(neg + r'[\W_]+(?:\w+[\W_]+){0,3}' + re.escape(keyword),
+                      message_lower):
+            return True
+    return False
+
+
+def is_conditional_after(message_lower: str, keyword: str) -> bool:
+    """True для сослагательного: «записались бы». Намерение ≠ действие."""
+    return re.search(re.escape(keyword) + r'\s+бы\b', message_lower) is not None
+
+
+# BUG-02 fix: триггеры, самодостаточные без школьного контекста.
+# Оплата — всегда требует контекст (строго: речь о деньгах, не врём).
+# Пробное/форма/документы — все триггеры конкретные фразы, контекста не надо.
+STRONG_TYPES = {'trial', 'form', 'documents'}
+STRONG_TRIGGERS = {
+    'registration': {
+        'записали ребенка', 'записал сына', 'записала дочь',
+        'подал заявку', 'подала заявку', 'оформил запись', 'оформила запись',
+        'signed up', 'i registered', "i've registered", 'registered for',
+        'enrolled', 'already registered',
+    },
+}
 
 
 class CompletedActionsHandler:
@@ -182,6 +238,12 @@ class CompletedActionsHandler:
             "Хорошо! Какие у вас есть вопросы по нашим курсам?",
             "Отлично! Что вас интересует - расписание, программа или условия обучения?"
         ]
+        # BUG-02 fix: явное «Ukido» — школьный контекст для всех типов.
+        # Добавляем программно, чтобы не разъехалось по пяти спискам.
+        for _patterns in self.ACTION_PATTERNS.values():
+            for _marker in ('ukido', 'укидо'):
+                if _marker not in _patterns['school_context']:
+                    _patterns['school_context'].append(_marker)
     
     def detect_completed_action(self, message: str, route_result: Dict, history: List) -> Dict:
         """
@@ -199,65 +261,73 @@ class CompletedActionsHandler:
         # 1. Работаем только с offtopic
         if route_result.get('status') != 'offtopic':
             return route_result
-        
+
         # 2. Быстрые проверки для исключения
-        message_lower = message.lower()
-        
-        # Исключаем вопросы
-        question_markers = ['?', 'как', 'что', 'когда', 'где', 'почему', 'зачем', 
-                           'сколько', 'какой', 'какая', 'какие', 'куда', 'откуда']
-        if any(word in message_lower for word in question_markers):
+        message_lower = _norm(message)
+
+        # BUG-02/BUG-09 fix: вопрос — не подтверждение. Проверяем только '?',
+        # грубый список слов-маркеров («как», «что», ...) удалён: он отсекал
+        # и настоящие подтверждения («Оплатил, как договаривались»).
+        if '?' in message_lower:
             return route_result
-        
-        # Исключаем длинные сообщения (вероятно не действия)
-        if len(message.split()) > 10:
+
+        # Длинные нарративы не подтверждаем (порог поднят с 10 до 25 слов —
+        # короткие подтверждения вида «Оплатил курс вчера вечером» проходят).
+        if len(message.split()) > 25:
             return route_result
-        
+
+        # Явное «Ukido» — школа названа, чужие-контексты не проверяем
+        # («записались в школу Ukido» — наше, даже со словом «школа»).
+        explicit_school = 'ukido' in message_lower or 'укидо' in message_lower
+
         # 3. Проверяем паттерны действий
         detected_action = None
-        is_school_related = False
-        
+
         for action_type, patterns in self.ACTION_PATTERNS.items():
-            # Проверяем ключевые слова действия
-            if any(keyword in message_lower for keyword in patterns['keywords']):
-                detected_action = action_type
-                
-                # Проверяем слова-исключения (если есть)
-                if 'exclusion_words' in patterns:
-                    if any(excl in message_lower for excl in patterns['exclusion_words']):
-                        # Найдено исключающее слово - это НЕ про школу
-                        detected_action = None
+            keywords = [_norm(kw) for kw in patterns['keywords']]
+            matched = [kw for kw in keywords if kw and kw in message_lower]
+            if not matched:
+                continue
+
+            # 4. Чужие места/темы — никогда не наши действия
+            if not explicit_school:
+                exclusions = [_norm(w) for w in
+                              list(patterns.get('exclusion_words', []))
+                              + NON_SCHOOL_EXCLUSIONS]
+                if any(ex in message_lower for ex in exclusions):
+                    continue
+
+            # 5. Отрицание/план/условие рядом с триггером — не действие
+            matched = [kw for kw in matched
+                       if not is_negated_before(message_lower, kw)]
+            matched = [kw for kw in matched
+                       if not is_conditional_after(message_lower, kw)]
+            if not matched:
+                continue
+
+            # 6. Школьный контекст — в САМОМ сообщении (вне спана триггера),
+            # иначе — только в сообщениях user из истории.
+            # BUG-02 fix: ответы ассистента больше не считаются контекстом
+            # (там «Ukido» почти всегда — фильтр был вакуумным).
+            # Оплата требует контекст всегда; пробное/форма/документы и
+            # сильные триггеры записи — самодостаточны.
+            strong = (action_type in STRONG_TYPES
+                      or any(kw in STRONG_TRIGGERS.get(action_type, ())
+                             for kw in matched))
+            if not strong:
+                contexts = [_norm(c) for c in patterns['school_context']]
+                masked = message_lower
+                for kw in matched:
+                    masked = masked.replace(kw, ' ')
+                if not any(ctx in masked for ctx in contexts):
+                    if not self._check_school_context_in_history(history):
                         continue
-                
-                # Специальная проверка для слов "перевод" и "оплатил" - требуют явный контекст
-                if detected_action == 'payment':
-                    # Проверяем, есть ли в сообщении только общие слова оплаты без контекста
-                    payment_only_words = ['оплатил', 'оплатила', 'перевел', 'перевела', 'перевод',
-                                          'i paid', 'paid', 'payment sent', 'made the payment']
-                    has_only_payment = any(word in message_lower for word in payment_only_words)
-                    has_school_context = any(word in message_lower for word in
-                                             ['курс', 'занят', 'обучен', 'школ', 'ukido',
-                                              'course', 'class', 'lesson', 'school', 'ukido'])
-                    
-                    if has_only_payment and not has_school_context:
-                        # Проверяем историю на наличие контекста школы
-                        if not self._check_school_context_in_history(history):
-                            # Нет контекста школы ни в сообщении, ни в истории - пропускаем
-                            detected_action = None
-                            continue
-                
-                # Проверяем контекст школы в самом сообщении
-                if any(context in message_lower for context in patterns['school_context']):
-                    is_school_related = True
-                    break
-                
-                # Проверяем контекст в истории (последние 3 пары сообщений)
-                if self._check_school_context_in_history(history):
-                    is_school_related = True
-                    break
-        
-        # 4. Если не нашли действие или оно не про школу - оставляем offtopic
-        if not detected_action or not is_school_related:
+
+            detected_action = action_type
+            break
+
+        # 4. Если не нашли действие — оставляем offtopic
+        if not detected_action:
             return route_result
         
         # 5. Корректируем результат Router'а
@@ -292,17 +362,21 @@ class CompletedActionsHandler:
         
         # Логируем для отладки
         print(f"🔧 Completed action detected: '{detected_action}' for message: '{message[:50]}...'")
-        print(f"   School context: {is_school_related}, Documents: {corrected_result['documents']}")
+        print(f"   Documents: {corrected_result['documents']}")
         
         return corrected_result
     
     def _check_school_context_in_history(self, history: List) -> bool:
         """
         Проверяет последние 3 пары сообщений на контекст школы.
-        
+
+        BUG-02 fix: смотрятся ТОЛЬКО сообщения пользователя. Ответы
+        ассистента исключены — в них «Ukido»/«soft skills» почти всегда,
+        из-за чего фильтр пропускал всё подряд.
+
         Args:
             history: История сообщений
-            
+
         Returns:
             True если найден контекст школы
         """
@@ -320,14 +394,17 @@ class CompletedActionsHandler:
             'trial', 'soft skills'
         ]
         
-        # Проверяем последние 6 сообщений (3 пары user-assistant)
+        # Проверяем последние 6 сообщений (3 пары user-assistant),
+        # но читаем только реплики user (см. docstring выше).
         recent_messages = history[-6:] if len(history) >= 6 else history
-        
+
         for msg in recent_messages:
-            content = msg.get('content', '').lower()
+            if msg.get('role') != 'user':
+                continue
+            content = _norm(msg.get('content', ''))
             if any(keyword in content for keyword in school_keywords):
                 return True
-        
+
         return False
     
     def get_uncertain_response(self) -> str:
