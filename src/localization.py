@@ -135,6 +135,13 @@ ERROR_RESPONSES = {
         "invalid_response": "Something went wrong on my side. Could you rephrase?",
         "router_failed": "Temporary hiccup on our side. Please try again in a moment.",
     },
+    # BUG-01: uk-извинения, чтобы сбой перевода не отдавал русский текст.
+    "uk": {
+        "generation_failed": "Вибачте, не можу відповісти просто зараз. Переформулюйте запитання.",
+        "timeout": "Перевищено час очікування. Спробуйте ще раз.",
+        "invalid_response": "Щось пішло не так з мого боку. Переформулюйте запитання, будь ласка.",
+        "router_failed": "Тимчасова проблема. Спробуйте пізніше.",
+    },
 }
 
 GREETINGS = {

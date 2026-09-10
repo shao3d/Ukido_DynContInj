@@ -62,6 +62,7 @@ from typing import Dict
 from collections import defaultdict, deque
 from completed_actions_handler import CompletedActionsHandler
 from simple_cta_blocker import SimpleCTABlocker  # Новый импорт для блокировки CTA
+from translator import TranslationError  # BUG-01: явная обработка сбоев перевода
 import signal
 import atexit
 
@@ -793,29 +794,39 @@ async def chat(request: ChatRequest):
     # (pre-generated ответы завершённых действий, смешанные тексты, любые
     # пропущенные ветки) переводится здесь — пользователь не должен получать
     # ответ на чужом языке.
+    #
+    # BUG-01: сбой перевода в генераторе (metadata.translation_failed) шлюз
+    # НЕ пропускает, а повторяет. translated_to ставится только при успехе.
     try:
         already_translated = response_metadata.get("translated_to") == detected_language
+        translation_failed = response_metadata.get("translation_failed", False)
         needs_final_translation = (
             detected_language != "ru"
-            and not already_translated
+            and (not already_translated or translation_failed)
             and (detected_language == "uk" or has_cyrillic(response_text))
         )
         if needs_final_translation:
-            response_text = await response_generator.translator.translate(
-                text=response_text,
-                target_language=detected_language,
-                user_context=request.message,
-            )
-            response_metadata["translated_to"] = detected_language
-            response_metadata["detected_language"] = detected_language
-            print(f"🌐 Финальный языковой шлюз: ответ переведён на {detected_language}")
+            try:
+                response_text = await response_generator.translator.translate(
+                    text=response_text,
+                    target_language=detected_language,
+                    user_context=request.message,
+                )
+            except TranslationError as exc:
+                print(f"⚠️ BUG-01: финальный перевод на {detected_language} не удался: {exc}")
+            else:
+                response_metadata["translated_to"] = detected_language
+                response_metadata["detected_language"] = detected_language
+                response_metadata.pop("translation_failed", None)
+                print(f"🌐 Финальный языковой шлюз: ответ переведён на {detected_language}")
 
             # Страховка: если перевод не удался и в тексте осталась кириллица,
-            # англоязычный пользователь получает вежливое извинение вместо
-            # внезапного русского ответа
-            if detected_language == "en" and has_cyrillic(response_text):
-                print("⚠️ Перевод не удался (осталась кириллица) — отдаём EN-извинение")
-                response_text = get_error_response("invalid_response", "en")
+            # пользователь получает вежливое извинение НА СВОЁМ языке вместо
+            # внезапного русского ответа (раньше работало только для en).
+            if detected_language in ("en", "uk") and has_cyrillic(response_text):
+                print(f"⚠️ Перевод не удался (осталась кириллица) — отдаём извинение на {detected_language}")
+                response_text = get_error_response("invalid_response", detected_language)
+                response_metadata.pop("translated_to", None)
     except Exception as e:
         print(f"⚠️ Ошибка финального перевода: {e}")
 

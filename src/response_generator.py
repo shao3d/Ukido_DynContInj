@@ -4,7 +4,7 @@ from config import Config
 from openrouter_client import OpenRouterClient
 from standard_responses import DEFAULT_FALLBACK
 from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
-from translator import SmartTranslator
+from translator import SmartTranslator, TranslationError
 import html
 import json
 import re
@@ -270,16 +270,23 @@ class ResponseGenerator:
             detected_language = router_result.get("detected_language", "ru")
 
             if detected_language != "ru":
-                # Переводим финальный текст
-                final_text = await self.translator.translate(
-                    text=final_text,
-                    target_language=detected_language,
-                    user_context=current_message
-                )
-
-                # Добавляем информацию о переводе в metadata
-                metadata["translated_to"] = detected_language
-                metadata["detected_language"] = detected_language
+                # BUG-01: translated_to ставится ТОЛЬКО при реальном успехе.
+                # Сбой помечается translation_failed — финальный шлюз в main.py
+                # повторит попытку, а не пропустит русский текст как «готовый».
+                try:
+                    final_text = await self.translator.translate(
+                        text=final_text,
+                        target_language=detected_language,
+                        user_context=current_message
+                    )
+                except TranslationError as exc:
+                    print(f"⚠️ BUG-01: перевод на {detected_language} не удался: {exc}")
+                    metadata["translation_failed"] = True
+                    metadata["detected_language"] = detected_language
+                else:
+                    # Добавляем информацию о переводе в metadata
+                    metadata["translated_to"] = detected_language
+                    metadata["detected_language"] = detected_language
 
             # НОВОЕ: Преобразуем URL в кликабельные HTML-ссылки
             self._debug(f"🔗 DEBUG: До преобразования URL: {final_text[:100]}...")

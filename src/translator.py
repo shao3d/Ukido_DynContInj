@@ -10,6 +10,15 @@ import re
 logger = logging.getLogger(__name__)
 
 
+class TranslationError(Exception):
+    """BUG-01: сбой перевода. Вызывающий обязан обработать явно
+    (повторная попытка / извинение на языке диалога).
+
+    Переводчик больше НЕ возвращает исходный русский текст молча —
+    молчаливый fallback превращал сбой в «успех» с русской выдачей.
+    """
+
+
 class SmartTranslator:
     """Умный переводчик с защитой терминов"""
 
@@ -48,9 +57,13 @@ class SmartTranslator:
             user_context: Контекст пользователя для лучшего перевода
             
         Returns:
-            Переведённый текст или оригинал при ошибке
+            Переведённый текст.
+
+        Raises:
+            TranslationError: сбой LLM или пустой ответ API. Исходный текст
+                НЕ возвращается — иначе вызывающий примет сбой за успех.
         """
-        
+
         # Если язык тот же - не переводим
         if target_language == source_language or target_language == 'ru':
             return text
@@ -95,17 +108,23 @@ class SmartTranslator:
             
             logger.debug(f"Получен ответ от API: {response[:100]}...")
 
+            # BUG-01: пустой ответ API (openrouter_client возвращает ""
+            # при не-200) — это сбой, а не перевод.
+            if not response or not response.strip():
+                raise TranslationError("empty translation response")
+
             # Сохраняем форматирование абзацев
             translated = response
 
             logger.info(f"✅ Успешный перевод на {target_language}")
             logger.debug(f"Переведённый текст (первые 100 символов): {translated[:100]}...")
             return translated
-            
+
+        except TranslationError:
+            raise
         except Exception as e:
             logger.error(f"❌ Ошибка перевода: {e}")
-            # Fallback - возвращаем оригинал
-            return text
+            raise TranslationError(f"translation call failed: {e}") from e
     
     def _build_translation_prompt(self, target_language: str, lang_map: dict, protected_terms_list: str) -> str:
         """
@@ -285,6 +304,10 @@ Just output the final {target_lang_name} text, nothing else."""
             
         Yields:
             Части переведённого текста
+
+        Raises:
+            TranslationError: сбой стриминга. Оригинал НЕ отдаём молча
+                (тот же контракт BUG-01, что и у translate).
         """
         # Если русский язык - возвращаем как есть
         if target_language == 'ru':
@@ -335,5 +358,4 @@ Just output the final {target_lang_name} text, nothing else."""
 
         except Exception as e:
             logger.error(f"❌ Ошибка стриминга перевода: {e}")
-            # Fallback - возвращаем оригинал
-            yield text
+            raise TranslationError(f"translation stream failed: {e}") from e
