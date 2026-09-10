@@ -287,6 +287,14 @@ class Router:
                         if isinstance(d, str) and d not in seen:
                             seen.add(d)
                             docs_dedup.append(d)
+                    # 🔴 SEC-01: имена документов приходят от LLM — режем всё,
+                    # чего нет в ключах summaries.json, до чтения с диска.
+                    # Пустой остаток ниже уронит статус в offtopic штатным путём.
+                    if self.summaries:
+                        dropped = [d for d in docs_dedup if d not in self.summaries]
+                        if dropped:
+                            print(f"⛔ SEC-01: отброшены неизвестные документы от LLM: {', '.join(dropped)}")
+                        docs_dedup = [d for d in docs_dedup if d in self.summaries]
                     if len(docs_dedup) > 4:
                         print(f"ℹ️ Обрезаем список документов до 4 (было {len(docs_dedup)})")
                         docs_dedup = docs_dedup[:4]

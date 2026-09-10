@@ -243,11 +243,13 @@ class TrialSignupRequest(BaseModel):
     @field_validator('firstName', 'lastName')
     @classmethod
     def validate_names(cls, v):
-        # Убираем лишние пробелы и проверяем, что это только буквы
+        # SEC-09 fix: убираем только крайние пробелы, регистр не трогаем
+        # (.title() коверкал McDonald → Mcdonald). Апостроф и точка
+        # легитимны (O'Brien, St. John) — отказ стоил нам заявок.
         v = v.strip()
-        if not v.replace(' ', '').replace('-', '').isalpha():
+        if not v.replace(' ', '').replace('-', '').replace("'", '').replace('.', '').isalpha():
             raise ValueError('Name must contain only letters')
-        return v.title()  # Приводим к красивому виду: "иван" → "Иван"
+        return v  # Без .title(): сохраняем регистр как ввёл пользователь
 
     @field_validator('phone')
     @classmethod

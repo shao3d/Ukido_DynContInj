@@ -44,8 +44,10 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 EXPOSE 8000
 
 # Healthcheck для Railway (используем httpx вместо requests)
+# OPS-01 fix: raise_for_status() обязателен — без него 5xx считался здоровым
+# контейнером и битый релиз не перезапускался / не откатывался.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; import os; port=os.getenv('PORT', '8000'); httpx.get(f'http://localhost:{port}/health')" || exit 1
+    CMD python -c "import httpx, os; r=httpx.get('http://localhost:'+os.getenv('PORT','8000')+'/health', timeout=5); r.raise_for_status()" || exit 1
 
 # Запускаем приложение
 # Используем sh -c чтобы переменная окружения PORT правильно раскрылась

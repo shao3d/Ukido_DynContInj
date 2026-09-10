@@ -54,7 +54,9 @@ class Config:
     LOG_LEVEL = "INFO"  # INFO для основных событий, DEBUG для детальной отладки
     
     # Настройки юмора Жванецкого
-    ZHVANETSKY_ENABLED = True  # Включить/выключить функцию юмора
+    # ВЫКЛЮЧЕН по умолчанию (решение 2026-09-11): RU-only юмор с рискованными
+    # примерами для детской школы. Код и примеры сохранены, переработка — отдельно.
+    ZHVANETSKY_ENABLED = False  # Включить/выключить функцию юмора
     ZHVANETSKY_MODEL = os.getenv("ZHVANETSKY_MODEL", os.getenv("HUMOR_MODEL", DEFAULT_GEMINI_MODEL))
     HUMOR_MODEL = ZHVANETSKY_MODEL  # Backward-compatible alias
     ZHVANETSKY_PROBABILITY = 0.60  # Базовая вероятность использования юмора (60% от offtopic) - оптимум для демо

@@ -1,11 +1,18 @@
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set
 from config import Config
 from openrouter_client import OpenRouterClient
 from standard_responses import DEFAULT_FALLBACK
 from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
 from translator import SmartTranslator
+import html
+import json
 import re
+from urllib.parse import urlparse
+
+# SEC-03: пунктуация, которую отрезаем с конца URL (конец предложения,
+# закрывающая скобка) — в ссылку она не входит.
+_TRAILING_PUNCT = frozenset(['.', ',', ';', ':', '!', '?', ')', ']', '}'])
 
 class ResponseGenerator:
     """
@@ -29,6 +36,9 @@ class ResponseGenerator:
         self.docs_dir = docs_dir or (Path(__file__).parent.parent / "data" / "documents_compressed")
         self.history_limit = self.cfg.HISTORY_LIMIT  # Используем настройку из конфига
         self.translator = SmartTranslator(self.client, model=self.cfg.TRANSLATION_MODEL)  # Инициализируем переводчик
+        # SEC-01: allowlist имён документов (ленивый кэш, см. _load_summaries_keys).
+        # Тесты могут подменить напрямую.
+        self._allowed_docs: Optional[Set[str]] = None
 
     def _debug(self, message: str) -> None:
         if self.cfg.LOG_LEVEL == "DEBUG":
@@ -288,14 +298,59 @@ class ResponseGenerator:
                 "humor_generated": False
             }
 
+    def _load_summaries_keys(self) -> Set[str]:
+        """Allowlist имён документов по ключам summaries.json (защита SEC-01).
+
+        Канонический список документов. Если summaries.json недоступен —
+        fallback на *.md-файлы, реально лежащие в docs_dir (злоумышленник
+        всё равно не может подсунуть туда файлы через чат).
+        """
+        if self._allowed_docs is not None:
+            return self._allowed_docs
+        try:
+            path = Path(__file__).parent.parent / "data" / "summaries.json"
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self._allowed_docs = {k for k in data.keys() if isinstance(k, str)}
+        except Exception as e:
+            print(f"⚠️ SEC-01: allowlist из summaries.json недоступен ({e}), fallback на файлы docs_dir")
+            self._allowed_docs = {p.name for p in self.docs_dir.glob("*.md")}
+        return self._allowed_docs
+
+    def _is_allowed_doc(self, doc_name: str) -> bool:
+        """SEC-01: строгая проверка имени документа ДО чтения с диска.
+
+        Имена документов приходят от LLM (см. router.py), поэтому каждое имя
+        обязано: быть плоским именем .md-файла, входить в allowlist и после
+        resolve() оставаться внутри docs_dir (защита от ../ и симлинков).
+        """
+        if not isinstance(doc_name, str) or not doc_name:
+            return False
+        if not doc_name.endswith(".md"):
+            return False
+        if "/" in doc_name or "\\" in doc_name or "\x00" in doc_name:
+            return False
+        if doc_name not in self._load_summaries_keys():
+            return False
+        try:
+            resolved = (self.docs_dir / doc_name).resolve()
+            if not resolved.is_relative_to(self.docs_dir.resolve()):
+                return False
+        except Exception:
+            return False
+        return True
+
     def _load_doc(self, doc_name: str) -> str:
         """Синхронная загрузка документа - ОТКАТ асинхронности"""
+        if not self._is_allowed_doc(doc_name):
+            print(f"⛔ SEC-01: отклонено имя документа: {doc_name!r}")
+            return ""
         try:
             path = self.docs_dir / doc_name
             if not path.exists():
                 print(f"⚠️ Документ не найден: {doc_name}")
                 return ""
-            
+
             with open(path, 'r', encoding='utf-8') as f:
                 return f.read()
         except Exception as e:
@@ -1223,29 +1278,59 @@ class ResponseGenerator:
     def _make_urls_clickable(self, text: str) -> str:
         """Преобразует URL в тексте в HTML-ссылки
 
+        SEC-03 fix:
+        - URL матчится целиком (со всеми `/` пути), висячая пунктуация
+          в ссылку не входит;
+        - href и текст экранируются через html.escape;
+        - кликабельными становятся только хосты из allowlist, чужое
+          остаётся plain text (URL формирует LLM — доверять ему домен нельзя).
+
         Args:
             text: Текст для обработки
 
         Returns:
             Текст с кликабельными ссылками
         """
-        # Паттерны для поиска URL (включая наш новый домен)
-        url_patterns = [
-            r'https?://[^\s/$]+',  # https://domain.tld/...
-            r'shao3d\.github\.io/[^\s/]+',  # shao3d.github.io/...
-            r'ukido\.com\.ua/[^\s/]+',  # ukido.com.ua/...
-            r'(?:[^/]+\.)\.(?:com|ua|io|site|online|app|dev|stage|prod)[^\s/]+',  # domain.extension/
-        ]
+        url_pattern = re.compile(
+            r'https?://[^\s<>"\']+'
+            r'|(?<![\w@/\-.])'
+            r'(?:ukido\.com\.ua|shao3d\.github\.io|[A-Za-z0-9-]+\.beyondhorizon\.dev)'
+            r'(?:/[^\s<>"\']*)?'
+        )
+        return url_pattern.sub(self._linkify_match, text)
 
-        def replace_url(match):
-            url = match.group(0)
-            # Добавляем https:// если нет протокола
-            if not url.startswith(('http://', 'https://')):
-                url = 'https://' + url
-            return f'<a href="{url}" target="_blank">{url}</a>'
+    def _is_allowed_url_host(self, host: str) -> bool:
+        """SEC-03: host-allowlist для кликабельных ссылок."""
+        host = (host or "").lower().rstrip(".")
+        if host in ("ukido.com.ua", "shao3d.github.io"):
+            return True
+        if host == "beyondhorizon.dev" or host.endswith(".beyondhorizon.dev"):
+            return True
+        # Поддомены своего домена тоже свои (www.ukido.com.ua и т.п.)
+        if host.endswith(".ukido.com.ua"):
+            return True
+        return False
 
-        # Применяем ко всем найденным URL
-        return re.sub('|'.join(url_patterns), replace_url, text)
+    def _linkify_match(self, match) -> str:
+        """SEC-03: один URL → безопасный <a> либо экранированный plain text."""
+        raw = match.group(0)
+        url = raw if raw.startswith(("http://", "https://")) else "https://" + raw
+        # Отрезаем висячую пунктуацию конца предложения
+        trail = ""
+        while url and url[-1] in _TRAILING_PUNCT:
+            trail = url[-1] + trail
+            url = url[:-1]
+        try:
+            host = urlparse(url).hostname or ""
+        except Exception:
+            return html.escape(raw)
+        if not self._is_allowed_url_host(host):
+            return html.escape(raw)
+        safe = html.escape(url, quote=True)
+        return (
+            f'<a href="{safe}" target="_blank" rel="noopener">{safe}</a>'
+            + html.escape(trail)
+        )
 
     def _get_cta_marker(self, user_signal: str) -> str:
         """Возвращает невидимый маркер для отслеживания CTA

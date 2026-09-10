@@ -14,11 +14,23 @@ class SimpleCTABlocker:
     Минималистичный блокировщик CTA для MVP.
     Отслеживает завершённые действия и отказы в памяти (без персистентности).
     """
-    
+
+    # BUG-03 fix: длительности блока и окно восстановления — в СОБСТВЕННЫХ
+    # сообщениях пользователя, а не в длине истории (она обрезается лимитом).
+    HARD_BLOCK_MESSAGES = 7
+    SOFT_BLOCK_MESSAGES = 3
+    # После стольких сообщений без отказов частота CTA полностью
+    # восстанавливается (decay модификатора).
+    RECOVERY_MESSAGES = 10
+
     def __init__(self):
         # Хранение только в памяти на время сессии
         self.completed_actions: Dict[str, Set[str]] = {}  # user_id -> set(['paid', 'registered', etc])
-        self.refusals: Dict[str, Dict] = {}  # user_id -> {'count': 0, 'block_until_message': 0}
+        self.refusals: Dict[str, Dict] = {}  # user_id -> {'count': 0, 'block_until_seq': 0, ...}
+        # BUG-03 fix: монотонный счётчик сообщений на пользователя.
+        # В отличие от len(history) он не упирается в HISTORY_LIMIT,
+        # поэтому порог block_until_seq всегда достижим.
+        self._message_seq: Dict[str, int] = {}  # user_id -> seq
         
         # Триггеры для детекции завершённых действий
         self.COMPLETION_TRIGGERS = {
@@ -68,41 +80,61 @@ class SimpleCTABlocker:
         
         return None
     
-    def check_refusal(self, user_id: str, message: str, current_message_count: int) -> Optional[str]:
+    def _next_seq(self, user_id: str) -> int:
+        """Следующий номер сообщения пользователя (монотонный, без потолка)."""
+        self._message_seq[user_id] = self._message_seq.get(user_id, 0) + 1
+        return self._message_seq[user_id]
+
+    def _current_seq(self, user_id: str) -> int:
+        """Текущий номер сообщения пользователя (без инкремента)."""
+        return self._message_seq.get(user_id, 0)
+
+    def check_refusal(self, user_id: str, message: str, current_message_count: int = 0) -> Optional[str]:
         """
         Проверяет, содержит ли сообщение отказ от предложений.
         Возвращает тип отказа ('hard' или 'soft') или None.
+
+        BUG-03 fix: каждое обработанное сообщение двигает внутренний счётчик;
+        срок блока отсчитывается от него, а не от длины истории.
+        Параметр current_message_count оставлен для совместимости и в
+        вычислении срока больше не участвует.
         """
+        seq = self._next_seq(user_id)
         message_lower = message.lower()
-        
+
         # Проверяем жёсткие отказы
         if any(refusal in message_lower for refusal in self.HARD_REFUSALS):
-            # Блокируем на 7 сообщений
+            # Блокируем на HARD_BLOCK_MESSAGES собственных сообщений
             self.refusals[user_id] = {
                 'count': self.refusals.get(user_id, {}).get('count', 0) + 1,
-                'block_until_message': current_message_count + 7,
+                'block_until_seq': seq + self.HARD_BLOCK_MESSAGES,
+                'last_refusal_seq': seq,
                 'type': 'hard'
             }
-            logger.info(f"🚫 Пользователь {user_id}: жёсткий отказ, CTA заблокированы до сообщения {current_message_count + 7}")
+            logger.info(f"🚫 Пользователь {user_id}: жёсткий отказ, CTA заблокированы на {self.HARD_BLOCK_MESSAGES} сообщений")
             return 'hard'
-        
+
         # Проверяем мягкие отказы
         if any(refusal in message_lower for refusal in self.SOFT_REFUSALS):
-            # Блокируем на 3 сообщения
+            # Блокируем на SOFT_BLOCK_MESSAGES собственных сообщений
             self.refusals[user_id] = {
                 'count': self.refusals.get(user_id, {}).get('count', 0) + 1,
-                'block_until_message': current_message_count + 3,
+                'block_until_seq': seq + self.SOFT_BLOCK_MESSAGES,
+                'last_refusal_seq': seq,
                 'type': 'soft'
             }
-            logger.info(f"🟡 Пользователь {user_id}: мягкий отказ, CTA заблокированы до сообщения {current_message_count + 3}")
+            logger.info(f"🟡 Пользователь {user_id}: мягкий отказ, CTA заблокированы на {self.SOFT_BLOCK_MESSAGES} сообщения")
             return 'soft'
-        
+
         return None
     
-    def should_block_cta(self, user_id: str, current_message_count: int, user_signal: str = None) -> Tuple[bool, str]:
+    def should_block_cta(self, user_id: str, current_message_count: int = 0, user_signal: str = None) -> Tuple[bool, str]:
         """
         Определяет, нужно ли блокировать CTA для пользователя.
         Возвращает (should_block, reason).
+
+        BUG-03 fix: сверяется с внутренним счётчиком (см. check_refusal),
+        current_message_count оставлен для совместимости и игнорируется.
         """
         
         # Проверяем завершённые действия
@@ -127,30 +159,41 @@ class SimpleCTABlocker:
         # Проверяем отказы
         if user_id in self.refusals:
             refusal_data = self.refusals[user_id]
-            if current_message_count < refusal_data['block_until_message']:
-                remaining = refusal_data['block_until_message'] - current_message_count
+            block_until = refusal_data.get('block_until_seq', 0)
+            seq = self._current_seq(user_id)
+            if seq < block_until:
+                remaining = block_until - seq
                 logger.info(f"🔒 Блокировка CTA для {user_id}: отказ, осталось {remaining} сообщений")
                 return True, f"user_refused_{refusal_data['type']}"
-        
+
         return False, ""
     
     def get_cta_frequency_modifier(self, user_id: str) -> float:
         """
         Возвращает модификатор частоты CTA на основе истории отказов.
         1.0 = нормальная частота, 0.5 = в два раза реже, и т.д.
+
+        BUG-03 fix: штраф за отказы затухает — после RECOVERY_MESSAGES
+        сообщений без отказов частота полностью восстанавливается (1.0).
+        Раньше 0.2 оставалось навсегда.
         """
         if user_id not in self.refusals:
             return 1.0
-        
-        refusal_count = self.refusals[user_id].get('count', 0)
-        
+
+        refusal_data = self.refusals[user_id]
+        since_last = self._current_seq(user_id) - refusal_data.get('last_refusal_seq', 0)
+        if since_last >= self.RECOVERY_MESSAGES:
+            return 1.0
+
+        refusal_count = refusal_data.get('count', 0)
+
         if refusal_count >= 3:
             return 0.2  # Очень редко (20% от нормы)
         elif refusal_count >= 2:
             return 0.4  # Реже (40% от нормы)
         elif refusal_count >= 1:
             return 0.7  # Немного реже (70% от нормы)
-        
+
         return 1.0
     
     def get_user_status(self, user_id: str) -> Dict:
@@ -160,10 +203,11 @@ class SimpleCTABlocker:
         return {
             'completed_actions': list(self.completed_actions.get(user_id, set())),
             'refusal_data': self.refusals.get(user_id, {}),
+            'message_seq': self._current_seq(user_id),
             'has_paid': 'paid' in self.completed_actions.get(user_id, set()),
             'has_registered': 'registered' in self.completed_actions.get(user_id, set())
         }
-    
+
     def clear_user_data(self, user_id: str):
         """
         Очищает данные пользователя (для тестирования).
@@ -172,4 +216,6 @@ class SimpleCTABlocker:
             del self.completed_actions[user_id]
         if user_id in self.refusals:
             del self.refusals[user_id]
+        if user_id in self._message_seq:
+            del self._message_seq[user_id]
         logger.info(f"🗑️ Данные пользователя {user_id} очищены")
