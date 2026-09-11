@@ -44,6 +44,7 @@ from localization import (  # noqa: E402
     FAREWELL_ADDONS,
     THANKS_PREFIXES_SUCCESS,
     has_cyrillic,
+    looks_ukrainian,
     resolve_language,
     is_confident_language_signal,
     get_offtopic_response,
@@ -159,6 +160,56 @@ class TestConfidentSignal:
     def test_emoji_is_not_confident(self):
         assert not is_confident_language_signal("en", "👍")
         assert not is_confident_language_signal("ru", "👍")
+
+
+class TestLooksUkrainian:
+    """LANG-01: uk-реплики без і/ї/є/ґ распознаются по словесным маркерам."""
+
+    @pytest.mark.parametrize("message", [
+        "Дякую!",
+        "Добрий день",
+        "Доброго ранку, будь ласка",
+        "А можна записатися?",
+        "Навчання для батьків",
+        "Чому так дорого?",
+        "Що це?",
+        "Скільки коштує?",  # уже ловится по букве і — контроль паритета
+    ])
+    def test_positive_markers_without_unique_letters(self, message):
+        assert looks_ukrainian(message), f"uk-маркер не распознан: {message!r}"
+
+    @pytest.mark.parametrize("message", [
+        "",
+        "ok",
+        "Hello there friend",
+        "Сколько стоит курс?",           # чистый русский
+        "Спасибо, так и сделаем",        # «так» общий — не маркер
+        "Доброго дня!",                  # валидно и в русском — не маркер
+        "Привет, расскажите о школе",
+    ])
+    def test_negative_cases_stay_non_ukrainian(self, message):
+        assert not looks_ukrainian(message), f"ложное срабатывание uk: {message!r}"
+
+
+class TestResolveLanguageUkrainianCorrection:
+    """Правило «только повышение»: ru-роутер + uk-маркер → uk, ru не трогаем."""
+
+    def test_router_ru_with_uk_marker_promoted(self):
+        assert resolve_language("ru", "Дякую!", None) == "uk"
+        assert resolve_language("ru", "Добрий день", "ru") == "uk"
+        assert resolve_language("ru", "будь ласка, підкажіть", "en") == "uk"
+
+    def test_marker_wins_over_stale_ru_session(self):
+        # Сессия была ru, но родитель явно написал по-украински
+        assert resolve_language("ru", "Дякую за відповідь", "ru") == "uk"
+
+    def test_pure_russian_unchanged(self):
+        assert resolve_language("ru", "Сколько стоит курс?", "en") == "ru"
+        assert resolve_language("ru", "Спасибо, так и сделаем", "ru") == "ru"
+        assert resolve_language("ru", "Доброго дня!", None) == "ru"
+
+    def test_uk_marker_is_confident_to_update_session(self):
+        assert is_confident_language_signal("uk", "Дякую!")
 
 
 # ============================================================================

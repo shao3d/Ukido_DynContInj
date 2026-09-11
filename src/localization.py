@@ -19,6 +19,30 @@ _CYRILLIC_RE = re.compile(r"[а-яА-ЯёЁіІїЇєЄґҐ]")
 _LATIN_RE = re.compile(r"[a-zA-Z]")
 _SHORT_ENGLISH_GREETINGS = {"hi", "hey"}
 
+# LANG-01: буквы, встречающиеся только в украинском алфавите.
+_UK_UNIQUE_LETTERS_RE = re.compile(r"[іІїЇєЄґҐ]")
+
+# Однозначные украинские слова/фразы: их нет в русском, поэтому по ним
+# можно безопасно повышать ru→uk. Намеренно НЕ включаем общие для двух
+# языков слова и формы вроде «так»/«день»/«доброго дня» (это валидный
+# русский), чтобы не переключать русскоязычного родителя.
+_UK_MARKERS = (
+    "дякую", "дякуємо", "будь ласка", "добрий день", "добрий ранок",
+    "доброго ранку", "добрий вечір", "на добраніч", "вітаю", "до побачення",
+    "вибачте", "перепрошую", "вчитель", "вчителі", "батьки", "батьків",
+    "дитина", "заняття", "розклад", "безкоштовно", "пробне", "мабуть",
+    "навчання", "можна", "чому", "що", "потрібно", "допоможіть",
+    "розповісти", "підкажіть", "скільки коштує",
+)
+
+
+def _build_marker_re(markers) -> "re.Pattern":
+    parts = [r"\s+".join(re.escape(tok) for tok in m.split()) for m in markers]
+    return re.compile(r"\b(?:" + "|".join(parts) + r")\b", re.IGNORECASE)
+
+
+_UK_MARKER_RE = _build_marker_re(_UK_MARKERS)
+
 
 def has_cyrillic(text: str) -> bool:
     """True, если в тексте есть хотя бы одна кириллическая буква."""
@@ -27,6 +51,21 @@ def has_cyrillic(text: str) -> bool:
 
 def latin_letter_count(text: str) -> int:
     return len(_LATIN_RE.findall(text or ""))
+
+
+def looks_ukrainian(text: str) -> bool:
+    """True, если текст несёт однозначные украинские признаки.
+
+    Ловит uk-реплики без букв і/ї/є/ґ, которые старый промпт роутера
+    помечал как ru («Дякую», «Добрий день», «будь ласка»). Маркеры
+    подобраны так, чтобы слова не существовали в русском: правило
+    применяется только для повышения ru→uk, чистый русский не трогается.
+    """
+    if not text:
+        return False
+    if _UK_UNIQUE_LETTERS_RE.search(text):
+        return True
+    return bool(_UK_MARKER_RE.search(text))
 
 
 def normalize_language(lang: str) -> str:
@@ -47,12 +86,18 @@ def resolve_language(raw: str, message: str, session_lang: str = None) -> str:
        УСТАНОВЛЕННОЙ русской сессии — остаёмся на русском, чтобы не
        переключать язык русскоязычного родителя из-за одного латинского
        слова. Для нового пользователя без сессии верим роутеру.
+    4. Роутер сказал 'ru', но в сообщении однозначные украинские маркеры
+       («Дякую», «Добрий день», «будь ласка») — повышаем до 'uk'. Старый
+       промпт видел uk только по і/ї/є/ґ, и такие реплики падали в ru.
     В остальных случаях верим роутеру.
     """
     raw = normalize_language(raw)
     # session_lang=None означает, что язык сессии ещё не установлен
     session = normalize_language(session_lang) if session_lang else None
     msg_has_cyrillic = has_cyrillic(message)
+
+    if raw == "ru" and looks_ukrainian(message):
+        return "uk"
 
     if raw == "ru" and not msg_has_cyrillic:
         if session in ("en", "uk"):
