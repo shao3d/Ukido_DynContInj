@@ -954,7 +954,7 @@ in-memory — под текущий single-instance деплой. Тесты —
 `BaseHTTPMiddleware` ломает SSE и проброс контекста — заменён чистым
 ASGI-middleware; глобальный `AppStatus.should_exit_event` из sse_starlette
 привязан к первому loop — тесты изолированы через сброс в conftest и один
-портал на фикстуру. Локально проверено на 3.11/3.12.
+портал на фикстуру. Локально проверено на 3.9/3.11/3.12.
 
 **Осталось делать:**
 1. **Golden-set 30–50 диалогов/язык + LLM-as-judge** — prerequisite Фазы A

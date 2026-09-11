@@ -121,7 +121,10 @@ sudo bh-proxy ukido 8102
 
 The command provisions Apache and HTTPS for
 `ukido.beyondhorizon.dev -> 127.0.0.1:8102`. It is idempotent. Normal
-application deployments do not need to call it again.
+application deployments do not need to call it again. The proxy must append
+the client address to `X-Forwarded-For` (default `mod_proxy` behaviour):
+per-IP rate limiting reads the last hop, and without it external users all
+look like loopback and the IP layer silently does nothing.
 
 ## Public verification
 
