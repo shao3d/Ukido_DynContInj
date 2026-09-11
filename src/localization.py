@@ -53,6 +53,49 @@ def latin_letter_count(text: str) -> int:
     return len(_LATIN_RE.findall(text or ""))
 
 
+# LANG-04: русские буквы, которых нет в украинском алфавите, и слова,
+# которых нет в украинском. Нужны, чтобы вычистить/перевести метаданные
+# (decomposed_questions), если роутер проигнорировал uk-инструкцию.
+_RU_UNIQUE_LETTERS_RE = re.compile(r"[ыэёъЫЭЁЪ]")
+_RU_MARKERS = (
+    "сколько", "стоит", "стоимость", "почему", "зачем", "какой", "какая",
+    "какие", "каких", "какую", "ребёнок", "ребенок", "детей", "дети",
+    "учитель", "можно", "нужно", "нужны", "расскажите", "занятия",
+    "обучение", "цена", "скидка", "расписание", "пробное", "бесплатно",
+    "есть", "чем", "это", "если", "ответ", "перевод",
+    "который", "которая", "которое", "которого", "которой", "котором",
+    "которому", "которым", "которую", "которые", "которых", "которыми",
+    "привет", "здравствуйте", "здравствуй", "спасибо", "пожалуйста",
+    "до свидания", "хорошо", "понятно", "конечно", "очень", "сейчас",
+    "потом", "также", "потому", "будет", "будут", "уже", "еще",
+    "может", "хочет", "должен", "должна", "должны", "нет", "да",
+    "меня", "тебя", "себя", "время", "такой", "такая", "такие",
+    "этот", "эта", "эти", "здесь",
+)
+
+
+def _build_ru_marker_re(markers) -> "re.Pattern":
+    parts = [r"\s+".join(re.escape(tok) for tok in m.split()) for m in markers]
+    return re.compile(r"\b(?:" + "|".join(parts) + r")\b", re.IGNORECASE)
+
+
+_RU_MARKER_RE = _build_ru_marker_re(_RU_MARKERS)
+
+
+def looks_russian(text: str) -> bool:
+    """True, если текст похож на русский (а не на украинский).
+
+    Используется для метаданных uk: русские вопросы декомпозиции нельзя
+    отдавать украинскому пользователю. Ловит русские буквы ы/э/ё/ъ и
+    русские слова, которых нет в украинском.
+    """
+    if not text:
+        return False
+    if _RU_UNIQUE_LETTERS_RE.search(text):
+        return True
+    return bool(_RU_MARKER_RE.search(text))
+
+
 def looks_ukrainian(text: str) -> bool:
     """True, если текст несёт однозначные украинские признаки.
 
@@ -139,6 +182,7 @@ def is_confident_language_signal(lang: str, message: str) -> bool:
 FALLBACK = {
     "ru": "Не совсем понял вопрос. Расскажите, что вас интересует о школе Ukido?",
     "en": "I'm not sure I got that. What would you like to know about Ukido school?",
+    "uk": "Не зовсім зрозумів запитання. Розкажіть, що вас цікавить про школу Ukido?",
 }
 
 OFFTOPIC_RESPONSES = {
@@ -160,11 +204,21 @@ OFFTOPIC_RESPONSES = {
         "Not really my area. I can tell you about our courses, teachers, or methods.",
         "Let's talk school — what are you curious about?",
     ],
+    "uk": [
+        "Цікаве запитання! Але повернімося до теми школи Ukido. Чим можу допомогти?",
+        "Це виходить за межі моєї компетенції. Розповім краще про наші курси?",
+        "Зосередьмося на розвитку soft skills для дітей. Що вас цікавить?",
+        "Я спеціалізуюся на питаннях про школу Ukido. Яку інформацію підказати?",
+        "Пропоную повернутися до теми навчання. Розповісти про програми чи ціни?",
+        "Це не моя сфера. Можу розповісти про курси, викладачів або методики.",
+        "Обговорімо щось пов'язане зі школою. Що саме вас цікавить?",
+    ],
 }
 
 NEED_SIMPLIFICATION = {
     "ru": "Пожалуйста, задавайте не более трёх вопросов за раз. Например, начните с самого важного для вас.",
     "en": "Could you keep it to three questions at a time? Start with the one that matters most to you.",
+    "uk": "Будь ласка, ставте не більше трьох запитань за раз. Наприклад, почніть з найважливішого для вас.",
 }
 
 ERROR_RESPONSES = {
@@ -200,16 +254,23 @@ GREETINGS = {
         "Hi there! Happy to answer any questions about our courses.",
         "Welcome! I'd be glad to tell you about Ukido's programs.",
     ],
+    "uk": [
+        "Вітаю! Я помічник школи Ukido. Чим можу допомогти?",
+        "Добрий день! Радий допомогти з питаннями про наші курси.",
+        "Вітаю! Готовий розповісти про програми школи Ukido.",
+    ],
 }
 
 GREETING_PREFIX = {
     "ru": "Здравствуйте! ",
     "en": "Hello! ",
+    "uk": "Вітаю! ",
 }
 
 ONLINE_FALLBACK = {
     "ru": "Я на связи. Чем помочь?",
     "en": "I'm here. What can I help you with?",
+    "uk": "Я на зв'язку. Чим допомогти?",
 }
 
 THANKS_RESPONSES = {
@@ -223,11 +284,17 @@ THANKS_RESPONSES = {
         "Happy to help! Let me know if you need more details.",
         "Any time! Glad to answer anything else.",
     ],
+    "uk": [
+        "Будь ласка! Звертайтеся, якщо будуть запитання.",
+        "Раді допомогти! Якщо потрібна додаткова інформація - запитуйте.",
+        "Завжди будь ласка! Готовий відповісти на інші запитання.",
+    ],
 }
 
 THANKS_PREFIX = {
     "ru": "Пожалуйста! ",
     "en": "You're welcome! ",
+    "uk": "Будь ласка! ",
 }
 
 APOLOGY_RESPONSES = {
@@ -241,11 +308,17 @@ APOLOGY_RESPONSES = {
         "All good! Ready to answer your questions.",
         "Nothing to apologize for! Tell me what you're interested in.",
     ],
+    "uk": [
+        "Нічого страшного! Чим можу допомогти?",
+        "Усе гаразд! Готовий відповісти на ваші запитання.",
+        "Не хвилюйтеся! Розкажіть, що вас цікавить.",
+    ],
 }
 
 APOLOGY_PREFIX = {
     "ru": "Ничего страшного! ",
     "en": "No worries at all! ",
+    "uk": "Нічого страшного! ",
 }
 
 ACKNOWLEDGMENT_RESPONSES = {
@@ -262,6 +335,13 @@ ACKNOWLEDGMENT_RESPONSES = {
         "What else would be helpful to know?",
         "Awesome! What else can I help with?",
         "Glad that's clear! What should I cover next?",
+    ],
+    "uk": [
+        "Чудово! Що ще вас цікавить про наші курси?",
+        "Гаразд! Є ще запитання про школу Ukido?",
+        "Яка інформація ще потрібна?",
+        "Супер! Чим ще можу допомогти?",
+        "Радий, що зрозуміло! Що ще розповісти?",
     ],
 }
 
@@ -280,6 +360,13 @@ FAREWELLS = {
         "Good luck! Bye for now!",
         "Hope to see you at our school! Stay in touch!",
     ],
+    "uk": [
+        "Було приємно допомогти! До побачення!",
+        "Дякую за звернення! Усього доброго!",
+        "Раді були проконсультувати! До зустрічі!",
+        "Удачі вам! До побачення!",
+        "Будемо раді бачити вас у нашій школі! До зв'язку!",
+    ],
 }
 
 # Добавки к success-ответу (прощание в конец, благодарность в начало)
@@ -296,22 +383,31 @@ FAREWELL_ADDONS = {
         "\n\nSee you! Hope to welcome your child to our classes!",
         "\n\nGood luck! Talk soon!",
     ],
+    "uk": [
+        "\n\nДо побачення! Будемо раді бачити вас у нашій школі!",
+        "\n\nУсього доброго! Звертайтеся, якщо виникнуть запитання!",
+        "\n\nДо зустрічі! Сподіваємося побачити вашу дитину на заняттях!",
+        "\n\nУдачі вам! До зв'язку!",
+    ],
 }
 
 THANKS_PREFIXES_SUCCESS = {
     "ru": ["Рады помочь! ", "Пожалуйста! "],
     "en": ["Happy to help! ", "You're welcome! "],
+    "uk": ["Раді допомогти! ", "Будь ласка! "],
 }
 
 # Маркеры для защиты от дублей (проверка «уже есть прощание/благодарность»)
 FAREWELL_MARKERS = {
     "ru": ["до свидания", "до встречи", "всего доброго", "удачи", "до связи"],
     "en": ["goodbye", "see you", "take care", "good luck", "bye"],
+    "uk": ["до побачення", "до зустрічі", "усього доброго", "удачі", "до зв'язку"],
 }
 
 THANKS_MARKERS = {
     "ru": ["рад", "пожалуйста", "всегда пожалуйста"],
     "en": ["happy to help", "welcome", "glad"],
+    "uk": ["радий", "раді", "будь ласка", "завжди"],
 }
 
 
@@ -328,6 +424,12 @@ TRIAL_SIGNUP_MESSAGES = {
         "success": "Thank you for signing up! We'll be in touch shortly.",
         "failure": "Something went wrong while processing your request. Please try again.",
         "critical": "A temporary technical issue on our side. We're already on it.",
+    },
+    "uk": {
+        "not_configured": "Сервіс тимчасово недоступний. Будь ласка, спробуйте пізніше.",
+        "success": "Дякуємо за заявку! Ми зв'яжемося з вами найближчим часом.",
+        "failure": "Сталася помилка під час обробки заявки. Будь ласка, спробуйте ще раз.",
+        "critical": "Тимчасова технічна проблема. Ми вже працюємо над її вирішенням.",
     },
 }
 

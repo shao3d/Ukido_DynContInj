@@ -5,6 +5,7 @@ from openrouter_client import OpenRouterClient, OpenRouterError
 from standard_responses import DEFAULT_FALLBACK
 from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
 from translator import SmartTranslator, TranslationError
+from localization import has_cyrillic, looks_russian
 import html
 import json
 import re
@@ -284,9 +285,21 @@ class ResponseGenerator:
                     metadata["translation_failed"] = True
                     metadata["detected_language"] = detected_language
                 else:
-                    # Добавляем информацию о переводе в metadata
-                    metadata["translated_to"] = detected_language
-                    metadata["detected_language"] = detected_language
+                    # BUG-01: «тихий» сбой — модель не перевела, а вернула
+                    # русский текст без исключения. Проверяем язык результата:
+                    # en — кириллица недопустима; uk — кириллица нормальна, но
+                    # нужно именно украинское, а не русское. Иначе не помечаем
+                    # translated_to и отдаём шлюзу повторить/извиниться.
+                    if (detected_language == "en" and has_cyrillic(final_text)) or (
+                        detected_language == "uk" and looks_russian(final_text)
+                    ):
+                        print(f"⚠️ BUG-01: перевод на {detected_language} вернул исходный язык")
+                        metadata["translation_failed"] = True
+                        metadata["detected_language"] = detected_language
+                    else:
+                        # Добавляем информацию о переводе в metadata
+                        metadata["translated_to"] = detected_language
+                        metadata["detected_language"] = detected_language
 
             # НОВОЕ: Преобразуем URL в кликабельные HTML-ссылки
             self._debug(f"🔗 DEBUG: До преобразования URL: {final_text[:100]}...")
@@ -782,6 +795,33 @@ class ResponseGenerator:
 
     # Удаляем метод _stylize_response, так как теперь стилизация встроена в основной промпт
     
+    @staticmethod
+    def _replace_terms(text: str, mapping: Dict[str, str]) -> str:
+        """Заменяет слова/фразы по границам слов, сохраняя регистр.
+
+        BUG-17/LANG-A4: в отличие от `str.replace`, не подменяет подстроки
+        внутри других слов. Порядок ключей — от длинных к коротким, чтобы
+        «team building» срабатывал раньше «team».
+        """
+        if not text or not mapping:
+            return text
+        keys = sorted(mapping, key=len, reverse=True)
+        pattern = re.compile(
+            r"(?<!\w)(" + "|".join(re.escape(key) for key in keys) + r")(?!\w)",
+            re.IGNORECASE,
+        )
+
+        def repl(match: "re.Match") -> str:
+            source = match.group(0)
+            target = mapping[source.lower()]
+            if source.isupper() and len(source) > 1:
+                return target.upper()
+            if source[:1].isupper():
+                return target[:1].upper() + target[1:]
+            return target
+
+        return pattern.sub(repl, text)
+
     def _final_sanitize(self, text: str) -> str:
         """Финальная очистка: убираем восклицания и дедуплицируем предложения."""
         out = text
@@ -796,11 +836,6 @@ class ResponseGenerator:
             "workshop": "мастер-класс",
             "mentor": "наставник"
         }
-        
-        for eng, rus in english_to_russian.items():
-            # Заменяем с учётом регистра
-            out = out.replace(eng, rus)
-            out = out.replace(eng.capitalize(), rus.capitalize())
         
         # Заменяем украинские слова на русские эквиваленты
         # (модель иногда генерирует украинские слова из-за контекста украинской школы)
@@ -826,10 +861,11 @@ class ResponseGenerator:
             "працювати": "работать"
         }
         
-        for ukr, rus in ukrainian_to_russian.items():
-            # Заменяем с учётом регистра
-            out = out.replace(ukr, rus)
-            out = out.replace(ukr.capitalize(), rus.capitalize())
+        # BUG-17/LANG-A4: только по границам слов. Раньше `str.replace`
+        # подменял подстроки и калечил слова («mentor» → «наставникing»,
+        # «діти» внутри «дітей»). Регистр сохраняем: lower / Capitalized / UPPER.
+        out = self._replace_terms(out, english_to_russian)
+        out = self._replace_terms(out, ukrainian_to_russian)
         
         # Проверка на обрезанный ответ и исправление
         # Если последнее предложение не заканчивается знаком препинания - удаляем его
@@ -971,6 +1007,8 @@ class ResponseGenerator:
         if user_signal == "exploring_only":
             # Проверяем последние 2 сообщения пользователя на упоминание цены
             price_keywords = ["дорого", "цена", "стоимость", "сколько стоит", "грн", "гривен",
+                              # LANG-06: uk
+                              "дорого", "ціна", "вартість", "скільки коштує", "гривень",
                               "price", "cost", "expensive", "how much", "uah"]
             for msg in history[-4:]:  # Последние 2 пары
                 if msg.get("role") == "user":

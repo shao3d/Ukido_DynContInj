@@ -124,18 +124,29 @@ def install(route_result, generate, translator, monkeypatch):
 
 
 class RaisingTranslator:
-    """Перевод всегда падает — как упавший LLM."""
+    """Перевод всегда падает — как упавший LLM.
+
+    Кидаем класс из ПЕРЕЗАГРУЖЕННОГО модуля translator (client-фикстура
+    переимпортирует main и его зависимости): main ловит именно его.
+    Класс, импортированный в шапке файла, после переимпорта — другой объект,
+    и `except TranslationError` в main его не поймает.
+    """
 
     def __init__(self):
         self.calls = 0
 
     async def translate(self, text, target_language, **kwargs):
         self.calls += 1
-        raise TranslationError("boom")
+        raise sys.modules["translator"].TranslationError("boom")
 
 
-def russian_failed_generate(router_result, history=None, current_message=None):
-    """Честная metadata нового формата: успеха не было."""
+async def russian_failed_generate(router_result, history=None, current_message=None):
+    """Честная metadata нового формата: успеха не было.
+
+    Обязан быть async: main делает `await response_generator.generate(...)`,
+    синхронный мок ронял бы TypeError до шлюза, и тесты проходили бы
+    окольным путём, не проверяя заявленное (retry шлюза).
+    """
     return "Русский ответ, перевод которого упал.", {
         "intent": "success", "user_signal": "exploring_only",
         "cta_added": False, "cta_type": None, "humor_generated": False,
@@ -176,6 +187,96 @@ def test_gateway_retries_after_generator_failure(client, monkeypatch):
     assert body["response"] == "[translated-to-uk]"
     assert (body.get("metadata") or {}).get("translated_to") == "uk"
     assert "translation_failed" not in (body.get("metadata") or {})
+
+
+class CyrillicUkrainianTranslator:
+    """Успешный перевод: возвращает настоящий украинский текст с кириллицей."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def translate(self, text, target_language, **kwargs):
+        self.calls.append((text, target_language))
+        return "Цікаве запитання! Але повернімося до теми школи."
+
+
+def test_uk_gateway_keeps_successful_cyrillic_translation(client, monkeypatch):
+    """LANG-04/BUG-01: кириллица в uk-ответе — не признак сбоя, перевод сохраняем."""
+    translator = CyrillicUkrainianTranslator()
+    install(make_route("uk"), russian_failed_generate, translator, monkeypatch)
+    body = client.post(
+        "/chat", json={"user_id": "tr_uk_cyr", "message": "Скільки коштує курс?"}
+    ).json()
+    assert "Цікаве запитання" in body["response"], body["response"]
+    assert (body.get("metadata") or {}).get("translated_to") == "uk"
+    assert translator.calls, "Шлюз должен был вызвать переводчик"
+
+
+class FakeRussianTranslator:
+    """Тихий сбой: возвращает русский оригинал без исключения."""
+
+    async def translate(self, text, target_language, **kwargs):
+        return text
+
+
+def test_uk_gateway_apologizes_on_fake_translation(client, monkeypatch):
+    """Фейковый перевод (вернул русский без исключения) — извинение на uk."""
+    install(make_route("uk"), russian_failed_generate, FakeRussianTranslator(), monkeypatch)
+    body = client.post(
+        "/chat", json={"user_id": "tr_uk_fake", "message": "Скільки коштує курс?"}
+    ).json()
+    assert "Переформулюйте" in body["response"], body["response"]
+    assert "translated_to" not in (body.get("metadata") or {})
+
+
+class _EchoTranslator:
+    """«Тихий» сбой: возвращает вход как есть, без TranslationError."""
+
+    async def translate(self, text, target_language, **kwargs):
+        return text
+
+
+def _generate_with_echo(client, target_language, message):
+    """Прогоняет реальный ResponseGenerator с клиентом, отдающим русский."""
+    main = sys.modules["main"]
+    gen = main.response_generator
+    original_client, original_translator = gen.client, gen.translator
+
+    async def fake_chat(messages, **kwargs):
+        return "Русский ответ, перевод которого не состоялся."
+
+    gen.client = type("EchoClient", (), {"chat": staticmethod(fake_chat)})()
+    gen.translator = _EchoTranslator()
+    try:
+        return run(gen.generate(
+            {
+                "status": "success",
+                "documents": ["faq.md"],
+                "decomposed_questions": ["Сколько стоит?"],
+                "user_signal": "exploring_only",
+                "detected_language": target_language,
+                "cta_blocked": True,
+            },
+            [],
+            message,
+        ))
+    finally:
+        gen.client, gen.translator = original_client, original_translator
+
+
+def test_generator_flags_silent_russian_for_uk(client):
+    """BUG-01: переводчик вернул русский без исключения — не ставим translated_to."""
+    text, metadata = _generate_with_echo(client, "uk", "Скільки коштує?")
+    assert "Русский ответ" in text
+    assert metadata.get("translation_failed") is True
+    assert "translated_to" not in metadata
+
+
+def test_generator_flags_silent_cyrillic_for_en(client):
+    """BUG-01: для en результат с кириллицей тоже помечается сбоем."""
+    text, metadata = _generate_with_echo(client, "en", "How much does it cost?")
+    assert metadata.get("translation_failed") is True
+    assert "translated_to" not in metadata
 
 
 def test_uk_error_responses_exist():

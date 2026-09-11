@@ -36,6 +36,7 @@ from social_state import SocialStateManager
 from config import Config
 from localization import (
     has_cyrillic,
+    looks_russian,
     resolve_language,
     is_confident_language_signal,
     get_offtopic_response,
@@ -408,6 +409,42 @@ def check_rate_limits(user_id: str) -> None:
             status_code=429, 
             detail="Daily limit exceeded. Try again tomorrow."
         )
+
+
+async def localize_decomposed_questions(questions, target_language, translator):
+    """LANG-04: гарантирует язык метаданных decomposed_questions.
+
+    - en: отбрасывает вопросы с кириллицей (как раньше).
+    - uk: русские вопросы переводит украинским, при сбое — отбрасывает,
+      чтобы украинский потребитель API не получил русский текст.
+    ru не трогаем.
+    """
+    if target_language not in ("en", "uk") or not questions:
+        return questions
+
+    localized = []
+    for question in questions:
+        if not isinstance(question, str) or not question.strip():
+            continue
+        if target_language == "en":
+            if not has_cyrillic(question):
+                localized.append(question)
+            continue
+
+        # uk
+        if not looks_russian(question):
+            localized.append(question)
+            continue
+        try:
+            translated = await translator.translate(
+                text=question, target_language="uk"
+            )
+        except TranslationError as exc:
+            print(f"⚠️ LANG-04: uk-перевод метаданных не удался: {exc}")
+            continue
+        if translated:
+            localized.append(translated)
+    return localized
 
 
 # === ЭНДПОИНТЫ ===
@@ -806,6 +843,13 @@ async def chat(request: ChatRequest):
             and (detected_language == "uk" or has_cyrillic(response_text))
         )
         if needs_final_translation:
+            # LANG-04/BUG-01: TranslationError — прямое доказательство сбоя.
+            # Пост-проверка ниже ловит «тихий» сбой (переводчик вернул русский
+            # текст без исключения); её признак обязан зависеть от языка:
+            # для en это «любая кириллица», а для uk — только русские маркеры,
+            # потому что украинский сам кириллический (иначе успешный перевод
+            # на uk всегда превращался бы в извинение).
+            translation_ok = False
             try:
                 response_text = await response_generator.translator.translate(
                     text=response_text,
@@ -818,13 +862,21 @@ async def chat(request: ChatRequest):
                 response_metadata["translated_to"] = detected_language
                 response_metadata["detected_language"] = detected_language
                 response_metadata.pop("translation_failed", None)
+                translation_ok = True
                 print(f"🌐 Финальный языковой шлюз: ответ переведён на {detected_language}")
 
-            # Страховка: если перевод не удался и в тексте осталась кириллица,
-            # пользователь получает вежливое извинение НА СВОЁМ языке вместо
-            # внезапного русского ответа (раньше работало только для en).
-            if detected_language in ("en", "uk") and has_cyrillic(response_text):
-                print(f"⚠️ Перевод не удался (осталась кириллица) — отдаём извинение на {detected_language}")
+            if not translation_ok:
+                # Перевод не удался — извинение на языке диалога вместо
+                # внезапного русского ответа.
+                print(f"⚠️ Перевод на {detected_language} не удался — отдаём извинение")
+                response_text = get_error_response("invalid_response", detected_language)
+                response_metadata.pop("translated_to", None)
+            elif detected_language == "en" and has_cyrillic(response_text):
+                print("⚠️ Перевод на en вернул кириллицу — отдаём извинение")
+                response_text = get_error_response("invalid_response", detected_language)
+                response_metadata.pop("translated_to", None)
+            elif detected_language == "uk" and looks_russian(response_text):
+                print("⚠️ Перевод на uk вернул русский текст — отдаём извинение")
                 response_text = get_error_response("invalid_response", detected_language)
                 response_metadata.pop("translated_to", None)
     except Exception as e:
@@ -855,17 +907,16 @@ async def chat(request: ChatRequest):
         print(f"⏱️ Latency: {latency:.2f}s | Signal: {user_signal}")
 
     # The public language guarantee covers metadata as well as visible text.
-    # If the router ignored the same-language decomposition instruction, omit
-    # only the offending questions instead of leaking Russian text to an
-    # English API consumer or paying for another translation call.
-    if detected_language == "en":
-        english_questions = [
-            question for question in decomposed_questions
-            if isinstance(question, str) and not has_cyrillic(question)
-        ]
-        if len(english_questions) != len(decomposed_questions):
-            print("⚠️ Removed non-English decomposed_questions from EN response")
-        decomposed_questions = english_questions
+    # en: drop questions with Cyrillic. uk: translate Russian-looking questions
+    # (router may ignore the same-language instruction), dropping them if the
+    # translation fails instead of leaking Russian to a Ukrainian API consumer.
+    if detected_language in ("en", "uk"):
+        before = len(decomposed_questions)
+        decomposed_questions = await localize_decomposed_questions(
+            decomposed_questions, detected_language, response_generator.translator
+        )
+        if len(decomposed_questions) != before:
+            print(f"⚠️ LANG-04: локализованы decomposed_questions для {detected_language}")
     
     # === ВОЗВРАТ РЕЗУЛЬТАТА ===
     return ChatResponse(

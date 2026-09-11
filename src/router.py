@@ -11,11 +11,32 @@ from gemini_cached_client import GeminiCachedClient
 from config import Config
 from social_intents import has_business_signals_extended
 from social_state import SocialStateManager  # Нужен для отслеживания повторных приветствий
-from localization import has_cyrillic
+from localization import has_cyrillic, looks_ukrainian
 # Удалены неиспользуемые импорты после рефакторинга:
 # detect_social_intent, SocialIntent - больше не нужны (Gemini обрабатывает)
 # SocialResponder - больше не нужен (обработка в main.py)
 from standard_responses import get_offtopic_response, DEFAULT_FALLBACK, NEED_SIMPLIFICATION_MESSAGE
+
+
+# LANG-03/LANG-05: acknowledgment-паттерны на трёх языках. Используются
+# и в route() для коротких реплик, и в _deduplicate_questions.
+ACKNOWLEDGMENT_PATTERNS = (
+    "ок", "окей", "okay", "ok", "хорошо", "ладно", "понял", "поняла",
+    "понятно", "ясно", "спасибо", "спс", "благодарю", "принято",
+    "согласен", "согласна", "да", "угу", "ага",
+    # uk
+    "добре", "гаразд", "зрозуміло", "дякую", "так", "авжеж",
+    "👍", "👌", "✅", ":)", ";)", ":-))", ")", "))", "😊", "🙂", "👍🏻", "💯",
+)
+
+# LANG-03: вопросительные слова для эвристики постановки знака вопроса.
+QUESTION_WORDS = (
+    'как', 'что', 'где', 'когда', 'почему', 'зачем', 'сколько',
+    'какой', 'какая', 'какие', 'кто', 'куда', 'откуда',
+    # uk
+    'як', 'що', 'де', 'коли', 'чому', 'навіщо', 'скільки',
+    'який', 'яка', 'які', 'хто', 'куди', 'звідки',
+)
 
 
 class Router:
@@ -346,12 +367,7 @@ class Router:
                 # Проверка на acknowledgment (соглашательские ответы и смайлики)
                 if result.get("status") == "offtopic" and not result.get("social_context"):
                     # Паттерны для acknowledgment
-                    acknowledgment_patterns = [
-                        "ок", "окей", "okay", "ok", "хорошо", "ладно", "понял", "поняла",
-                        "понятно", "ясно", "спасибо", "спс", "благодарю", "принято",
-                        "согласен", "согласна", "да", "угу", "ага", "👍", "👌", "✅",
-                        ":)", ";)", ":-))", ")", "))", "😊", "🙂", "👍🏻", "💯"
-                    ]
+                    acknowledgment_patterns = ACKNOWLEDGMENT_PATTERNS
                     
                     # Проверяем, является ли сообщение acknowledgment
                     clean_msg = user_message.strip().lower().replace("!", "").replace(".", "")
@@ -380,6 +396,8 @@ class Router:
     # Ультра-краткие реплики, требующие восстановления контекста из истории
     ULTRA_SHORT_PATTERNS = [
         "а?", "и?", "и всё?", "а дальше?", "и что?", "ну и?",
+        # LANG-03: uk
+        "і?", "і все?", "а далі?", "і що?", "ну і?",
         "and?", "so?", "that's it?", "thats it?", "what next?", "and what?",
     ]
 
@@ -404,16 +422,33 @@ class Router:
 
         print(f"🔍 Обнаружен ультра-краткий вопрос '{user_message}' - восстанавливаем контекст из истории")
         lowered = last_assistant_msg.lower()
-        wants_english = not has_cyrillic(user_message)
-
-        if any(word in lowered for word in ("цен", "стои", "price", "cost", "uah")):
-            expanded = ("Tell me more about prices and discounts" if wants_english
-                        else "Расскажите подробнее о ценах и скидках")
-        elif any(word in lowered for word in ("курс", "course", "program")):
-            expanded = ("Tell me more about your courses" if wants_english
-                        else "Расскажите подробнее о курсах")
+        # LANG-03: определяем язык реплики, чтобы расширение было на её языке
+        if not has_cyrillic(user_message):
+            lang = "en"
+        elif looks_ukrainian(user_message):
+            lang = "uk"
         else:
-            expanded = "Please tell me more details" if wants_english else "Расскажите подробнее"
+            lang = "ru"
+
+        if any(word in lowered for word in ("цен", "стои", "цін", "коштує", "вартіст",
+                                            "price", "cost", "uah")):
+            expanded = {
+                "ru": "Расскажите подробнее о ценах и скидках",
+                "uk": "Розкажіть детальніше про ціни та знижки",
+                "en": "Tell me more about prices and discounts",
+            }[lang]
+        elif any(word in lowered for word in ("курс", "course", "program")):
+            expanded = {
+                "ru": "Расскажите подробнее о курсах",
+                "uk": "Розкажіть детальніше про курси",
+                "en": "Tell me more about your courses",
+            }[lang]
+        else:
+            expanded = {
+                "ru": "Расскажите подробнее",
+                "uk": "Розкажіть детальніше",
+                "en": "Please tell me more details",
+            }[lang]
 
         print(f"📝 Расширенный вопрос: {expanded}")
         return expanded
@@ -454,12 +489,7 @@ class Router:
                 # Добавляем знак вопроса, если его нет и предложение вопросительное
                 if not re.search(r'[.!?]$', sent):
                     # Паттерны для acknowledgment и смайликов - им НЕ нужен вопросительный знак
-                    acknowledgment_patterns = [
-                        "ок", "окей", "okay", "ok", "хорошо", "ладно", "понял", "поняла",
-                        "понятно", "ясно", "спасибо", "спс", "благодарю", "принято",
-                        "согласен", "согласна", "да", "угу", "ага", "👍", "👌", "✅",
-                        ":)", ";)", ":-))", ")", "))", "😊", "🙂", "👍🏻", "💯"
-                    ]
+                    acknowledgment_patterns = ACKNOWLEDGMENT_PATTERNS
                     
                     # Проверяем, является ли сообщение acknowledgment или смайликом
                     clean_sent = sent.strip().lower()
@@ -472,9 +502,7 @@ class Router:
                         pass
                     else:
                         # Эвристика: если есть вопросительные слова или короткое предложение
-                        question_words = ['как', 'что', 'где', 'когда', 'почему', 'зачем', 'сколько', 
-                                        'какой', 'какая', 'какие', 'кто', 'куда', 'откуда']
-                        if any(sent.lower().startswith(word) for word in question_words) or len(sent.split()) <= 5:
+                        if any(sent.lower().startswith(word) for word in QUESTION_WORDS) or len(sent.split()) <= 5:
                             sent += '?'
                         else:
                             sent += '.'

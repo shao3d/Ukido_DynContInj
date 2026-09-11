@@ -45,6 +45,7 @@ from localization import (  # noqa: E402
     THANKS_PREFIXES_SUCCESS,
     has_cyrillic,
     looks_ukrainian,
+    looks_russian,
     resolve_language,
     is_confident_language_signal,
     get_offtopic_response,
@@ -66,17 +67,53 @@ STR_DICTS = [FALLBACK, NEED_SIMPLIFICATION]
 
 
 @pytest.mark.parametrize("name,dictionary", [(getattr(d, "__name__", f"dict_{i}"), d) for i, d in enumerate(LIST_DICTS)])
-def test_list_dictionaries_have_ru_and_en(name, dictionary):
-    assert set(dictionary.keys()) == {"ru", "en"}, f"{name}: ждём ровно ru и en, есть {sorted(dictionary.keys())}"
-    assert len(dictionary["ru"]) == len(dictionary["en"]) > 0, f"{name}: разное число фраз ru/en"
-    for lang in ("ru", "en"):
+def test_list_dictionaries_have_ru_en_uk(name, dictionary):
+    assert set(dictionary.keys()) == {"ru", "en", "uk"}, f"{name}: ждём ru, en и uk, есть {sorted(dictionary.keys())}"
+    assert len(dictionary["ru"]) == len(dictionary["en"]) == len(dictionary["uk"]) > 0, (
+        f"{name}: разное число фраз ru/en/uk"
+    )
+    for lang in ("ru", "en", "uk"):
         assert all(isinstance(p, str) and p.strip() for p in dictionary[lang]), f"{name}[{lang}]: пустые фразы"
 
 
 @pytest.mark.parametrize("name,dictionary", [(getattr(d, "__name__", f"str_{i}"), d) for i, d in enumerate(STR_DICTS)])
-def test_string_dictionaries_have_ru_and_en(name, dictionary):
-    assert set(dictionary.keys()) == {"ru", "en"}
-    assert all(dictionary[lang].strip() for lang in ("ru", "en"))
+def test_string_dictionaries_have_ru_en_uk(name, dictionary):
+    assert set(dictionary.keys()) == {"ru", "en", "uk"}
+    assert all(dictionary[lang].strip() for lang in ("ru", "en", "uk"))
+
+
+RUSSIAN_ONLY_LETTERS = re.compile(r"[ыэёъЫЭЁЪ]")
+
+
+def test_uk_phrases_have_no_russian_only_letters():
+    """LANG-02: uk-заготовки не должны содержать букв, которых нет в украинском."""
+    phrases = []
+    for dictionary in LIST_DICTS + STR_DICTS:
+        values = dictionary["uk"]
+        phrases.extend(values if isinstance(values, list) else [values])
+    phrases.extend(ERROR_RESPONSES["uk"].values())
+    for phrase in phrases:
+        match = RUSSIAN_ONLY_LETTERS.search(phrase)
+        assert not match, f"Русская буква {match.group(0)!r} в uk-фразе: {phrase!r}"
+
+
+def test_uk_farewell_and_thanks_helpers_do_not_fall_back_to_ru():
+    from localization import (
+        get_farewell,
+        get_farewell_addon,
+        get_thanks_response,
+        get_thanks_prefix_success,
+        has_farewell_marker,
+        has_thanks_marker,
+    )
+
+    assert not RUSSIAN_ONLY_LETTERS.search(get_farewell("uk"))
+    assert not RUSSIAN_ONLY_LETTERS.search(get_farewell_addon("uk"))
+    assert not RUSSIAN_ONLY_LETTERS.search(get_thanks_response("uk"))
+    assert not RUSSIAN_ONLY_LETTERS.search(get_thanks_prefix_success("uk"))
+    # Маркеры uk должны распознаваться (защита от дублей)
+    assert has_farewell_marker("До побачення! Гарного дня", "uk")
+    assert has_thanks_marker("Будь ласка, звертайтеся", "uk")
 
 
 def test_error_responses_cover_same_keys_for_ru_and_en():
@@ -210,6 +247,112 @@ class TestResolveLanguageUkrainianCorrection:
 
     def test_uk_marker_is_confident_to_update_session(self):
         assert is_confident_language_signal("uk", "Дякую!")
+
+
+class TestFinalSanitize:
+    """BUG-17/LANG-A4: нормализация EN/UK→RU по границам слов, без порчи текста."""
+
+    @staticmethod
+    def _generator():
+        from response_generator import ResponseGenerator
+        return ResponseGenerator.__new__(ResponseGenerator)
+
+    def test_replace_terms_respects_word_boundaries(self):
+        from response_generator import ResponseGenerator
+
+        mapping = {"mentor": "наставник", "feedback": "обратную связь"}
+        replace = ResponseGenerator._replace_terms
+        assert replace("mentoring is key", mapping) == "mentoring is key"
+        assert replace("Mentor here", mapping) == "Наставник here"
+        assert replace("FEEDBACK, pls", mapping) == "ОБРАТНУЮ СВЯЗЬ, pls"
+        assert replace("get feedback.", mapping) == "get обратную связь."
+
+    def test_final_sanitize_does_not_corrupt_words(self):
+        gen = self._generator()
+        assert "mentoring" in gen._final_sanitize("Мы даём mentoring.")
+        out = gen._final_sanitize("Багато батьків підтримують дітей.")
+        assert "детей" in out and "родителей" in out and "поддерживают" in out
+        assert "діт" not in out
+
+
+class TestLooksRussian:
+    """LANG-04: отличаем русские вопросы декомпозиции от украинских."""
+
+    @pytest.mark.parametrize("text", [
+        "Сколько стоит курс?",
+        "Ребёнок не слушается",
+        "Есть ли скидки?",
+        "Как проходят занятия?",
+        "Что нужно для записи?",
+    ])
+    def test_detects_russian(self, text):
+        assert looks_russian(text), f"Не распознан русский: {text!r}"
+
+    @pytest.mark.parametrize("text", [
+        "Скільки коштує курс?",
+        "Скільки триває заняття?",
+        "Дитина не слухається",
+        "Як проходять заняття?",
+        "Що потрібно для запису?",
+        "Добрий день, розкажіть про курси",
+    ])
+    def test_ukrainian_stays_ukrainian(self, text):
+        assert not looks_russian(text), f"Ложное срабатывание ru на uk: {text!r}"
+
+
+class TestUkrainianHeuristics:
+    """LANG-03/LANG-05/LANG-06: uk понимается в эвристиках, а не только ru/en."""
+
+    def test_cta_blocker_detects_uk_completed_action(self):
+        from simple_cta_blocker import SimpleCTABlocker
+
+        blocker = SimpleCTABlocker()
+        assert blocker.check_completed_action("uk_paid", "Я оплатив курс Ukido") == "paid"
+        assert blocker.check_completed_action("uk_reg", "Записався на пробне заняття") == "registered"
+
+    def test_cta_blocker_detects_uk_refusals(self):
+        from simple_cta_blocker import SimpleCTABlocker
+
+        blocker = SimpleCTABlocker()
+        assert blocker.check_refusal("uk_hard", "Не треба пропонувати курс") == "hard"
+        assert blocker.check_refusal("uk_soft", "Я подумаю, можливо пізніше") == "soft"
+
+    def test_completed_actions_handler_detects_uk(self):
+        from completed_actions_handler import CompletedActionsHandler
+
+        handler = CompletedActionsHandler()
+        result = handler.detect_completed_action(
+            "Я оплатив курс Ukido",
+            {"status": "offtopic", "detected_language": "uk"},
+            [],
+        )
+        assert result.get("_action_detected") == "payment"
+        assert result.get("status") == "success"
+
+    def test_uk_negation_and_conditional_guards(self):
+        from completed_actions_handler import is_negated_before, is_conditional_after
+
+        assert is_negated_before("ще не оплатив курс", "оплатив")
+        assert not is_negated_before("я оплатив курс", "оплатив")
+        assert is_conditional_after("записався б на курс", "записався")
+        assert not is_conditional_after("я записався на курс", "записався")
+
+    def test_router_acknowledgment_and_question_words_include_uk(self):
+        from router import ACKNOWLEDGMENT_PATTERNS, QUESTION_WORDS
+
+        assert "добре" in ACKNOWLEDGMENT_PATTERNS
+        assert "дякую" in ACKNOWLEDGMENT_PATTERNS
+        assert "скільки" in QUESTION_WORDS
+        assert "чому" in QUESTION_WORDS
+
+    def test_ultra_short_uk_expansion_uses_ukrainian(self):
+        from router import Router
+
+        router = Router.__new__(Router)
+        history = [{"role": "assistant", "content": "Наші курси тривають 90 хвилин."}]
+        assert router._expand_ultra_short_question("і все?", history) == (
+            "Розкажіть детальніше про курси"
+        )
 
 
 # ============================================================================
@@ -513,6 +656,25 @@ def test_translator_en_prompt_forbids_cyrillic_hrn():
     assert "Preserve all formatting" in prompt
 
 
+def test_translator_uk_prompt_has_parity_few_shot():
+    """LANG-03: uk-промпт перевода должен иметь few-shot и запрет суржика."""
+    from translator import SmartTranslator
+
+    class DummyClient:
+        model = "test/model"
+
+    translator = SmartTranslator(DummyClient())
+    prompt = translator._build_translation_prompt("uk", {"uk": "Ukrainian"}, "Ukido, soft skills")
+
+    assert "native Ukrainian copywriter" in prompt
+    assert "surzhyk" in prompt
+    assert "BEFORE/AFTER EXAMPLES" in prompt
+    assert "Ukido, soft skills" in prompt
+    assert "Return ONLY the rewritten Ukrainian text" in prompt
+    # Защищённые термины переданы в промпт
+    assert "KEEP EXACTLY AS-IS" in prompt
+
+
 def test_router_requires_decomposition_in_user_language():
     from router import Router
 
@@ -538,6 +700,63 @@ def test_uk_offtopic_phrase_goes_through_translator(client, monkeypatch):
     assert translator.calls, "uk-фраза должна идти через переводчик"
     assert translator.calls[0]["target"] == "uk"
     assert body["response"].startswith("[translated-to-uk]")
+
+
+def test_uk_success_farewell_addon_is_ukrainian(client, monkeypatch):
+    """LANG-02: прощание в uk success-ответе не должно быть русским."""
+    main = sys.modules["main"]
+    translator = RecordingTranslator()
+
+    async def uk_generate(router_result, history=None, current_message=None):
+        return "Наші заняття проходять у міні-групах до шести дітей.", {
+            "intent": "success", "user_signal": "exploring_only",
+            "cta_added": False, "cta_type": None, "humor_generated": False,
+            "translated_to": "uk",
+        }
+
+    install_mocks(
+        monkeypatch, main,
+        route_result=make_route(status="success", lang="uk", social_context="farewell"),
+        generate=uk_generate,
+        translator=translator,
+    )
+
+    body = post_chat(client, "lang_uk_farewell", "Дякую, до побачення!")
+    assert body["detected_language"] == "uk"
+    lowered = body["response"].lower()
+    assert "до свидания" not in lowered, f"Русское прощание в uk-ответе: {body['response']!r}"
+    assert "добрый" not in lowered, f"Русское слово в uk-ответе: {body['response']!r}"
+    # Любой украинский маркер прощания (get_farewell_addon выбирает случайно)
+    from localization import FAREWELL_MARKERS
+    assert any(marker in lowered for marker in FAREWELL_MARKERS["uk"]), (
+        f"Нет украинского прощания: {body['response']!r}"
+    )
+
+
+def test_uk_success_thanks_prefix_is_ukrainian(client, monkeypatch):
+    """LANG-02: благодарность-префикс в uk success-ответе не русская."""
+    main = sys.modules["main"]
+    translator = RecordingTranslator()
+
+    async def uk_generate(router_result, history=None, current_message=None):
+        return "Курс допомагає дітям розвивати навички спілкування.", {
+            "intent": "success", "user_signal": "exploring_only",
+            "cta_added": False, "cta_type": None, "humor_generated": False,
+            "translated_to": "uk",
+        }
+
+    install_mocks(
+        monkeypatch, main,
+        route_result=make_route(status="success", lang="uk", social_context="thanks"),
+        generate=uk_generate,
+        translator=translator,
+    )
+
+    body = post_chat(client, "lang_uk_thanks", "Дякую за відповідь!")
+    assert body["detected_language"] == "uk"
+    assert body["response"].startswith(("Раді допомогти! ", "Будь ласка! ")), (
+        f"Не украинский префикс благодарности: {body['response']!r}"
+    )
 
 
 def test_en_success_not_retranslated_at_gate(client, monkeypatch):
@@ -650,6 +869,53 @@ def test_en_api_metadata_drops_russian_decomposed_questions(client, monkeypatch)
 
     assert body["decomposed_questions"] == ["What does it cost?"]
     assert_no_cyrillic(" ".join(body["decomposed_questions"]), "EN metadata")
+
+
+def test_uk_api_metadata_translates_russian_decomposed_questions(client, monkeypatch):
+    """LANG-04: русские вопросы декомпозиции не утекают в uk-метаданные."""
+    main = sys.modules["main"]
+    translator = RecordingTranslator()
+    install_mocks(
+        monkeypatch,
+        main,
+        route_result=make_route(
+            status="success",
+            lang="uk",
+            questions=["Сколько стоит курс?", "Скільки триває заняття?"],
+        ),
+        translator=translator,
+    )
+
+    body = post_chat(client, "lang_uk_metadata", "Скільки коштує і як довго триває?")
+
+    assert body["detected_language"] == "uk"
+    assert body["decomposed_questions"] == ["[translated-to-uk]", "Скільки триває заняття?"]
+    assert any(call["target"] == "uk" for call in translator.calls)
+
+
+def test_uk_metadata_drops_question_when_translation_fails(client, monkeypatch):
+    """LANG-04: сбой перевода метаданных — вопрос отбрасывается, не утекает русский."""
+    main = sys.modules["main"]
+
+    class BrokenTranslator:
+        async def translate(self, text, target_language, **kwargs):
+            from translator import TranslationError
+            raise TranslationError("boom")
+
+    install_mocks(
+        monkeypatch,
+        main,
+        route_result=make_route(
+            status="success",
+            lang="uk",
+            questions=["Сколько стоит курс?", "Скільки триває заняття?"],
+        ),
+        translator=BrokenTranslator(),
+    )
+
+    body = post_chat(client, "lang_uk_meta_fail", "Скільки коштує?")
+
+    assert body["decomposed_questions"] == ["Скільки триває заняття?"]
 
 
 def test_no_signup_contacts_for_user_who_just_signed_up():

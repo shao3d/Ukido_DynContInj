@@ -91,6 +91,8 @@ class SmartTranslator:
         # Формируем user prompt в зависимости от языка
         if target_language == 'en':
             user_prompt = f"Rewrite as natural American English:\n\n{text}"
+        elif target_language == 'uk':
+            user_prompt = f"Rewrite as natural modern Ukrainian:\n\n{text}"
         else:
             user_prompt = f"Translate to {lang_map.get(target_language)}:\n\n{text}"
         
@@ -202,31 +204,56 @@ DO NOT add any explanations, comments, or descriptions of what you did.
 DO NOT say things like "The rewrite captures..." or "I've used...".
 Just output the final English text, nothing else."""
         else:
-            # Промпт для украинского (оставляем похожим на старый, но улучшенный)
-            return f"""You are a professional translator for Ukido, a children's soft skills school.
-Translate the following text from Russian to modern {target_lang_name}.
+            # Промпт для украинского — паритет качества с en: нативный копирайтер
+            # и few-shot примеры, чтобы избежать суржика и русских калек.
+            return f"""You are a native Ukrainian copywriter for Ukido, a children's soft skills school.
 
-CRITICAL RULES:
-1. Use modern Ukrainian, NOT surzhyk or russisms
-2. Preserve the warm, conversational tone
-3. Keep the informative style with specific details
-4. Maintain all formatting (line breaks, bullet points)
-5. Sound natural, like a Ukrainian teacher talking to parents
+YOUR TASK: Rewrite this Russian text as natural modern Ukrainian that sounds like it was originally written by a native speaker for Ukrainian parents.
 
-NEVER translate these terms (keep exactly as-is):
+DO NOT translate word-by-word. REFRAME the meaning naturally.
+
+TONE: Warm, friendly, professional — like a knowledgeable teacher explaining to a parent over coffee.
+
+STYLE RULES:
+- Use modern literary Ukrainian, NOT surzhyk and NOT russisms/calques
+- Use short sentences and active voice
+- Sound like a real person, not a brochure
+- Keep the informative, helpful tone of the original
+- Ukrainian punctuation and apostrophe: «п'ять», «зв'язок», «ім'я»
+
+BEFORE/AFTER EXAMPLES (based on actual Ukido content):
+
+Russian: "Первое занятие бесплатно. Длительность 90 минут."
+❌ Bad: "Перше заняття бесплатно. Тривалість 90 хвилин." (russism «бесплатно»)
+✅ Good: "Перше заняття безкоштовне — це повноцінні 90 хвилин."
+
+Russian: "Группы до 6 детей, что позволяет уделить внимание каждому."
+❌ Bad: "Групи до 6 дітей, що дозволяє приділити увагу кожному." (calque)
+✅ Good: "Ми тримаємо групи маленькими (до 6 дітей), щоб кожна дитина отримала увагу."
+
+Russian: "Большинство застенчивых детей показывают прогресс через месяц."
+❌ Bad: "Більшість сором'язливих дітей показують прогрес через місяць." (calque)
+✅ Good: "Більшість сором'язливих дітей розкриваються вже за місяць — ми бачимо це постійно."
+
+Russian: "Занятия проходят онлайн через Zoom, забирать никуда не нужно."
+❌ Bad: "Заняття проходять онлайн через Zoom, забирати нікуди не потрібно."
+✅ Good: "Заняття відбуваються онлайн у Zoom, тож нікуди не треба їхати."
+
+Russian: "Занятия 2 раза в неделю по 90 минут."
+❌ Bad: "Заняття 2 раза на тиждень по 90 хвилин." («раза» — russism)
+✅ Good: "Заняття двічі на тиждень, по 90 хвилин кожне."
+
+KEEP EXACTLY AS-IS (never translate):
 {protected_terms_list}
+- All URLs, emails, phone numbers
+- Numbers and prices exactly as in the source (keep «грн»/UAH as written)
 
-Also keep unchanged:
-- URLs and email addresses
-- Numbers and prices
-- Technical terms in English
+Preserve all formatting (line breaks, bullet points, paragraphs).
 
-Context: This is a response from an AI assistant for a children's soft skills school.
-
-CRITICAL: Return ONLY the translated {target_lang_name} text.
+CRITICAL: Return ONLY the rewritten Ukrainian text.
 DO NOT add any explanations, comments, or descriptions of what you did.
 DO NOT say things like "Here's the translation..." or "The translation follows...".
-Just output the final {target_lang_name} text, nothing else."""
+Just output the final Ukrainian text, nothing else."""
 
     def _protect_terms(self, text: str) -> str:
         """
@@ -335,6 +362,8 @@ Just output the final {target_lang_name} text, nothing else."""
         # Формируем user prompt в зависимости от языка
         if target_language == 'en':
             user_prompt = f"Rewrite as natural American English:\n\n{text}"
+        elif target_language == 'uk':
+            user_prompt = f"Rewrite as natural modern Ukrainian:\n\n{text}"
         else:
             user_prompt = f"Translate to {lang_map.get(target_language)}:\n\n{text}"
         
