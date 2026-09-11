@@ -430,6 +430,43 @@ THANKS_PREFIXES_SUCCESS = {
     "uk": ["Раді допомогти! ", "Будь ласка! "],
 }
 
+# F2: короткие подтверждения завершённых действий (оплата/запись/пробное/форма).
+# Прелендятся к success-ответу, когда роутер сказал success и готового
+# completed_action_response нет (тот бывает только на offtopic-ветке).
+# Фразы уже на языке диалога — шлюз перевода их не трогает.
+COMPLETED_ACTION_PREFIXES = {
+    "paid": {
+        "ru": "Отлично, оплату получили! ",
+        "en": "Great, we've got your payment! ",
+        "uk": "Чудово, оплату отримано! ",
+    },
+    "registered": {
+        "ru": "Прекрасно, вы записаны! ",
+        "en": "Wonderful, you're signed up! ",
+        "uk": "Чудово, вас записано! ",
+    },
+    "trial_completed": {
+        "ru": "Здорово, что были на пробном! ",
+        "en": "Great that you made it to the trial! ",
+        "uk": "Чудово, що були на пробному! ",
+    },
+    "form_filled": {
+        "ru": "Спасибо, заявку получили! ",
+        "en": "Thanks, we've got your request! ",
+        "uk": "Дякуємо, заявку отримано! ",
+    },
+}
+
+
+def get_completed_action_prefix(action_type: str, lang: str = DEFAULT_LANGUAGE) -> str:
+    """Возвращает подтверждение завершённого действия на языке диалога.
+
+    Неизвестный тип → "" (ничего не добавляем).
+    """
+    lang = normalize_language(lang)
+    entry = COMPLETED_ACTION_PREFIXES.get(action_type or "", {})
+    return entry.get(lang, entry.get("ru", ""))
+
 # Маркеры для защиты от дублей (проверка «уже есть прощание/благодарность»)
 FAREWELL_MARKERS = {
     "ru": ["до свидания", "до встречи", "всего доброго", "удачи", "до связи"],

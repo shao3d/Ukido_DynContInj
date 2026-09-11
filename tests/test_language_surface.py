@@ -47,6 +47,7 @@ from localization import (  # noqa: E402
     looks_ukrainian,
     looks_russian,
     is_pure_greeting,
+    get_completed_action_prefix,
     resolve_language,
     is_confident_language_signal,
     get_offtopic_response,
@@ -337,6 +338,119 @@ class TestSocialContextGuard:
         assert result["social_context"] is None
 
 
+class TestCompletedActionConfirmation:
+    """F2: завершённое действие на success-ветке подтверждается вслух."""
+
+    def test_prefix_dictionary_covers_all_languages(self):
+        assert get_completed_action_prefix("paid", "ru").startswith("Отлично")
+        assert get_completed_action_prefix("paid", "en").startswith("Great")
+        assert get_completed_action_prefix("paid", "uk").startswith("Чудово")
+        assert get_completed_action_prefix("registered", "uk").startswith("Чудово")
+        assert get_completed_action_prefix("trial_completed", "en").startswith("Great")
+        assert get_completed_action_prefix("form_filled", "ru").startswith("Спасибо")
+        assert get_completed_action_prefix("unknown_action", "ru") == ""
+        assert get_completed_action_prefix("paid", "de") != ""
+
+    def test_ru_success_paid_gets_confirmation(self, client, monkeypatch):
+        main = sys.modules["main"]
+
+        async def plain_generate(router_result, history=None, current_message=None):
+            return "Дальнейшие шаги после оплаты.", {
+                "intent": "success", "user_signal": "exploring_only",
+                "cta_added": False, "cta_type": None, "humor_generated": False,
+            }
+
+        install_mocks(
+            monkeypatch, main,
+            route_result=make_route(status="success", lang="ru"),
+            generate=plain_generate,
+            translator=RecordingTranslator(),
+        )
+
+        body = post_chat(client, "lang_f2_ru", "Я оплатил курс Ukido")
+        assert body["response"].startswith("Отлично, оплату получили! "), body["response"]
+
+    def test_uk_success_paid_gets_confirmation(self, client, monkeypatch):
+        main = sys.modules["main"]
+
+        async def uk_generate(router_result, history=None, current_message=None):
+            return "Подальші кроки після оплати.", {
+                "intent": "success", "user_signal": "exploring_only",
+                "cta_added": False, "cta_type": None, "humor_generated": False,
+                "translated_to": "uk",
+            }
+
+        install_mocks(
+            monkeypatch, main,
+            route_result=make_route(status="success", lang="uk"),
+            generate=uk_generate,
+            translator=RecordingTranslator(),
+        )
+
+        body = post_chat(client, "lang_f2_uk", "Я оплатив курс Ukido")
+        assert body["detected_language"] == "uk"
+        assert body["response"].startswith("Чудово, оплату отримано! "), body["response"]
+
+    def test_en_success_paid_gets_confirmation(self, client, monkeypatch):
+        main = sys.modules["main"]
+
+        async def en_generate(router_result, history=None, current_message=None):
+            return "Next steps after payment.", {
+                "intent": "success", "user_signal": "exploring_only",
+                "cta_added": False, "cta_type": None, "humor_generated": False,
+                "translated_to": "en",
+            }
+
+        install_mocks(
+            monkeypatch, main,
+            route_result=make_route(status="success", lang="en"),
+            generate=en_generate,
+            translator=RecordingTranslator(),
+        )
+
+        body = post_chat(client, "lang_f2_en", "I have paid for the course")
+        assert body["response"].startswith("Great, we've got your payment! "), body["response"]
+
+    def test_no_double_confirmation_when_pregenerated(self, client, monkeypatch):
+        main = sys.modules["main"]
+        install_mocks(
+            monkeypatch, main,
+            route_result=make_route(
+                status="success", lang="ru",
+                completed_action_response="Готово, всё учтено.",
+            ),
+            translator=RecordingTranslator(),
+        )
+
+        body = post_chat(client, "lang_f2_once", "Я оплатил курс Ukido")
+        assert body["response"] == "Готово, всё учтено.", body["response"]
+
+    def test_no_confirmation_for_conditional(self, client, monkeypatch):
+        """F2: сослагательное «мы бы записались» не подтверждает запись."""
+        main = sys.modules["main"]
+        install_mocks(
+            monkeypatch, main,
+            route_result=make_route(status="success", lang="ru"),
+            translator=RecordingTranslator(),
+        )
+
+        body = post_chat(
+            client, "lang_f2_cond", "Мы бы записались, если будут места в группе")
+        assert "Прекрасно, вы записаны!" not in body["response"]
+
+    def test_no_confirmation_without_action(self, client, monkeypatch):
+        main = sys.modules["main"]
+        install_mocks(
+            monkeypatch, main,
+            route_result=make_route(status="success", lang="ru"),
+            translator=RecordingTranslator(),
+        )
+
+        body = post_chat(client, "lang_f2_none", "Привет, сколько стоит курс?")
+        assert "Отлично, оплату получили!" not in body["response"]
+        assert "Прекрасно, вы записаны!" not in body["response"]
+
+
 class TestLooksRussian:
     """LANG-04: отличаем русские вопросы декомпозиции от украинских."""
 
@@ -398,6 +512,25 @@ class TestUkrainianHeuristics:
         assert not is_negated_before("я оплатив курс", "оплатив")
         assert is_conditional_after("записався б на курс", "записався")
         assert not is_conditional_after("я записався на курс", "записався")
+
+    def test_conditional_before_trigger_is_not_action(self):
+        """F2: «мы бы записались» — намерение, а не действие (частица ПЕРЕД глаголом)."""
+        from completed_actions_handler import is_conditional_before
+
+        assert is_conditional_before("мы бы записались в группу", "записались")
+        assert is_conditional_before("я би записався на курс", "записався")
+        assert is_conditional_before("we would have paid yesterday", "paid")
+        assert not is_conditional_before("я записался на курс", "записался")
+        assert not is_conditional_before("был записан на курс", "записан")
+
+    def test_cta_blocker_ignores_conditional_before(self):
+        from simple_cta_blocker import SimpleCTABlocker
+
+        blocker = SimpleCTABlocker()
+        assert blocker.check_completed_action(
+            "cond_ru", "Мы бы записались, если будут места в группе") is None
+        assert blocker.check_completed_action(
+            "cond_uk", "Я би записався, якби були місця") is None
 
     def test_router_acknowledgment_and_question_words_include_uk(self):
         from router import ACKNOWLEDGMENT_PATTERNS, QUESTION_WORDS

@@ -9,6 +9,7 @@ import logging
 from completed_actions_handler import (
     NON_SCHOOL_EXCLUSIONS,
     is_conditional_after,
+    is_conditional_before,
     is_negated_before,
 )
 
@@ -113,10 +114,12 @@ class SimpleCTABlocker:
                 if any(ex in message_lower for ex in NON_SCHOOL_EXCLUSIONS):
                     continue
 
-            # Отрицание/план/условие рядом с триггером — не действие
+            # Отрицание/план/условие рядом с триггером — не действие.
+            # Условие ловим с обеих сторон: «записались бы» и «мы бы записались».
             alive = [t for t in matched
                      if not is_negated_before(message_lower, t.replace('ё', 'е'))
-                     and not is_conditional_after(message_lower, t.replace('ё', 'е'))]
+                     and not is_conditional_after(message_lower, t.replace('ё', 'е'))
+                     and not is_conditional_before(message_lower, t.replace('ё', 'е'))]
             if not alive:
                 continue
 

@@ -58,6 +58,23 @@ def is_conditional_after(message_lower: str, keyword: str) -> bool:
     return re.search(re.escape(keyword) + r'\s+(?:бы|б)\b', message_lower) is not None
 
 
+# F2/BUG-02: сослагательная частица ПЕРЕД триггером («мы бы записались»,
+# «я би записався», «would have paid») — тоже намерение, а не действие.
+# Окно ≤3 слов, как у отрицаний.
+_COND_BEFORE_RU = r'(?:\bбы\b)'
+_COND_BEFORE_UK = r'(?:\bби\b|\bб\b)'
+_COND_BEFORE_EN = r'(?:\bwould\b)'
+
+
+def is_conditional_before(message_lower: str, keyword: str) -> bool:
+    """True, если перед триггером в окне ≤3 слов стоит сослагательное «бы/би/would»."""
+    for cond in (_COND_BEFORE_RU, _COND_BEFORE_UK, _COND_BEFORE_EN):
+        if re.search(cond + r'[\W_]+(?:\w+[\W_]+){0,3}' + re.escape(keyword),
+                      message_lower):
+            return True
+    return False
+
+
 # BUG-02 fix: триггеры, самодостаточные без школьного контекста.
 # Оплата — всегда требует контекст (строго: речь о деньгах, не врём).
 # Пробное/форма/документы — все триггеры конкретные фразы, контекста не надо.
@@ -338,11 +355,14 @@ class CompletedActionsHandler:
                 if any(ex in message_lower for ex in exclusions):
                     continue
 
-            # 5. Отрицание/план/условие рядом с триггером — не действие
+            # 5. Отрицание/план/условие рядом с триггером — не действие.
+            # Условие ловим с обеих сторон: «записались бы» и «мы бы записались».
             matched = [kw for kw in matched
                        if not is_negated_before(message_lower, kw)]
             matched = [kw for kw in matched
                        if not is_conditional_after(message_lower, kw)]
+            matched = [kw for kw in matched
+                       if not is_conditional_before(message_lower, kw)]
             if not matched:
                 continue
 

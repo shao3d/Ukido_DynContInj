@@ -54,6 +54,7 @@ from localization import (
     get_farewell,
     get_farewell_addon,
     get_thanks_prefix_success,
+    get_completed_action_prefix,
     has_farewell_marker,
     get_trial_signup_message,
     THANKS_MARKERS,
@@ -692,6 +693,16 @@ async def chat(request: ChatRequest):
                     response_text = get_thanks_prefix_success(detected_language) + response_text
                     if config.LOG_LEVEL == "DEBUG":
                         print(f"✅ Added thanks prefix to success response")
+
+            # F2: завершённое действие на success-ветке — подтверждаем вслух.
+            # CompletedActionsHandler даёт готовый completed_action_response
+            # только на offtopic-ветке; когда роутер сказал success, видимый
+            # ответ подтверждения не содержал (оплату «знали», но молчали).
+            if completed_action and not route_result.get("completed_action_response"):
+                prefix = get_completed_action_prefix(completed_action, detected_language)
+                if prefix and not response_text.startswith(prefix):
+                    response_text = prefix + response_text
+                    print(f"✅ Added completed-action confirmation '{completed_action}'")
                         
         except Exception as e:
             print(f"❌ ResponseGenerator failed: {e}")
