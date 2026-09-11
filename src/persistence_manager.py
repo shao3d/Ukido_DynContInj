@@ -31,6 +31,10 @@ class PersistenceManager:
         self.base_path = Path(base_path)
         self.max_age_days = max_age_days
         self.max_files = max_files
+        # SEC-05: чистим не только на старте — иначе за долгий аптайм
+        # файлы копятся до перезапуска. Раз во столько записей.
+        self.cleanup_every_writes = 500
+        self._writes_since_cleanup = 0
         
         # Создаём папку если не существует
         self.base_path.mkdir(parents=True, exist_ok=True)
@@ -125,6 +129,12 @@ class PersistenceManager:
                 if 'history' in state_data and len(state_data['history']) > 10:
                     state_data['history'] = state_data['history'][-10:]
                     self._write_json_atomic(file_path, state_data)
+
+            # SEC-05: периодическая уборка во время работы, не только на старте.
+            self._writes_since_cleanup += 1
+            if self._writes_since_cleanup >= self.cleanup_every_writes:
+                self._writes_since_cleanup = 0
+                self._cleanup_old_files()
 
             return True
             

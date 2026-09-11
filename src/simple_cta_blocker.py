@@ -38,6 +38,9 @@ class SimpleCTABlocker:
         # В отличие от len(history) он не упирается в HISTORY_LIMIT,
         # поэтому порог block_until_seq всегда достижим.
         self._message_seq: Dict[str, int] = {}  # user_id -> seq
+        # SEC-05: ограничиваем память — ротация user_id не должна копить
+        # состояние по каждому встречному id бесконечно.
+        self.max_users = 20000
         
         # Триггеры для детекции завершённых действий
         self.COMPLETION_TRIGGERS = {
@@ -88,6 +91,21 @@ class SimpleCTABlocker:
         
         logger.info("🔧 SimpleCTABlocker инициализирован (MVP версия)")
     
+    def _evict_if_needed(self) -> None:
+        """SEC-05: держим словари пользователей в пределах max_users."""
+        if (len(self._message_seq) <= self.max_users
+                and len(self.completed_actions) <= self.max_users
+                and len(self.refusals) <= self.max_users):
+            return
+        users = set(self._message_seq) | set(self.completed_actions) | set(self.refusals)
+        if len(users) <= self.max_users:
+            return
+        excess = len(users) - self.max_users
+        for user_id in sorted(users, key=lambda u: self._message_seq.get(u, 0))[:excess]:
+            self._message_seq.pop(user_id, None)
+            self.completed_actions.pop(user_id, None)
+            self.refusals.pop(user_id, None)
+
     def check_completed_action(self, user_id: str, message: str) -> Optional[str]:
         """
         Проверяет, содержит ли сообщение информацию о завершённом действии.
@@ -97,6 +115,7 @@ class SimpleCTABlocker:
         и чужие контексты («записались в бассейн») действиями не считаются.
         Нормализация ё→е — чтобы «внёс» тоже матчился.
         """
+        self._evict_if_needed()
         message_lower = message.lower().replace('ё', 'е')
 
         # Вопрос — не утверждение («Оплатил?» ≠ «Оплатил»).
@@ -135,6 +154,7 @@ class SimpleCTABlocker:
     
     def _next_seq(self, user_id: str) -> int:
         """Следующий номер сообщения пользователя (монотонный, без потолка)."""
+        self._evict_if_needed()
         self._message_seq[user_id] = self._message_seq.get(user_id, 0) + 1
         return self._message_seq[user_id]
 

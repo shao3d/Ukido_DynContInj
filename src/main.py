@@ -8,7 +8,8 @@ import random
 import secrets
 import time
 import re
-from fastapi import FastAPI, HTTPException, Header, Path, Query
+from contextvars import ContextVar
+from fastapi import FastAPI, HTTPException, Header, Path, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -34,6 +35,7 @@ from social_intents import SocialIntent
 from social_responder import SocialResponder
 from social_state import SocialStateManager
 from config import Config
+from rate_limiter import GlobalMinuteBudget, RateLimiter, RateLimitExceeded
 from localization import (
     has_cyrillic,
     looks_russian,
@@ -61,7 +63,6 @@ from localization import (
 )
 from datetime import datetime
 from typing import Dict
-from collections import defaultdict, deque
 from completed_actions_handler import CompletedActionsHandler
 from simple_cta_blocker import SimpleCTABlocker  # Новый импорт для блокировки CTA
 from translator import TranslationError  # BUG-01: явная обработка сбоев перевода
@@ -98,6 +99,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# === SEC-05: ИДЕНТИФИКАЦИЯ КЛИЕНТА ДЛЯ ЛИМИТОВ ===
+# IP читается из запроса в middleware и кладётся в контекст, чтобы лимиты
+# работали и внутри вызовов chat()/process_chat_message без проброса параметров.
+_CLIENT_IP: ContextVar[str] = ContextVar("client_ip", default="")
+# Локальные адреса не лимитируем по IP: внешние пользователи приходят через
+# реверс-прокси с реальным IP в X-Forwarded-For, а loopback — это health-check
+# и тестовый клиент.
+_TRUSTED_LOCAL_IPS = {"", "testclient", "127.0.0.1", "::1", "localhost"}
+# X-Forwarded-For заслуживает доверия только если запрос пришёл от нашего
+# локального реверс-прокси (приложение слушает 127.0.0.1). Иначе заголовок
+# можно подделать при прямом доступе к порту.
+_TRUSTED_PROXIES = {"127.0.0.1", "::1", "testclient"}
+
+
+def client_ip_from(request: Request) -> str:
+    """Реальный IP клиента за доверенным реверс-прокси.
+
+    Берём последний хоп X-Forwarded-For: его добавил наш прокси, поэтому
+    подделка начала заголовка клиентом реальный адрес не подменяет.
+    """
+    peer = request.client.host if request.client and request.client.host else ""
+    if peer in _TRUSTED_PROXIES:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+            if parts:
+                return parts[-1]
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip and real_ip.strip():
+            return real_ip.strip()
+    return peer
+
+
+@app.middleware("http")
+async def _capture_client_ip(request: Request, call_next):
+    _CLIENT_IP.set(client_ip_from(request))
+    return await call_next(request)
 
 # === ПРОСТЫЕ МЕТРИКИ ===
 signal_stats = {
@@ -292,6 +331,16 @@ persistence_manager = PersistenceManager(base_path=config.PERSISTENCE_BASE_PATH)
 
 # Глобальный словарь для user_signals_history (для HOTFIX)
 user_signals_history = {}
+# SEC-05: не даём словарю расти по ротации user_id.
+MAX_USER_SIGNALS = 5000
+
+
+def remember_user_signal(user_id: str, signal: str) -> None:
+    user_signals_history[user_id] = signal
+    if len(user_signals_history) > MAX_USER_SIGNALS:
+        excess = len(user_signals_history) - MAX_USER_SIGNALS
+        for key in list(user_signals_history)[:excess]:
+            user_signals_history.pop(key, None)
 
 # Загружаем сохранённые состояния при старте
 print("📂 Загрузка сохранённых состояний...")
@@ -372,44 +421,46 @@ if config.ZHVANETSKY_ENABLED:
         print(f"⚠️ Не удалось инициализировать систему юмора: {e}")
         config.ZHVANETSKY_ENABLED = False
 
-# === RATE LIMITING ===
-# Глобальные счётчики для защиты от DDoS и перерасхода
-user_request_times = defaultdict(lambda: deque(maxlen=100))
-user_daily_counts = defaultdict(lambda: {"count": 0, "date": ""})
+# === RATE LIMITING (SEC-05) ===
+# Лимит по пользователю сохраняется, но теперь он не единственный: ключ
+# user_id приходит от клиента, поэтому дополнительно ограничиваем по IP
+# (ротация user_id не помогает), держим глобальный бюджет в минуту и
+# ограничиваем /trial-signup. Словари лимитеров самоочищаются.
+_CHAT_USER_LIMITER = RateLimiter(per_minute=10, per_day=100)
+_CHAT_IP_LIMITER = RateLimiter(per_minute=30, per_day=300)
+_SIGNUP_IP_LIMITER = RateLimiter(per_minute=5, per_day=20)
+_GLOBAL_MINUTE_BUDGET = GlobalMinuteBudget(per_minute=600)
+
+
+def _rate_limit_http_error(exc: RateLimitExceeded) -> HTTPException:
+    return HTTPException(
+        status_code=429,
+        detail=exc.detail,
+        headers={"Retry-After": str(exc.retry_after)},
+    )
+
 
 def check_rate_limits(user_id: str) -> None:
-    """Проверка rate limits для защиты от DDoS и перерасхода бюджета"""
-    now = time.time()
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    # Проверка частоты (10 запросов в минуту)
-    recent_requests = user_request_times[user_id]
-    recent_requests.append(now)
-    
-    # Считаем запросы за последнюю минуту
-    minute_ago = now - 60
-    recent_count = sum(1 for t in recent_requests if t > minute_ago)
-    
-    if recent_count > 10:
-        print(f"⚠️ Rate limit exceeded for user {user_id}: {recent_count} requests/min")
-        raise HTTPException(
-            status_code=429, 
-            detail="Too many requests. Please wait a minute."
-        )
-    
-    # Проверка дневного лимита (100 запросов в день)
-    daily = user_daily_counts[user_id]
-    if daily["date"] != today:
-        daily["count"] = 0
-        daily["date"] = today
-    
-    daily["count"] += 1
-    if daily["count"] > 100:
-        print(f"⚠️ Daily limit exceeded for user {user_id}: {daily['count']} requests")
-        raise HTTPException(
-            status_code=429, 
-            detail="Daily limit exceeded. Try again tomorrow."
-        )
+    """Лимиты основного чата: глобальный бюджет, пользователь, IP."""
+    ip = _CLIENT_IP.get()
+    try:
+        _GLOBAL_MINUTE_BUDGET.hit()
+        _CHAT_USER_LIMITER.hit(f"u:{user_id}")
+        if ip not in _TRUSTED_LOCAL_IPS:
+            _CHAT_IP_LIMITER.hit(f"ip:{ip}")
+    except RateLimitExceeded as exc:
+        raise _rate_limit_http_error(exc)
+
+
+def check_signup_limits() -> None:
+    """Лимит /trial-signup по IP — защита HubSpot от спама заявками."""
+    ip = _CLIENT_IP.get()
+    if ip in _TRUSTED_LOCAL_IPS:
+        return
+    try:
+        _SIGNUP_IP_LIMITER.hit(f"ip:{ip}")
+    except RateLimitExceeded as exc:
+        raise _rate_limit_http_error(exc)
 
 
 async def localize_decomposed_questions(questions, target_language, translator):
@@ -532,7 +583,7 @@ async def chat(request: ChatRequest):
     
     # Сохраняем текущий сигнал для будущих offtopic
     if status == "success" and user_signal != "exploring_only":
-        user_signals_history[request.user_id] = user_signal
+        remember_user_signal(request.user_id, user_signal)
         print(f"💾 Сохранён user_signal='{user_signal}' для user_id='{request.user_id}'")
 
     # РАСШИРЕННЫЙ HOTFIX: Восстанавливаем price_sensitive инерцию для success запросов
@@ -1114,6 +1165,9 @@ async def trial_signup(request: TrialSignupRequest):
     Эндпоинт для регистрации на пробный урок
     Создает или обновляет контакт в HubSpot CRM
     """
+    # SEC-05: защита HubSpot от спама заявками (лимит по IP)
+    check_signup_limits()
+
     print(f"📝 Trial signup request: email={redact_email(request.email)}")
 
     try:
@@ -1154,7 +1208,9 @@ async def trial_signup(request: TrialSignupRequest):
             return TrialSignupResponse(
                 success=True,
                 message=get_trial_signup_message("success", request.language),
-                action=result.get("action")
+                # SEC-05: не раскрываем created/updated — иначе это оракул
+                # существования контакта в HubSpot. Реальное действие логируем.
+                action=None
             )
         else:
             print(f"❌ Ошибка обработки заявки: email={redact_email(request.email)}")

@@ -60,8 +60,14 @@ flowchart LR
 
 Conversation state is stored as JSON. In production,
 `PERSISTENCE_BASE_PATH=/srv/bh/ukido/data/persistent_states`, outside the
-release directory, so application swaps do not remove it. Rate limits and
-aggregate metrics remain in process memory.
+release directory, so application swaps do not remove it. Request limits are in
+process memory and keyed by both `user_id` and client IP (client IP is taken
+from the last `X-Forwarded-For` hop set by the proxy), with a global per-minute
+budget; limiter maps and social/CTA state are self-cleaning, and persistence
+prunes old states during operation, not only at boot. Aggregate metrics remain
+in process memory. Because limits are
+per-instance, they bound abuse on the single current instance but are not a
+distributed guarantee.
 
 The canonical runtime is the user-scoped `ukido.service` on Beyond Horizon.
 GitHub Actions tests and activates releases from `main`; the deployment script

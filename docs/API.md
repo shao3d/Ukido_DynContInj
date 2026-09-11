@@ -83,9 +83,9 @@ There can be many `message` events. An SSE comment heartbeat is emitted every
 ```
 
 `phone` is optional. `language` is optional and accepts `ru`, `uk` or `en`;
-the default is `ru`. A successful response has `success`, a localized
-`message`, and `action` equal to `created` or `updated`. HubSpot contact IDs
-are not exposed.
+the default is `ru`. A successful response has `success` and a localized
+`message`. The response never reveals whether the contact was created or
+updated, and HubSpot contact IDs are not exposed.
 
 ## System endpoints
 
@@ -100,8 +100,11 @@ are not exposed.
 
 ## Errors and limits
 
-Validation errors return HTTP `422`; rate-limit violations return HTTP `429`;
-unexpected processing errors return HTTP `500`. The application limits each
-user to 10 requests per minute and 100 per calendar day in process memory.
-These limits reset when the process restarts and are not shared between
-multiple instances.
+Validation errors return HTTP `422`; rate-limit violations return HTTP `429`
+(with a `Retry-After` header); unexpected processing errors return HTTP `500`.
+Request limits apply in process memory to `/chat`, `/chat/stream` and
+`/trial-signup`: each chat user is limited to 10 requests per minute and 100 per
+calendar day, each client IP (last `X-Forwarded-For` hop set by the proxy) to
+30 per minute and 300 per day, all chat requests to a global 600 per minute,
+and trial signups to 5 per minute and 20 per day per IP. These limits reset
+when the process restarts and are not shared between multiple instances.

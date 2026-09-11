@@ -20,13 +20,29 @@ class SessionSocialState:
 
 
 class SocialStateManager:
-    def __init__(self, ttl_sec: int = DEFAULT_TTL_SEC):
+    def __init__(self, ttl_sec: int = DEFAULT_TTL_SEC, max_sessions: int = 20000):
         self._store: Dict[str, SessionSocialState] = {}
         self._expires: Dict[str, float] = {}
         self._ttl = ttl_sec
+        # SEC-05: ротация id не должна раздувать память — держим потолок и
+        # вычищаем истёкшие сессии, которые больше не трогают.
+        self._max_sessions = max_sessions
 
     def _now(self) -> float:
         return time.time()
+
+    def _sweep(self, now: float) -> None:
+        if len(self._store) <= self._max_sessions:
+            return
+        expired = [sid for sid, exp in self._expires.items() if now > exp]
+        for sid in expired:
+            self._store.pop(sid, None)
+            self._expires.pop(sid, None)
+        if len(self._store) > self._max_sessions:
+            oldest = sorted(self._expires, key=self._expires.get)
+            for sid in oldest[: len(self._store) - self._max_sessions]:
+                self._store.pop(sid, None)
+                self._expires.pop(sid, None)
 
     def _ensure(self, session_id: str) -> SessionSocialState:
         now = self._now()
@@ -34,6 +50,7 @@ class SocialStateManager:
         if session_id not in self._store or now > exp:
             self._store[session_id] = SessionSocialState()
         self._expires[session_id] = now + self._ttl
+        self._sweep(now)
         return self._store[session_id]
 
     def get(self, session_id: str) -> SessionSocialState:

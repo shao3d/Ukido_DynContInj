@@ -153,7 +153,7 @@ def test_trial_signup_rejects_invalid_phone(client):
     assert response.status_code == 422
 
 
-def test_trial_signup_does_not_expose_hubspot_contact_id(client, monkeypatch):
+def test_trial_signup_does_not_expose_creation_oracle(client, monkeypatch):
     class FakeHubSpotClient:
         async def create_or_update_contact(self, **kwargs):
             return {
@@ -186,5 +186,7 @@ def test_trial_signup_does_not_expose_hubspot_contact_id(client, monkeypatch):
     body = response.json()
     assert response.status_code == 200
     assert body["success"] is True
-    assert body["action"] == "created"
+    # SEC-05: created/updated не раскрываем — иначе это оракул существования
+    # контакта в HubSpot (можно проверять наличие email).
+    assert body.get("action") is None
     assert "contact_id" not in body
