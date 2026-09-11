@@ -171,8 +171,12 @@ def client(tmp_path_factory):
         "persistence_manager", "completed_actions_handler", "simple_cta_blocker",
     ):
         sys.modules.pop(name, None)
+    # Контекстный менеджер держит один портал/event loop на всю фикстуру:
+    # без него каждый запрос — новый loop, а sse_starlette хранит глобальный
+    # Event, который на Python 3.12 жёстко привязан к первому loop.
     app = importlib.import_module("main").app
-    return TestClient(app)
+    with TestClient(app) as c:
+        yield c
 
 
 def _mock_pipeline(monkeypatch):

@@ -117,26 +117,46 @@ _TRUSTED_PROXIES = {"127.0.0.1", "::1", "testclient"}
 def client_ip_from(request: Request) -> str:
     """Реальный IP клиента за доверенным реверс-прокси.
 
-    Берём последний хоп X-Forwarded-For: его добавил наш прокси, поэтому
-    подделка начала заголовка клиентом реальный адрес не подменяет.
+    - Прямое соединение с нелокального адреса: авторитетен сам peer,
+      `X-Forwarded-For` игнорируем (защита от подделки при прямом доступе).
+    - Иначе (peer — локальный прокси или неизвестен, как в TestClient):
+      берём последний хоп `X-Forwarded-For` — его добавил наш прокси,
+      поэтому подделка начала заголовка клиентом реальный адрес не подменяет.
+      Приложение слушает только 127.0.0.1, так что внешний трафик всегда
+      идёт через прокси с известным peer.
     """
     peer = request.client.host if request.client and request.client.host else ""
-    if peer in _TRUSTED_PROXIES:
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            parts = [p.strip() for p in forwarded.split(",") if p.strip()]
-            if parts:
-                return parts[-1]
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip and real_ip.strip():
-            return real_ip.strip()
+    if peer and peer not in _TRUSTED_PROXIES and peer not in _TRUSTED_LOCAL_IPS:
+        return peer
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip and real_ip.strip():
+        return real_ip.strip()
     return peer
 
 
-@app.middleware("http")
-async def _capture_client_ip(request: Request, call_next):
-    _CLIENT_IP.set(client_ip_from(request))
-    return await call_next(request)
+class ClientIPMiddleware:
+    """SEC-05: чистый ASGI-middleware — только кладёт IP клиента в контекст.
+
+    Осознанно НЕ BaseHTTPMiddleware: тот оборачивает ответ в task-group и
+    перечитывает body iterator, что ломает SSE-стриминг (/chat/stream) и
+    мешает пробросу контекста. Здесь downstream выполняется в той же задаче.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            _CLIENT_IP.set(client_ip_from(Request(scope)))
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(ClientIPMiddleware)
 
 # === ПРОСТЫЕ МЕТРИКИ ===
 signal_stats = {
