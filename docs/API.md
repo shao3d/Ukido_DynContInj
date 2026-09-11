@@ -29,9 +29,9 @@ The response contains the final text plus routing information:
 ```json
 {
   "response": "...",
-  "relevant_documents": ["courses_detailed"],
+  "relevant_documents": ["courses_detailed.md"],
   "intent": "success",
-  "confidence": 0.95,
+  "confidence": 1.0,
   "decomposed_questions": [],
   "fuzzy_matched": false,
   "social": null,
@@ -45,7 +45,9 @@ The response contains the final text plus routing information:
 ```
 
 Fields may vary by route; optional fields can be `null`. Supported detected
-languages are `ru`, `uk` and `en`.
+languages are `ru`, `uk` and `en`. For non-Russian answers
+`metadata.translated_to` records the target language (`uk` or `en`); translation
+metadata is absent when no translation was needed.
 
 ### `GET /chat/stream`
 

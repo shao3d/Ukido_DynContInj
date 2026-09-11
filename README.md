@@ -10,9 +10,10 @@ Production: <https://ukido.beyondhorizon.dev>
 ## What is in the current product
 
 - Russian, Ukrainian and English chat through JSON or SSE.
-- Gemini 2.5 Flash via OpenRouter for routing, answer generation, translation
-  and optional humour; every model can be overridden with environment
-  variables.
+- Gemini 3.5 Flash Lite (`google/gemini-3.5-flash-lite`) via OpenRouter for
+  routing, answer generation, translation and optional humour; every model
+  can be overridden with environment variables (`ROUTER_MODEL`,
+  `MODEL_ANSWER`, `TRANSLATION_MODEL`, `ZHVANETSKY_MODEL`).
 - Deterministic handling for greetings, thanks, farewells, CTA limits and
   completed actions around the LLM pipeline.
 - File-backed conversation persistence outside application releases.
