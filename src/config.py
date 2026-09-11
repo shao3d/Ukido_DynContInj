@@ -13,7 +13,13 @@ class Config:
     """Настройки приложения"""
     APP_VERSION = os.getenv("APP_VERSION", "0.8.0-state-machine")
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-    DEFAULT_GEMINI_MODEL = "google/gemini-2.5-flash"
+    # Дефолтная модель — ЕДИНСТВЕННОЕ место задания (остальные клиенты
+    # наследуют отсюда; смена через env без правок кода).
+    # 2026-09-11: миграция с поколения 2.5 (сансет 16.10.2026) на
+    # 3.5-flash-lite — ценовой паритет ($0.30/$2.50), cutoff 03.2026,
+    # thinking по умолчанию выкл (не съедает лимит роутера). Откат — env
+    # ROUTER_MODEL/MODEL_ANSWER/TRANSLATION_MODEL без редеплоя кода.
+    DEFAULT_GEMINI_MODEL = "google/gemini-3.5-flash-lite"
     ROUTER_MODEL = os.getenv("ROUTER_MODEL", os.getenv("MODEL", DEFAULT_GEMINI_MODEL))
     MODEL = ROUTER_MODEL  # Backward-compatible alias for router model
     MODEL_ANSWER = os.getenv("MODEL_ANSWER", os.getenv("ANSWER_MODEL", DEFAULT_GEMINI_MODEL))

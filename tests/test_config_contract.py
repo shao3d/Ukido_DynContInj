@@ -23,10 +23,31 @@ def test_llm_model_defaults_preserve_runtime_models(monkeypatch):
 
     config = reload_module("config").Config
 
-    assert config.MODEL == "google/gemini-2.5-flash"
-    assert config.MODEL_ANSWER == "google/gemini-2.5-flash"
-    assert config.TRANSLATION_MODEL == "google/gemini-2.5-flash"
-    assert config.ZHVANETSKY_MODEL == "google/gemini-2.5-flash"
+    # 2026-09-11: миграция 2.5-flash (сансет 16.10.2026) → 3.5-flash-lite.
+    assert config.MODEL == "google/gemini-3.5-flash-lite"
+    assert config.MODEL_ANSWER == "google/gemini-3.5-flash-lite"
+    assert config.TRANSLATION_MODEL == "google/gemini-3.5-flash-lite"
+    assert config.ZHVANETSKY_MODEL == "google/gemini-3.5-flash-lite"
+
+
+def test_no_hardcoded_legacy_model_in_src():
+    """Дефолт модели живёт только в Config.DEFAULT_GEMINI_MODEL."""
+    import pathlib
+    src = pathlib.Path(__file__).resolve().parents[1] / "src"
+    hits = [
+        str(p) for p in src.glob("*.py")
+        if "gemini-2.5-flash" in p.read_text(encoding="utf-8")
+    ]
+    assert hits == [], f"Захардкожен legacy-дефолт: {hits}"
+
+
+def test_client_defaults_follow_config():
+    from config import Config
+    from openrouter_client import OpenRouterClient
+    from gemini_cached_client import GeminiCachedClient
+
+    assert OpenRouterClient("k").model == Config.DEFAULT_GEMINI_MODEL
+    assert GeminiCachedClient("k").model == Config.DEFAULT_GEMINI_MODEL
 
 
 def test_response_generator_uses_configured_answer_and_translation_models(monkeypatch):

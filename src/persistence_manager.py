@@ -70,6 +70,33 @@ class PersistenceManager:
         safe_id = self._sanitize_user_id(user_id)
         return self.base_path / f"{safe_id}.json"
     
+    def _write_json_atomic(self, file_path: Path, state_data: Dict[str, Any]) -> None:
+        """OPS-03: атомарная запись — tmp + fsync + os.replace.
+
+        Обрыв посреди записи больше не оставляет битый JSON: читатели видят
+        либо старый целый файл, либо новый целый.
+        """
+        tmp_path = file_path.with_name(file_path.name + ".tmp")
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(state_data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, file_path)
+
+    def _quarantine_corrupt(self, file_path: Path, user_id: str) -> None:
+        """OPS-03: битый файл — в карантин (.bak), а не в unlink.
+
+        Данные переписки молча не теряем; файл с расширением .bak игнорируется
+        всеми glob'ами *.json (загрузка, очистка, статистика).
+        """
+        try:
+            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            backup = file_path.with_name(f"{file_path.stem}.corrupt-{stamp}.bak")
+            file_path.rename(backup)
+            logger.error(f"Битый файл {user_id} перемещён в карантин: {backup.name}")
+        except Exception as e:
+            logger.error(f"Не удалось карантинировать {file_path}: {e}")
+
     def save_state(self, user_id: str, state_data: Dict[str, Any]) -> bool:
         """
         Сохраняет состояние пользователя в файл
@@ -88,19 +115,17 @@ class PersistenceManager:
             state_data['user_id'] = user_id
             state_data['last_updated'] = datetime.now().isoformat()
             
-            # Сохраняем в файл
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(state_data, f, ensure_ascii=False, indent=2)
-            
+            # Сохраняем в файл (атомарно, см. _write_json_atomic)
+            self._write_json_atomic(file_path, state_data)
+
             # Проверяем размер файла (не больше 100KB)
             if file_path.stat().st_size > 100 * 1024:
                 logger.warning(f"Файл состояния для {user_id} превышает 100KB")
                 # Обрезаем историю если слишком большая
                 if 'history' in state_data and len(state_data['history']) > 10:
                     state_data['history'] = state_data['history'][-10:]
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        json.dump(state_data, f, ensure_ascii=False, indent=2)
-            
+                    self._write_json_atomic(file_path, state_data)
+
             return True
             
         except Exception as e:
@@ -139,11 +164,8 @@ class PersistenceManager:
             
         except json.JSONDecodeError as e:
             logger.error(f"Повреждён JSON для {user_id}: {e}")
-            # Удаляем повреждённый файл
-            try:
-                self._get_file_path(user_id).unlink()
-            except:
-                pass
+            # OPS-03: карантин вместо удаления — данные не теряем молча
+            self._quarantine_corrupt(self._get_file_path(user_id), user_id)
             return None
         except Exception as e:
             logger.error(f"Ошибка загрузки состояния для {user_id}: {e}")
@@ -254,6 +276,10 @@ class PersistenceManager:
                     states[user_id] = state_data
                     loaded_count += 1
                     
+                except json.JSONDecodeError as e:
+                    # OPS-03: битый файл — в карантин, а не молча пропускаем
+                    logger.warning(f"Битый JSON {file_path}: {e}")
+                    self._quarantine_corrupt(file_path, file_path.stem)
                 except Exception as e:
                     logger.warning(f"Не удалось загрузить {file_path}: {e}")
             
@@ -335,10 +361,12 @@ def restore_state_snapshot(state_data: Dict[str, Any], history_manager,
         social_state_manager: Менеджер социальных состояний
         user_id: Идентификатор пользователя
     """
-    # Восстанавливаем историю
+    # Восстанавливаем историю (с metadata: CTA-флаги, user_signal, streak —
+    # OPS-03 fix: раньше metadata терялась и лимиты сбрасывались после рестарта)
     if history_manager and 'history' in state_data:
         for msg in state_data['history']:
-            history_manager.add_message(user_id, msg['role'], msg['content'])
+            history_manager.add_message(
+                user_id, msg['role'], msg['content'], msg.get('metadata'))
     
     # Восстанавливаем user_signal
     if 'user_signal' in state_data:

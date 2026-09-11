@@ -38,7 +38,13 @@ class SmartTranslator:
             openrouter_client: Клиент для вызова OpenRouter API
         """
         self.client = openrouter_client
-        self.model = model or getattr(openrouter_client, "model", "google/gemini-2.5-flash")
+        # Дефолт модели — только из Config (см. DEFAULT_GEMINI_MODEL)
+        if model is None:
+            model = getattr(openrouter_client, "model", None)
+        if model is None:
+            from config import Config
+            model = Config.DEFAULT_GEMINI_MODEL
+        self.model = model
         
     async def translate(
         self, 

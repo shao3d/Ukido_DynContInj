@@ -3,9 +3,36 @@ openrouter_client.py - Клиент для OpenRouter API
 MVP версия: минимум кода для работы
 """
 
+import asyncio
 import httpx
 import json
 from typing import List, Dict, Optional, Any
+
+
+class OpenRouterError(Exception):
+    """BUG-04: базовая ошибка транспорта OpenRouter.
+
+    Ответа от модели НЕТ. Текст ошибки запрещено показывать пользователю
+    как контент — вызывающий обязан обработать явно (извинение/фолбэк).
+    """
+
+
+class OpenRouterTimeout(OpenRouterError):
+    """Превышено время ожидания ответа API."""
+
+
+class OpenRouterHTTPError(OpenRouterError):
+    """API вернул не-200."""
+
+    def __init__(self, status_code: int, body: str = ""):
+        self.status_code = status_code
+        self.body = (body or "")[:500]
+        super().__init__(f"OpenRouter HTTP {status_code}")
+
+
+class OpenRouterEmptyResponse(OpenRouterError):
+    """API вернул 200 без usable content (нет choices / пустой content)."""
+
 
 class OpenRouterClient:
     """Клиент для работы с OpenRouter API"""
@@ -14,7 +41,11 @@ class OpenRouterClient:
         """Инициализация с API ключом и параметрами для оптимальной классификации"""
         self.api_key = api_key
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
-        self.model = model or "google/gemini-2.5-flash"
+        # Дефолт модели — только из Config (миграция 2.5→3.x правится в одном месте)
+        if model is None:
+            from config import Config
+            model = Config.DEFAULT_GEMINI_MODEL
+        self.model = model
         self.seed = seed
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -27,6 +58,11 @@ class OpenRouterClient:
             messages: История диалога [{"role": "user", "content": "..."}]
         Returns:
             Текст ответа от модели
+        Raises:
+            OpenRouterTimeout: таймаут запроса.
+            OpenRouterHTTPError: API вернул не-200 (есть status_code).
+            OpenRouterEmptyResponse: 200 без usable content.
+            OpenRouterError: прочие транспортные сбои.
         """
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -71,21 +107,21 @@ class OpenRouterClient:
                 )
                 
                 print(f"🔍 HTTP статус: {response.status_code}")
-                
-                # Проверяем HTTP статус
+
+                # BUG-04: не-200 — это ошибка транспорта, а не «пустой ответ».
                 if response.status_code != 200:
                     print(f"❌ API ошибка {response.status_code}: {response.text[:500]}")
-                    return ""
-                
+                    raise OpenRouterHTTPError(response.status_code, response.text)
+
                 # Парсим ответ
                 result = response.json()
-                
+
                 # Безопасное извлечение ответа
                 if "choices" in result and len(result["choices"]) > 0:
                     choice = result["choices"][0]
                     # Пробуем разные варианты получения контента
                     content = None
-                    
+
                     # Стандартный формат OpenAI
                     if "message" in choice and "content" in choice["message"]:
                         content = choice["message"]["content"]
@@ -95,7 +131,7 @@ class OpenRouterClient:
                     # Прямой content в choice
                     elif "content" in choice:
                         content = choice["content"]
-                    
+
                     if not content or content.strip() == "":
                         print("⚠️ API вернул пустой content")
                         print(f"🔍 Содержимое choices[0]: {choice}")
@@ -104,14 +140,20 @@ class OpenRouterClient:
                             content = choice["delta"]["content"]
                     else:
                         print(f"✅ Получен ответ длиной {len(content)} символов")
-                    return content or ""
+                    # BUG-04: пустого контента как успеха не бывает
+                    if not content or not content.strip():
+                        raise OpenRouterEmptyResponse("empty content in choices[0]")
+                    return content
                 else:
                     print("❌ API не вернул choices")
                     print(f"🔍 Структура ответа: {list(result.keys())}")
-                    return ""
-                    
-        except httpx.TimeoutException:
-            return "Превышено время ожидания ответа"
+                    raise OpenRouterEmptyResponse("no choices in response")
+
+        except (OpenRouterError, asyncio.CancelledError):
+            raise
+        except httpx.TimeoutException as e:
+            # BUG-04: таймаут — исключение, а не строка «Превышено время...»
+            raise OpenRouterTimeout(f"timeout after 30s: {e}") from e
         except Exception as e:
             print(f"❌ Ошибка: {e}")
-            return "Произошла ошибка при обработке запроса"
+            raise OpenRouterError(f"transport failed: {e}") from e

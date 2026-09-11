@@ -1037,6 +1037,11 @@ async def clear_history(
     global history
     if history:
         history.clear_user_history(user_id)
+        # OPS-03: удаляем и файл состояния, иначе данные вернутся после рестарта
+        try:
+            persistence_manager.delete_state(user_id)
+        except Exception as e:
+            print(f"⚠️ Не удалось удалить файл состояния {user_id}: {e}")
         return {"status": "success", "message": f"History cleared for user {user_id}"}
     return {"status": "error", "message": "History manager not available"}
 

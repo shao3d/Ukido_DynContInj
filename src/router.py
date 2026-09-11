@@ -6,7 +6,7 @@ router.py - Псевдо-двухэтапный LLM роутер для выбо
 import json
 from pathlib import Path
 from typing import List, Dict, Optional
-from openrouter_client import OpenRouterClient
+from openrouter_client import OpenRouterClient, OpenRouterError
 from gemini_cached_client import GeminiCachedClient
 from config import Config
 from social_intents import has_business_signals_extended
@@ -364,7 +364,15 @@ class Router:
             except (json.JSONDecodeError, ValueError) as e:
                 print(f"⚠️ Невалидный ответ от Gemini: {e}")
                 return self._fallback_response()
-                
+
+        except OpenRouterError as e:
+            # BUG-04: транспорт упал — это НЕ «нет темы». Помечаем сбой,
+            # чтобы main.py извинился честно (ветка _router_failed),
+            # а не выдал внутреннюю ошибку за обычный offtopic.
+            print(f"❌ Транспортная ошибка OpenRouter ({type(e).__name__}): {e}")
+            fallback = self._fallback_response()
+            fallback["_router_failed"] = True
+            return fallback
         except Exception as e:
             print(f"❌ Ошибка при вызове Gemini: {e}")
             return self._fallback_response()

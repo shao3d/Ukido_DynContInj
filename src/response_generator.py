@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Dict, Optional, Set
 from config import Config
-from openrouter_client import OpenRouterClient
+from openrouter_client import OpenRouterClient, OpenRouterError
 from standard_responses import DEFAULT_FALLBACK
 from offers_catalog import get_offer, get_tone_adaptation, get_dynamic_example
 from translator import SmartTranslator, TranslationError
@@ -294,6 +294,17 @@ class ResponseGenerator:
             self._debug(f"🔗 DEBUG: После преобразования URL: {final_text[:100]}...")
 
             return final_text, metadata
+        except OpenRouterError as e:
+            # BUG-04: модель не ответила — честная ошибка, а не строка сбоя
+            # как контент. Текст русским: шлюз в main.py переведёт при нужде.
+            print(f"❌ BUG-04: генерация невозможна ({type(e).__name__}): {e}")
+            return "Извините, временная техническая неполадка. Попробуйте еще раз.", {
+                "intent": "error",
+                "user_signal": user_signal,
+                "cta_added": False,
+                "cta_type": None,
+                "humor_generated": False
+            }
         except Exception as e:
             print(f"❌ Ошибка генерации ответа: {e}")
             # Возвращаем tuple с metadata для случая ошибки

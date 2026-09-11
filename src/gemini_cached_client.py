@@ -12,7 +12,7 @@ from openrouter_client import OpenRouterClient
 class GeminiCachedClient(OpenRouterClient):
     """Расширенный клиент с поддержкой кеширования контекста для Gemini"""
     
-    def __init__(self, api_key: str, seed: int = None, max_tokens: int = None, temperature: float = 0.3, model: str = "google/gemini-2.5-flash"):
+    def __init__(self, api_key: str, seed: int = None, max_tokens: int = None, temperature: float = 0.3, model: str = None):
         """Инициализация с настройками для Gemini"""
         super().__init__(api_key, seed, max_tokens, temperature, model=model)
         self.cached_context = None
