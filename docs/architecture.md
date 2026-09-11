@@ -25,7 +25,11 @@ flowchart LR
 2. Deterministic social handlers can answer simple greetings, thanks,
    acknowledgements and farewells without a full generation call.
 3. `src/router.py` classifies the request, detects the user signal, decomposes
-   complex questions and selects relevant knowledge-base documents.
+   complex questions and selects relevant knowledge-base documents. Its LLM call
+   runs in provider JSON mode and the reply is checked against a strict schema;
+   malformed output gets one validated retry, then a fallback. User text and
+   history are wrapped as untrusted data (`<user_message>`, `<dialogue_history>`)
+   to harden against prompt injection.
 4. `src/response_generator.py` builds the answer from the selected facts and
    tone rules. `src/translator.py` handles non-Russian surfaces where needed.
    Translation failures raise instead of returning the source text; a final

@@ -26,7 +26,8 @@ class GeminiCachedClient(OpenRouterClient):
         self, 
         system_content: str,
         user_message: str,
-        history: Optional[List[Dict[str, str]]] = None
+        history: Optional[List[Dict[str, str]]] = None,
+        response_format: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Отправляет запрос с кешированным системным контентом.
@@ -35,6 +36,7 @@ class GeminiCachedClient(OpenRouterClient):
             system_content: Статичная часть (системный промпт + саммари)
             user_message: Динамическая часть (текущий вопрос)
             history: История диалога
+            response_format: SEC-02: JSON-режим провайдера
         """
         # Проверяем, изменился ли системный контент
         new_hash = self._compute_context_hash(system_content)
@@ -71,7 +73,7 @@ class GeminiCachedClient(OpenRouterClient):
         
         # Отправляем запрос
         # Gemini автоматически кеширует повторяющиеся части промпта
-        return await self.chat(messages)
+        return await self.chat(messages, response_format=response_format)
     
     async def chat_with_prefix_cache(
         self,
