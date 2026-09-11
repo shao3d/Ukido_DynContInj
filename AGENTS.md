@@ -17,8 +17,17 @@
 
 ## Checks
 
-- Normal offline check: `python3 -m pytest -q`.
+- Tiered verification (keep the laptop cool without weakening gates):
+  - During iteration: run only the closest relevant test file(s), e.g.
+    `python3 -m pytest tests/test_router_security.py -q`. No repeated full
+    runs after every small edit.
+  - Before commit/push: full `python3 -m pytest -q` is mandatory.
+  - CI on push (Python 3.11/3.12 matrix + Docker build + deploy verify) is
+    the final gate. Do not duplicate the 3.12 environment locally except
+    when debugging a CI failure.
 - Run the closest relevant tests after code changes. Live scripts that need real APIs are not routine checks and must not expose credentials.
+- New tests go into the `pytest.ini` whitelist. Never weaken tests, fixtures
+  or runtime behavior merely to make checks pass.
 - Deployment gates are defined by `.github/workflows/tests.yml` and `ops/activate-release.sh`; do not weaken them.
 
 ## Release
