@@ -169,6 +169,8 @@ class ResponseGenerator:
             # Кроме случая, когда пользователь сам сообщил о завершённом действии —
             # предлагать запись уже записавшемуся = «меню человеку с тарелкой супа»
             trial_words = ["попроб", "пробн", "давайте попробуем", "хочу попробовать", "запишите на пробное",
+                           # LANG-07: uk-формы записи на пробное
+                           "спроб", "хочу спробувати", "запишіть на пробне", "записатися на пробне",
                            "try it", "want to try", "trial class", "free class", "sign us up"]
             if (current_message and not router_result.get("user_completed_action")
                     and any(word in current_message.lower() for word in trial_words)):
@@ -992,6 +994,10 @@ class ResponseGenerator:
                     "действуют скидки", "скидка", "рассрочка", "10% при полной оплате",
                     "первое занятие", "бесплатное", "пробное занятие",
                     "shao3d.github.io/trial/", "записаться", "менеджер свяжется",
+                    # LANG-07: uk-зеркало (история хранится переведённой)
+                    "діють знижки", "знижк", "розстрочк", "10% при повній оплаті",
+                    "перше заняття", "безкоштовн", "пробне заняття",
+                    "записатися", "менеджер зв'яжеться", "менеджер зв’яжеться",
                     "10% off", "% off", "discount", "installment", "first class",
                     "free trial", "sign up", "we'll contact", "we will contact",
                 ]
@@ -1033,6 +1039,8 @@ class ResponseGenerator:
         if user_signal == "price_sensitive":
             # Проверяем только прямые вопросы о скидках/рассрочке
             skip_phrases = ["скидки", "скидка", "рассрочк", "есть ли скидк", "какие скидк",
+                            # LANG-07: uk-зеркало прямых вопросов про скидки
+                            "знижк", "розстрочк", "є знижк", "які знижк",
                             "discount", "discounts", "installment", "payment plan"]
             self._debug(f"🔍 DEBUG _should_add_offer для price_sensitive:")
             self._debug(f"   last_user_msg: '{last_user_msg}'")
@@ -1084,6 +1092,8 @@ class ResponseGenerator:
             
             # Контекстная проверка - не дублируем информацию о пробном занятии
             trial_phrases = ["пробное", "пробный", "первое занятие", "попробовать", "бесплатн",
+                             # LANG-07: uk-зеркало (пробное занятие)
+                             "пробн", "перше заняття", "спробувати", "безкоштовн",
                              "trial", "free class", "try it", "first class", "check it out"]
             if any(phrase in last_user_msg for phrase in trial_phrases):
                 print("🔄 Контекст: Пользователь спрашивает про пробное занятие, пропускаем CTA")
@@ -1102,6 +1112,10 @@ class ResponseGenerator:
                     "первое занятие", "бесплатное", "пробное занятие",
                     "без обязательств", "оценить, подходит ли",
                     "попробует", "оцените подходит",
+                    # LANG-07: uk-зеркало CTA для тревожных родителей
+                    "перше заняття", "безкоштовн", "пробне заняття",
+                    "без зобов'язань", "без зобов’язань",
+                    "оцінити", "спробує", "оцініть",
                     "first class", "free trial", "no obligation",
                     "try it", "see if it fits", "check us out"
                 ]
@@ -1113,6 +1127,9 @@ class ResponseGenerator:
         if user_signal == "ready_to_buy":
             # Контекстная проверка - если пользователь уже говорит о записи
             recording_phrases = ["записалась", "записался", "отправил", "заполнил", "зарегистрировал",
+                                 # LANG-07: uk-зеркало (пользователь уже записался)
+                                 "записавс", "записалас", "відправив", "відправила",
+                                 "заповнив", "заповнила", "зареєстрував", "зареєструвала",
                                  "signed up", "already registered", "filled the form", "already paid"]
             if any(phrase in last_user_msg for phrase in recording_phrases):
                 print("🔄 Контекст: Пользователь уже записался, пропускаем CTA")
@@ -1121,6 +1138,9 @@ class ResponseGenerator:
             # Rate limiting - не чаще чем каждое второе сообщение
             recent_count = 0
             ready_cta_phrases = ["записаться", "shao3d.github.io", "консультация", "менеджер свяжется",
+                                 # LANG-07: uk-зеркало CTA записи
+                                 "записатися", "записатись", "консультація", "менеджер зв'яжеться",
+                                 "менеджер зв’яжеться", "менеджер зв",
                                  "sign up", "shao3d.github.io", "consultation", "we'll contact", "we will contact"]
             
             for msg in history[-4:]:  # Последние 2 пары сообщений
