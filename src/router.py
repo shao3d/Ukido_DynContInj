@@ -11,7 +11,7 @@ from gemini_cached_client import GeminiCachedClient
 from config import Config
 from social_intents import has_business_signals_extended
 from social_state import SocialStateManager  # Нужен для отслеживания повторных приветствий
-from localization import has_cyrillic, looks_ukrainian
+from localization import has_cyrillic, looks_ukrainian, is_pure_greeting
 # Удалены неиспользуемые импорты после рефакторинга:
 # detect_social_intent, SocialIntent - больше не нужны (Gemini обрабатывает)
 # SocialResponder - больше не нужен (обработка в main.py)
@@ -37,6 +37,31 @@ QUESTION_WORDS = (
     'як', 'що', 'де', 'коли', 'чому', 'навіщо', 'скільки',
     'який', 'яка', 'які', 'хто', 'куди', 'звідки',
 )
+
+# F1/SEC-02: допустимые social_context. LLM отдаёт это поле свободным
+# текстом (наблюдали мусор «превед»), поэтому всё непредусмотренное
+# отбрасываем, а чистое приветствие распознаём детерминированно.
+VALID_SOCIAL_CONTEXTS = frozenset({
+    "greeting", "repeated_greeting", "thanks", "apology",
+    "farewell", "acknowledgment",
+})
+
+
+def normalize_social_context(result: dict, user_message: str) -> dict:
+    """Приводит social_context к допустимому набору значений.
+
+    1. Невалидное значение от LLM (напр. «превед») → None.
+    2. Если соцконтекста нет, но сообщение — чистое приветствие
+       («Привет!», «Вітаю!», «Hi»), ставим greeting. Иначе короткие
+       приветствия сваливались в offtopic из-за нераспознавания моделью.
+    """
+    social_context = result.get("social_context")
+    if social_context not in VALID_SOCIAL_CONTEXTS:
+        social_context = None
+    if social_context is None and is_pure_greeting(user_message):
+        social_context = "greeting"
+    result["social_context"] = social_context
+    return result
 
 
 class Router:
@@ -351,7 +376,10 @@ class Router:
                 
                 # Добавляем оригинальное сообщение пользователя для умной обработки в response_generator
                 result["original_message"] = original_message
-                
+
+                # F1: валидируем social_context и восстанавливаем пропущенное приветствие
+                normalize_social_context(result, user_message)
+
                 # MVP: Проверяем повторные приветствия для mixed запросов
                 if result.get("status") == "success" and result.get("social_context") == "greeting":
                     # Проверяем, было ли уже приветствие в этой сессии

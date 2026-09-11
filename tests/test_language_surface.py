@@ -46,6 +46,7 @@ from localization import (  # noqa: E402
     has_cyrillic,
     looks_ukrainian,
     looks_russian,
+    is_pure_greeting,
     resolve_language,
     is_confident_language_signal,
     get_offtopic_response,
@@ -273,6 +274,67 @@ class TestFinalSanitize:
         out = gen._final_sanitize("Багато батьків підтримують дітей.")
         assert "детей" in out and "родителей" in out and "поддерживают" in out
         assert "діт" not in out
+
+
+class TestPureGreeting:
+    """F1: детерминированное распознавание чистых приветствий ru/uk/en."""
+
+    @pytest.mark.parametrize("text", [
+        "Привет!", "привет", "Здравствуйте!", "Добрый день", "доброе утро",
+        "Вітаю!", "Привіт", "Добрий день!", "Доброго ранку",
+        "Hi", "hey!", "Hello", "Good morning", "hi there",
+    ])
+    def test_detects_pure_greetings(self, text):
+        assert is_pure_greeting(text), f"Не распознано приветствие: {text!r}"
+
+    @pytest.mark.parametrize("text", [
+        "", "ок", "спасибо", "дякую", "Привет, сколько стоит?",
+        "Добрий день! У мене двоє дітей", "Hello! How much?", "Hey, tell me more",
+        "До свидания",
+    ])
+    def test_rejects_mixed_or_non_greetings(self, text):
+        assert not is_pure_greeting(text), f"Ложное срабатывание приветствия: {text!r}"
+
+
+class TestSocialContextGuard:
+    """F1/SEC-02: мусорный social_context от LLM не ломает ветку диалога."""
+
+    @staticmethod
+    def _guard():
+        from router import normalize_social_context
+        return normalize_social_context
+
+    def test_garbage_context_dropped(self):
+        guard = self._guard()
+        result = guard({"status": "offtopic", "social_context": "превед"}, "Расскажите о школе")
+        assert result["social_context"] is None
+
+    def test_garbage_context_with_greeting_restored(self):
+        guard = self._guard()
+        result = guard({"status": "offtopic", "social_context": "превед"}, "Привет!")
+        assert result["social_context"] == "greeting"
+
+    def test_missing_context_on_greeting_restored(self):
+        guard = self._guard()
+        result = guard({"status": "offtopic"}, "Вітаю!")
+        assert result["social_context"] == "greeting"
+
+    def test_valid_context_preserved(self):
+        guard = self._guard()
+        for valid in ("thanks", "farewell", "apology", "acknowledgment", "repeated_greeting"):
+            result = guard({"status": "offtopic", "social_context": valid}, "ок")
+            assert result["social_context"] == valid
+
+    def test_short_non_greeting_stays_without_context(self):
+        guard = self._guard()
+        # «ок» — не приветствие; ветку acknowledgment выставит отдельная эвристика
+        result = guard({"status": "offtopic"}, "ок")
+        assert result["social_context"] is None
+
+    def test_mixed_greeting_not_forced(self):
+        guard = self._guard()
+        result = guard({"status": "offtopic"}, "Привет, сколько стоит?")
+        assert result["social_context"] is None
 
 
 class TestLooksRussian:

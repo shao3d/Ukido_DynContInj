@@ -96,6 +96,39 @@ def looks_russian(text: str) -> bool:
     return bool(_RU_MARKER_RE.search(text))
 
 
+# F1: чистые приветствия (ровно приветствие, без вопроса/информации).
+# Нужны для детерминированного fallback, когда LLM-роутер не распознал
+# приветствие (или вернул мусор в social_context).
+PURE_GREETING_MARKERS = frozenset({
+    # ru
+    "привет", "приветствую", "здравствуйте", "здравствуй",
+    "добрый день", "доброе утро", "добрый вечер", "доброй ночи", "доброго дня",
+    # uk
+    "привіт", "вітаю", "добрий день", "доброго дня", "добрий ранок",
+    "доброго ранку", "добрий вечір", "доброго вечора", "на добраніч",
+    "доброго здоров'я",
+    # en
+    "hi", "hey", "hello", "greetings", "good morning", "good afternoon",
+    "good evening", "hi there", "hello there",
+})
+
+_GREETING_PUNCT_RE = re.compile(r"[^\w\s']", re.UNICODE)
+
+
+def _normalize_greeting(text: str) -> str:
+    stripped = _GREETING_PUNCT_RE.sub("", (text or "").lower())
+    return re.sub(r"\s+", " ", stripped).strip()
+
+
+def is_pure_greeting(text: str) -> bool:
+    """True, если сообщение — ровно приветствие (без вопроса/информации).
+
+    «Привет!» и «Добрий день» → True. «Привет, сколько стоит?» → False.
+    """
+    normalized = _normalize_greeting(text)
+    return bool(normalized) and normalized in PURE_GREETING_MARKERS
+
+
 def looks_ukrainian(text: str) -> bool:
     """True, если текст несёт однозначные украинские признаки.
 
