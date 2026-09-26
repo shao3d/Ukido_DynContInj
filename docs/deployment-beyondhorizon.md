@@ -1,24 +1,38 @@
 # Ukido deployment on Beyond Horizon
 
+The `beyondhorizon.dev` name is the public brand. After the September 2026
+outage of the original VPS (`vps78876`, `91.200.41.59`), the production
+runtime of Ukido lives on Andrey's Oracle website VM — the same host that
+serves `visual.beyondhorizon.dev` and `rnd.beyondhorizon.dev`. This runbook
+describes the current deployment; the historical Beyond Horizon VPS is
+retained in the last section for context only.
+
 ## Runtime contract
 
 - Public URL: `https://ukido.beyondhorizon.dev`
-- Local listener: `127.0.0.1:8102`
+- Host: OCI `oracle-marseille-micro-2`, Linux `oracle-micro-2`,
+  `84.235.231.179`, region `eu-marseille-1` (1 GiB class VM)
+- Admin SSH: `ubuntu@84.235.231.179` with the Mac key (`~/.ssh/id_ed25519`,
+  `IdentitiesOnly=yes`, strict host-key checking). The pinned ED25519
+  fingerprint is `SHA256:7AaVqarbZzzCNO6SNEgnOI3i46Q5JQ3MVl6QdpOBgps` — see
+  the Infrastructure runbook `homeland-rnd-production.md`.
+- CI identity: `ukido-deploy` (no sudo; owns `/srv/bh/ukido`; runs the
+  user-scoped service; lingering enabled)
 - Application directory: `/srv/bh/ukido/app`
-- Virtual environment: `/srv/bh/ukido/.venv`
+- Virtual environment: `/srv/bh/ukido/.venv` (system Python 3.12)
 - Persistent conversation state: `/srv/bh/ukido/data/persistent_states`
-- Secrets: `/srv/bh/ukido/.env.production` with mode `600`
-- Service: user-scoped `ukido.service`
-- Source of truth: private GitHub repository `shao3d/Ukido_DynContInj`, branch
-  `main`.
+- Secrets: `/srv/bh/ukido/.env.production`, mode `600`, owner `ukido-deploy`
+- Service: user-scoped `ukido.service` under `ukido-deploy`, listener
+  `127.0.0.1:8102`
+- Edge: Caddy vhost `ukido.beyondhorizon.dev` reverse-proxies to
+  `127.0.0.1:8102` and appends `X-Forwarded-For`; per-IP rate limiting reads
+  the last hop
+- DNS: the `ukido` A record in the `beyondhorizon.dev` zone is managed by
+  Sasha
+- Source of truth: private GitHub repository `shao3d/Ukido_DynContInj`,
+  branch `main`.
 - A successful push to `main` automatically deploys through
   `.github/workflows/tests.yml` after both test jobs pass.
-- Apache and Let's Encrypt are provisioned by the self-service helper
-  `sudo bh-proxy ukido 8102`. Do not run `sudo bh-cert ukido` for this
-  reverse-proxy deployment.
-
-Railway remains the external rollback target until Andrey explicitly approves
-its removal.
 
 ## Normal deployment
 
@@ -40,20 +54,63 @@ secrets and conversation state live outside all application releases and are
 never uploaded by GitHub Actions.
 
 Required GitHub Actions repository secrets are `BH_DEPLOY_HOST`,
-`BH_DEPLOY_USER`, `BH_DEPLOY_KEY` and `BH_KNOWN_HOSTS`. Never print their
+`BH_DEPLOY_USER`, `BH_DEPLOY_KEY` and `BH_KNOWN_HOSTS`; they point at the
+website VM and the `ukido-deploy` key (created 2026-09-26). Never print their
 values or store them in repository files.
+
+## Server preparation (reference)
+
+The 2026-09-26 migration set the host up as follows; repeat only for a
+disaster rebuild:
+
+```bash
+sudo useradd -m -s /bin/bash ukido-deploy
+sudo mkdir -p /srv/bh/ukido/{app,app.next,data/persistent_states}
+sudo chown -R ukido-deploy:ukido-deploy /srv/bh/ukido
+sudo chmod 755 /srv/bh/ukido
+sudo chmod 700 /srv/bh/ukido/data /srv/bh/ukido/data/persistent_states
+sudo loginctl enable-linger ukido-deploy
+sudo apt-get install -y python3.12-venv
+sudo -u ukido-deploy python3 -m venv /srv/bh/ukido/.venv
+sudo chmod 600 /srv/bh/ukido/.env.production
+```
+
+`.env.production` holds the runtime settings (`PORT=8102`,
+`PERSISTENCE_BASE_PATH=/srv/bh/ukido/data/persistent_states`,
+`CORS_ALLOW_ORIGINS=https://shao3d.github.io,https://ukido.beyondhorizon.dev`,
+`DETERMINISTIC_MODE=false`) plus the OpenRouter and HubSpot credentials.
+Never commit it or paste its values into documentation. `ADMIN_API_TOKEN` is
+unset, so the admin endpoints stay disabled.
+
+The Caddy block (with the HTTP→HTTPS redirect kept explicit for consistency
+with the other sites):
+
+```caddyfile
+http://ukido.beyondhorizon.dev {
+    redir https://ukido.beyondhorizon.dev{uri} 301
+}
+
+ukido.beyondhorizon.dev {
+    reverse_proxy 127.0.0.1:8102
+}
+```
+
+Validate with `sudo caddy validate --config /etc/caddy/Caddyfile` before
+`sudo systemctl reload caddy`. A pre-migration backup is kept as
+`/etc/caddy/Caddyfile.bak-ukido-migration`.
 
 ## Shared infrastructure coordination
 
-LaneHub connects the `shao3d` lane to the shared Beyond Horizon Telegram group.
-Read the current feed before host-level work, but do not use the group as a
-step-by-step deploy log.
+LaneHub connects the `shao3d` lane to the shared Beyond Horizon Telegram group
+(Homeland's coordination procedure). Read the current feed before host-level
+work, but do not use the group as a step-by-step deploy log.
 
 - Routine pushes, test results, candidate activation and successful deploys to
   the existing Ukido service stay in GitHub Actions and need no chat message.
-- Write when administrator action is required, when there is an outage or risk
-  to neighbouring services, or when shared infrastructure changes: DNS, vhost,
-  port, certificate, `sudo`, or meaningful disk/CPU/RAM consumption.
+- Write when administrator action is required (for Ukido: the `ukido` DNS A
+  record is managed by Sasha), when there is an outage or risk to neighbouring
+  services, or when shared infrastructure changes: DNS, vhost, port,
+  certificate, `sudo`, or meaningful disk/CPU/RAM consumption.
 - Before provisioning another `*.beyondhorizon.dev` certificate, send one
   advance line because the Let's Encrypt rate limit is shared across the
   domain.
@@ -61,85 +118,33 @@ step-by-step deploy log.
   Keep commands, detailed evidence and rollback notes in this repository or the
   task tracker.
 
-## Server preparation
+## Verification
 
 ```bash
-mkdir -p /srv/bh/ukido/{app,public,data/persistent_states}
-python3 -m venv /srv/bh/ukido/.venv
-/srv/bh/ukido/.venv/bin/pip install --upgrade pip
-/srv/bh/ukido/.venv/bin/pip install -r /srv/bh/ukido/app/requirements.txt
-chmod 755 /srv/bh/ukido /srv/bh/ukido/public
-chmod 700 /srv/bh/ukido/data /srv/bh/ukido/data/persistent_states
-chmod 600 /srv/bh/ukido/.env.production
+dig +short ukido.beyondhorizon.dev A          # 84.235.231.179
+curl -fsSI --max-time 15 https://ukido.beyondhorizon.dev/health
+curl -sSI --max-time 15 http://ukido.beyondhorizon.dev/health   # 301 -> HTTPS
 ```
 
-The environment file contains the production API credentials and runtime
-settings. Never commit it or paste its values into documentation. Required
-non-secret settings for this host include:
-
-```dotenv
-PORT=8102
-PERSISTENCE_BASE_PATH=/srv/bh/ukido/data/persistent_states
-CORS_ALLOW_ORIGINS=https://shao3d.github.io,https://ukido.beyondhorizon.dev
-DETERMINISTIC_MODE=false
-```
-
-## Service installation
-
-```bash
-mkdir -p ~/.config/systemd/user
-cp /srv/bh/ukido/app/ops/ukido.service ~/.config/systemd/user/ukido.service
-systemctl --user daemon-reload
-systemctl --user enable --now ukido.service
-systemctl --user status ukido.service
-```
-
-`MemoryHigh=256M`, `MemoryMax=384M` and `TasksMax=128` are enforced by the
-service cgroup. The effective CPU ceiling is enforced for all Andrey's
-processes by the system-level `user-1004.slice` with `CPUQuota=50%`; the same
-line in the user service is retained as documentation but is not the enforcing
-control on this systemd 249 host.
-
-## Private smoke check and proxy handoff
-
-Before asking the administrator to enable the public reverse proxy:
-
-```bash
-curl -sS http://127.0.0.1:8102/health
-journalctl --user -u ukido.service -n 100 --no-pager
-```
-
-The expected health response has `"status":"healthy"`. The SSE response uses
-an explicit 15-second comment heartbeat so Apache and client proxies do not
-close an idle stream.
-
-For initial proxy provisioning or an intentional port change, run:
-
-```bash
-sudo bh-proxy ukido 8102
-```
-
-The command provisions Apache and HTTPS for
-`ukido.beyondhorizon.dev -> 127.0.0.1:8102`. It is idempotent. Normal
-application deployments do not need to call it again. The proxy must append
-the client address to `X-Forwarded-For` (default `mod_proxy` behaviour):
-per-IP rate limiting reads the last hop, and without it external users all
-look like loopback and the IP layer silently does nothing.
-
-## Public verification
-
-Verify all of the following before retiring Railway:
-
-1. `https://ukido.beyondhorizon.dev/health` returns HTTP 200.
-2. The web chat loads without browser console errors.
-3. `/chat/stream` emits metadata, message chunks and `done` through HTTPS.
-4. A trial signup reaches HubSpot without exposing credentials or contact IDs.
-5. `systemctl --user status ukido.service` is healthy after an SSH logout.
-6. The service returns after a controlled restart.
+Expected: the IP above, HTTPS `200` with `"status":"healthy"`, HTTP `301` to
+the HTTPS URL. The SSE response uses an explicit 15-second comment heartbeat
+so proxies do not close an idle stream. For a full check also load the web
+chat and confirm `/chat/stream` emits metadata, message chunks and `done`.
 
 ## Rollback
 
-If the VPS deployment fails, keep or restore the Railway deployment at
-`https://ukidoschool.up.railway.app`. Do not delete Railway variables or the
-Railway service until the Beyond Horizon deployment has passed all public
-checks and remained stable through the agreed observation period.
+A failed private health check restores `/srv/bh/ukido/app.previous`
+automatically. For a manual rollback, re-run the deploy workflow for the last
+known-good commit. Direct SSH/rsync is an explicitly authorized emergency
+procedure only. The historical Railway deployment is no longer maintained as a
+rollback target for the new host.
+
+## History: the original Beyond Horizon VPS
+
+Ukido originally ran on the VPS `vps78876` (`91.200.41.59`, user `andrey`,
+aliases `sasha-visual`/`vps-andreys`), served by Apache via
+`sudo bh-proxy ukido 8102`. That host became unreachable during the
+September 24, 2026 outage and has not recovered. Only the `visual` and `rnd`
+websites were migrated at first; the Ukido chatbot was migrated to
+`oracle-micro-2` on 2026-09-26 by the same A-record/Caddy/CI pattern. Do not
+use the legacy SSH aliases as deployment targets.

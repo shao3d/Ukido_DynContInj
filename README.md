@@ -69,7 +69,6 @@ history instead of the current project tree.
 ## Deployment
 
 `main` is the production branch. A push runs Python 3.11/3.12 tests and a
-Docker build, then deploys the exact commit to Beyond Horizon and verifies both
-private and public health endpoints. Railway remains rollback infrastructure,
-not the primary production target. See the deployment runbook before changing
-host, service or release settings.
+Docker build, then deploys the exact commit to the production host and
+verifies both private and public health endpoints. See the deployment runbook
+before changing host, service or release settings.

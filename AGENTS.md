@@ -3,7 +3,7 @@
 ## Start here
 
 - This directory is the Git root. Canonical repository: `shao3d/Ukido_DynContInj`, branch `main`.
-- Development happens on Andrey's Mac. The Beyond Horizon VPS is production only: do not edit code or run AI agents there.
+- Development happens on Andrey's Mac. The production host is production only: do not edit code or run AI agents there.
 - At the start of a session, inspect Git status, remotes, branch and upstream yourself. Do not ask Andrey to run routine Git checks.
 - Read the relevant project files before editing. For runtime or deployment work, also read `docs/deployment-beyondhorizon.md`.
 
@@ -37,13 +37,13 @@
 ## Production map
 
 - URL: `https://ukido.beyondhorizon.dev`.
-- SSH alias: `sasha-visual`.
+- Host: Oracle `oracle-micro-2` (`84.235.231.179`) — see `docs/deployment-beyondhorizon.md` for the verified SSH connection. CI identity: `ukido-deploy`.
 - Service: user-scoped `ukido.service`.
-- Runtime: `/srv/bh/ukido/app`, listening on `127.0.0.1:8102`.
+- Runtime: `/srv/bh/ukido/app`, listening on `127.0.0.1:8102` behind Caddy.
 - Deployment: push to `main` -> tests and Docker build -> candidate release -> activation and health checks.
 - A failed private health check automatically restores the previous application release.
 
-## Shared VPS coordination
+## Shared host coordination
 
 - Routine application releases use GitHub Actions and need no Telegram message.
 - Read the LaneHub feed before host-level work. Use the shared Telegram group only for administrator action, outage risk, or changes to shared DNS, proxy, certificate, port, `sudo` or material resource use.
