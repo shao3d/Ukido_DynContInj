@@ -49,6 +49,12 @@ languages are `ru`, `uk` and `en`. For non-Russian answers
 `metadata.translated_to` records the target language (`uk` or `en`); translation
 metadata is absent when no translation was needed.
 
+Pure acknowledgements ("ок", "угу", 👍 and similar) are answered from a canned
+set without LLM routing: `social` is `"acknowledgment"`, `intent` is
+`"offtopic"` and `metadata.social_shortcut` is `"acknowledgment"`. When the
+previous assistant message ends with a question the reply may be consent, so it
+is routed normally instead.
+
 ### `GET /chat/stream`
 
 Query parameters are the same `user_id` and `message`. The endpoint returns

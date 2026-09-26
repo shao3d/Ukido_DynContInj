@@ -352,10 +352,16 @@ class TestCompletedActionConfirmation:
         assert get_completed_action_prefix("paid", "de") != ""
 
     def test_ru_success_paid_gets_confirmation(self, client, monkeypatch):
+        """Подтверждение теперь делает генератор через инструкцию в промпте:
+        на success-ветке он обязан получить user_completed_action, а видимый
+        ответ НЕ украшается приклеенным префиксом (P0: префикс + сгенерированный
+        текст давали «вы записаны! Заполните форму…»)."""
         main = sys.modules["main"]
+        seen = {}
 
         async def plain_generate(router_result, history=None, current_message=None):
-            return "Дальнейшие шаги после оплаты.", {
+            seen["completed_action"] = router_result.get("user_completed_action")
+            return "Отлично, оплату получили! Дальнейшие шаги после оплаты.", {
                 "intent": "success", "user_signal": "exploring_only",
                 "cta_added": False, "cta_type": None, "humor_generated": False,
             }
@@ -368,12 +374,15 @@ class TestCompletedActionConfirmation:
         )
 
         body = post_chat(client, "lang_f2_ru", "Я оплатил курс Ukido")
-        assert body["response"].startswith("Отлично, оплату получили! "), body["response"]
+        assert seen["completed_action"] == "paid"
+        assert "Дальнейшие шаги после оплаты." in body["response"]
 
     def test_uk_success_paid_gets_confirmation(self, client, monkeypatch):
         main = sys.modules["main"]
+        seen = {}
 
         async def uk_generate(router_result, history=None, current_message=None):
+            seen["completed_action"] = router_result.get("user_completed_action")
             return "Подальші кроки після оплати.", {
                 "intent": "success", "user_signal": "exploring_only",
                 "cta_added": False, "cta_type": None, "humor_generated": False,
@@ -389,12 +398,15 @@ class TestCompletedActionConfirmation:
 
         body = post_chat(client, "lang_f2_uk", "Я оплатив курс Ukido")
         assert body["detected_language"] == "uk"
-        assert body["response"].startswith("Чудово, оплату отримано! "), body["response"]
+        assert seen["completed_action"] == "paid"
+        assert body["response"].startswith("Подальші кроки"), body["response"]
 
     def test_en_success_paid_gets_confirmation(self, client, monkeypatch):
         main = sys.modules["main"]
+        seen = {}
 
         async def en_generate(router_result, history=None, current_message=None):
+            seen["completed_action"] = router_result.get("user_completed_action")
             return "Next steps after payment.", {
                 "intent": "success", "user_signal": "exploring_only",
                 "cta_added": False, "cta_type": None, "humor_generated": False,
@@ -409,7 +421,9 @@ class TestCompletedActionConfirmation:
         )
 
         body = post_chat(client, "lang_f2_en", "I have paid for the course")
-        assert body["response"].startswith("Great, we've got your payment! "), body["response"]
+        assert seen["completed_action"] == "paid"
+        assert body["response"] == "Next steps after payment."
+        assert not body["response"].startswith("Great, we've got your payment!")
 
     def test_no_double_confirmation_when_pregenerated(self, client, monkeypatch):
         main = sys.modules["main"]
@@ -1138,13 +1152,15 @@ def test_no_signup_contacts_for_user_who_just_signed_up():
     text, _ = asyncio.run(generator.generate(
         with_action, [], "Я записался на пробное занятие"
     ))
-    assert "ukido.com.ua/trial" not in text, f"Контакты записи предложены записавшемуся: {text!r}"
+    # P0: контакты записи — только из конфига (TRIAL_SIGNUP_URL)
+    trial_url = generator.cfg.TRIAL_SIGNUP_URL
+    assert trial_url not in text, f"Контакты записи предложены записавшемуся: {text!r}"
 
     without_action = dict(base_router_result)
     text_control, _ = asyncio.run(generator.generate(
         without_action, [], "Хочу попробовать пробное занятие"
     ))
-    assert "ukido.com.ua/trial" in text_control, "Контроль: без флага контакты должны добавляться"
+    assert trial_url in text_control, "Контроль: без флага контакты должны добавляться"
 
 
 def test_ui_declares_english_and_has_no_russian_errors():

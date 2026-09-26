@@ -56,7 +56,6 @@ from localization import (
     get_farewell,
     get_farewell_addon,
     get_thanks_prefix_success,
-    get_completed_action_prefix,
     has_farewell_marker,
     get_trial_signup_message,
     THANKS_MARKERS,
@@ -177,7 +176,15 @@ def is_debug_logging() -> bool:
 
 
 async def stream_response_chunks(response_text: str):
-    """Yield final response text in small chunks while preserving paragraphs."""
+    """Yield final response text in small chunks while preserving paragraphs.
+
+    P1: искусственная «печать» (sleep между словами — 5-8 секунд мёртвой
+    задержки на готовом ответе) убрана; чанки отдаются сразу, очередь
+    отдаём event loop'у. Это по-прежнему стриминг ГОТОВОГО ответа (после
+    санитизации/перевода/CTA-проверок), не потоковая генерация модели:
+    токен-стриминг несовместим с пост-обработкой и переводом и требует
+    отдельной переработки клиента.
+    """
     lines = response_text.split('\n')
 
     for line_idx, line in enumerate(lines):
@@ -194,7 +201,7 @@ async def stream_response_chunks(response_text: str):
                 word = " " + word
 
             yield word
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0)
 
 
 def redact_email(email: str) -> str:
@@ -240,6 +247,19 @@ def serializable_validation_errors(exc: ValidationError) -> List[dict]:
         safe_error.pop("ctx", None)
         errors.append(safe_error)
     return errors
+
+# Чисто соглашательские реплики для детерминированного ответа БЕЗ роутера.
+# Слова согласия («да», «ладно», «согласен») сюда НЕ входят: они могут быть
+# ответом на предложение записи — такие должен видеть роутер.
+_PURE_ACKNOWLEDGMENTS = frozenset({
+    "ок", "окей", "okay", "ok", "понял", "поняла", "понятно", "ясно",
+    "принято", "угу", "ага",
+    # uk
+    "добре", "гаразд", "зрозуміло",
+    # эмодзи/улыбки
+    "👍", "👌", "✅", ":)", ";)", ":-))", ")", "))", "😊", "🙂", "👍🏻", "💯",
+})
+
 
 # === МОДЕЛИ ДАННЫХ ===
 class ChatRequest(BaseModel):
@@ -535,9 +555,64 @@ async def chat(request: ChatRequest):
     history_messages = []
     if history:
         history_messages = history.get_history(request.user_id)
-    
+
+    # === ДЕТЕРМИНИРОВАННЫЕ ACKNOWLEDGMENT (P0) ===
+    # Чистые соглашательские реплики («ок», «понял», 👍) не уходят в
+    # LLM-роутер: тот иногда разворачивал их в полноценный бизнес-ответ
+    # («ок» → абзац про оплату). Отвечаем заготовкой сразу.
+    # Если последний ответ ассистента — вопрос («Записать вас?»), реплика
+    # может быть согласием — тогда обычный роутинг.
+    ack_candidate = request.message.strip().lower().replace("!", "").replace(".", "")
+    if ack_candidate in _PURE_ACKNOWLEDGMENTS and "?" not in ack_candidate:
+        last_assistant = next(
+            (m for m in reversed(history_messages) if m.get("role") == "assistant"),
+            None,
+        )
+        if not last_assistant or "?" not in last_assistant.get("content", ""):
+            session_lang = social_state.get_language(request.user_id)
+            ack_language = resolve_language("ru", request.message, session_lang)
+            response_text = get_acknowledgment_response(ack_language)
+            user_signal = user_signals_history.get(request.user_id, "exploring_only")
+            response_metadata = {
+                "intent": "offtopic",
+                "user_signal": user_signal,
+                "cta_added": False,
+                "cta_type": None,
+                "humor_generated": False,
+                "social_shortcut": "acknowledgment",
+            }
+            if user_signal in signal_stats:
+                signal_stats[user_signal] += 1
+            if history:
+                history.add_message(request.user_id, "user", request.message)
+                history.add_message(request.user_id, "assistant", response_text, response_metadata)
+                try:
+                    state_snapshot = create_state_snapshot(
+                        history, user_signals_history, social_state, request.user_id
+                    )
+                    persistence_manager.save_state(request.user_id, state_snapshot)
+                except Exception as e:
+                    print(f"⚠️ Ошибка сохранения состояния для {request.user_id}: {e}")
+            if config.LOG_LEVEL == "DEBUG":
+                print(f"ℹ️ Deterministic acknowledgment ({message_log_summary(request.message)})")
+            latency = time.time() - start
+            request_count += 1
+            total_latency += latency
+            return ChatResponse(
+                response=response_text,
+                relevant_documents=[],
+                intent="offtopic",
+                confidence=1.0,
+                decomposed_questions=[],
+                fuzzy_matched=False,
+                social="acknowledgment",
+                user_signal=user_signal,
+                metadata=response_metadata,
+                detected_language=ack_language,
+            )
+
     # === PIPELINE: Router → Response Generator ===
-    
+
     # Всё идет в Router
     print(f"ℹ️ Routing message ({message_log_summary(request.message)})")
     
@@ -765,16 +840,12 @@ async def chat(request: ChatRequest):
                     if config.LOG_LEVEL == "DEBUG":
                         print(f"✅ Added thanks prefix to success response")
 
-            # F2: завершённое действие на success-ветке — подтверждаем вслух.
-            # CompletedActionsHandler даёт готовый completed_action_response
-            # только на offtopic-ветке; когда роутер сказал success, видимый
-            # ответ подтверждения не содержал (оплату «знали», но молчали).
-            if completed_action and not route_result.get("completed_action_response"):
-                prefix = get_completed_action_prefix(completed_action, detected_language)
-                if prefix and not response_text.startswith(prefix):
-                    response_text = prefix + response_text
-                    print(f"✅ Added completed-action confirmation '{completed_action}'")
-                        
+            # Завершённое действие на success-ветке подтверждает САМ генератор:
+            # ему передаётся router_result["user_completed_action"] с явной
+            # инструкцией (см. _build_messages). Прежняя склейка префикса
+            # («Прекрасно, вы записаны!» + сгенерированное «заполните форму»)
+            # давала самопротиворечивые ответы — удалена.
+
         except Exception as e:
             print(f"❌ ResponseGenerator failed: {e}")
             response_text = get_error_response("generation_failed", detected_language)
@@ -963,6 +1034,9 @@ async def chat(request: ChatRequest):
                 response_metadata.pop("translated_to", None)
     except Exception as e:
         print(f"⚠️ Ошибка финального перевода: {e}")
+
+    # Markdown из перевода/генерации — чат показывает его сырым текстом
+    response_text = response_generator._strip_markdown_formatting(response_text)
 
     # === СОХРАНЕНИЕ В ИСТОРИЮ ===
     if history:

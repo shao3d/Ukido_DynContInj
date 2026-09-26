@@ -21,9 +21,12 @@ flowchart LR
 
 1. `src/main.py` validates input, resolves the session language (router
    verdict corrected by sticky session memory and word-marker detection)
-   and applies in-memory request limits.
-2. Deterministic social handlers can answer simple greetings, thanks,
-   acknowledgements and farewells without a full generation call.
+   and applies in-memory request limits. Pure acknowledgements ("ок", 👍)
+   are answered from a canned set right here, without the LLM, unless the
+   previous assistant turn was a question (then the reply may be consent
+   and goes through the normal pipeline).
+2. Deterministic social rules can answer or decorate simple greetings,
+   thanks, acknowledgements and farewells without a full generation call.
 3. `src/router.py` classifies the request, detects the user signal, decomposes
    complex questions and selects relevant knowledge-base documents. Its LLM call
    runs in provider JSON mode and the reply is checked against a strict schema;
@@ -31,15 +34,30 @@ flowchart LR
    history are wrapped as untrusted data (`<user_message>`, `<dialogue_history>`)
    to harden against prompt injection.
 4. `src/response_generator.py` builds the answer from the selected facts and
-   tone rules. `src/translator.py` handles non-Russian surfaces where needed.
-   Translation failures raise instead of returning the source text; a final
-   gateway retries once and falls back to a per-language apology.
-5. CTA limits, completed-action blocking and confirmations, and social
-   add-ons (thanks/farewell) post-process the result. The response and
-   metadata are added to the short conversation history.
-6. `/chat` returns JSON. `/chat/stream` runs the same processing path and emits
-   the completed answer as SSE chunks; it is response streaming, not upstream
-   token streaming from the model.
+   tone rules at `ANSWER_TEMPERATURE` (default 0.6 — the flat "brochure" style
+   came from temperature 0.1 plus a strict word-count corset, both removed).
+   Answer generation defaults to GPT-6 Luna (`MODEL_ANSWER=openai/gpt-6-luna`);
+   routing and translation stay on Gemini 3.5 Flash Lite (`ROUTER_MODEL`,
+   `TRANSLATION_MODEL`) — every model is overridable via environment.
+   Post-processing is limited to targeted guards (citation/label strips, term
+   map, markdown strip, truncated-tail repair); it no longer flattens
+   paragraphs, amputates exclamation marks or regex-deduplicates sentences.
+   CTA text is offered to the model as a soft suggestion placed where it
+   answers the user (no forced openings); CTA is suppressed entirely in
+   aggressive contexts. A reported completed action (paid/registered/...) is
+   passed to the generator as an explicit instruction, not glued onto the
+   text. Contact details come from `TRIAL_SIGNUP_URL`/`CONTACT_PHONE` config —
+   never hardcoded.
+   `src/translator.py` handles non-Russian surfaces where needed. Translation
+   failures raise instead of returning the source text; a final gateway
+   retries once and falls back to a per-language apology.
+5. CTA limits and social add-ons (thanks/farewell) post-process the result.
+   The response and metadata are added to the short conversation history.
+6. `/chat` returns JSON. `/chat/stream` runs the same processing path and
+   emits the completed answer as SSE chunks; it is response streaming, not
+   upstream token streaming (token streaming is incompatible with the
+   post-processing/translation contract and would need a client-side rework).
+   There is no artificial per-word delay in chunk emission.
 
 ## Main boundaries
 

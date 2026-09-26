@@ -10,12 +10,15 @@ Production: <https://ukido.beyondhorizon.dev>
 ## What is in the current product
 
 - Russian, Ukrainian and English chat through JSON or SSE.
-- Gemini 3.5 Flash Lite (`google/gemini-3.5-flash-lite`) via OpenRouter for
-  routing, answer generation, translation and optional humour; every model
-  can be overridden with environment variables (`ROUTER_MODEL`,
-  `MODEL_ANSWER`, `TRANSLATION_MODEL`, `ZHVANETSKY_MODEL`).
-- Deterministic handling for greetings, thanks, farewells, CTA limits and
-  completed actions around the LLM pipeline.
+- Routing, translation and optional humour run on Gemini 3.5 Flash Lite
+  (`google/gemini-3.5-flash-lite`) via OpenRouter; answer generation defaults
+  to GPT-6 Luna (`openai/gpt-6-luna`). Every model can be overridden with
+  environment variables (`ROUTER_MODEL`, `MODEL_ANSWER`, `TRANSLATION_MODEL`,
+  `ZHVANETSKY_MODEL`), and answer temperature with `ANSWER_TEMPERATURE`
+  (default 0.6). Trial signup contacts come from `TRIAL_SIGNUP_URL` and
+  optional `CONTACT_PHONE`.
+- Deterministic handling for greetings, acknowledgements, thanks, farewells,
+  CTA limits and completed actions around the LLM pipeline.
 - File-backed conversation persistence outside application releases.
 - Trial signup integration with HubSpot.
 - Automatic deployment to Beyond Horizon after tests pass on `main`.

@@ -17,12 +17,16 @@ class Config:
     # наследуют отсюда; смена через env без правок кода).
     # 2026-09-11: миграция с поколения 2.5 (сансет 16.10.2026) на
     # 3.5-flash-lite — ценовой паритет ($0.30/$2.50), cutoff 03.2026,
-    # thinking по умолчанию выкл (не съедает лимит роутера). Откат — env
-    # ROUTER_MODEL/MODEL_ANSWER/TRANSLATION_MODEL без редеплоя кода.
+    # thinking по умолчанию выкл (не съедает лимит роутера).
+    # 2026-09-26: MODEL_ANSWER → GPT-6 Luna (openai/gpt-6-luna): дешевле
+    # flash-lite ($0.10/$0.50 против $0.30/$2.50) и заметно умнее в живом
+    # диалоге; роутер и переводы остаются на 3.5-flash-lite (JSON-режим,
+    # кеш промпта). Откат — env MODEL_ANSWER без редеплоя кода.
     DEFAULT_GEMINI_MODEL = "google/gemini-3.5-flash-lite"
+    DEFAULT_ANSWER_MODEL = "openai/gpt-6-luna"
     ROUTER_MODEL = os.getenv("ROUTER_MODEL", os.getenv("MODEL", DEFAULT_GEMINI_MODEL))
     MODEL = ROUTER_MODEL  # Backward-compatible alias for router model
-    MODEL_ANSWER = os.getenv("MODEL_ANSWER", os.getenv("ANSWER_MODEL", DEFAULT_GEMINI_MODEL))
+    MODEL_ANSWER = os.getenv("MODEL_ANSWER", os.getenv("ANSWER_MODEL", DEFAULT_ANSWER_MODEL))
     ANSWER_MODEL = MODEL_ANSWER  # Backward-compatible alias for answer generation
     API_URL = "https://openrouter.ai/api/v1/chat/completions"
     
@@ -31,6 +35,12 @@ class Config:
     MAX_TOKENS = 500   # Ограничиваем длину ответа для ускорения
     # Отдельный лимит для длинного финального ответа ассистента
     MAX_TOKENS_ANSWER = 1200
+    # P1: температура генерации ответов. 0.1 давала «брошюрный» стиль;
+    # живость текста задаётся температурой + промптом, точность фактов
+    # держится базой знаний в системном промпте (не температурой).
+    # Запрос LLM делается с этим значением явно (per-call), поэтому
+    # клиент по умолчанию (0.1, он же у переводчика) не затрагивается.
+    ANSWER_TEMPERATURE = float(os.getenv("ANSWER_TEMPERATURE", "0.6"))
     SEED = 42          # Фиксированный seed для воспроизводимости результатов
     
     # Управление детерминированностью (для тестирования vs production)
@@ -82,3 +92,10 @@ class Config:
     # Настройки HubSpot CRM
     HUBSPOT_PRIVATE_APP_TOKEN = os.getenv("HUBSPOT_PRIVATE_APP_TOKEN", "")
     HUBSPOT_PORTAL_ID = os.getenv("HUBSPOT_PORTAL_ID", "")
+
+    # Контакты для записи на пробное занятие — единственный источник
+    # (раньше URL и телефон были захардкожены в response_generator, причём
+    # телефон вообще не существовал в базе знаний). Пустой CONTACT_PHONE —
+    # телефон в ответах не упоминается.
+    TRIAL_SIGNUP_URL = os.getenv("TRIAL_SIGNUP_URL", "https://shao3d.github.io/trial/")
+    CONTACT_PHONE = os.getenv("CONTACT_PHONE", "")

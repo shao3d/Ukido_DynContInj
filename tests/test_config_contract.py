@@ -24,8 +24,10 @@ def test_llm_model_defaults_preserve_runtime_models(monkeypatch):
     config = reload_module("config").Config
 
     # 2026-09-11: миграция 2.5-flash (сансет 16.10.2026) → 3.5-flash-lite.
+    # 2026-09-26: MODEL_ANSWER → GPT-6 Luna (дешевле flash-lite и умнее в
+    # живом диалоге); роутер/переводы/юмор остаются на 3.5-flash-lite.
     assert config.MODEL == "google/gemini-3.5-flash-lite"
-    assert config.MODEL_ANSWER == "google/gemini-3.5-flash-lite"
+    assert config.MODEL_ANSWER == "openai/gpt-6-luna"
     assert config.TRANSLATION_MODEL == "google/gemini-3.5-flash-lite"
     assert config.ZHVANETSKY_MODEL == "google/gemini-3.5-flash-lite"
 

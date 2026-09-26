@@ -127,7 +127,7 @@ class TestUkTrialWordsInGenerate:
     async def _generate(generator, message):
         generator._load_docs = lambda docs: {"faq.md": "Ukido facts"}
 
-        async def fake_chat(messages):
+        async def fake_chat(messages, **kwargs):
             return "Це корисно для дитини."
 
         generator.client.chat = fake_chat
@@ -147,8 +147,9 @@ class TestUkTrialWordsInGenerate:
     )
     def test_uk_trial_request_adds_contacts(self, generator, message):
         text, _ = asyncio.run(self._generate(generator, message))
-        assert "ukido.com.ua/trial" in text, message
+        # URL записи единый — из конфига (P0: без захардкоженных контактов)
+        assert generator.cfg.TRIAL_SIGNUP_URL in text, message
 
     def test_uk_neutral_message_does_not_add_contacts(self, generator):
         text, _ = asyncio.run(self._generate(generator, "просто розкажіть про школу"))
-        assert "ukido.com.ua/trial" not in text
+        assert generator.cfg.TRIAL_SIGNUP_URL not in text
